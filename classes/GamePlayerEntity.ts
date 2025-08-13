@@ -28,6 +28,7 @@ import WeaponSystem from './systems/WeaponSystem';
 import CameraSystem from './systems/CameraSystem';
 import ProgressionSystem from './systems/ProgressionSystem';
 import ExtractionSystem from './systems/ExtractionSystem';
+import CompassSystem from './systems/CompassSystem';
 import type BaseItem from './items/BaseItem';
 import GamePlayer from './GamePlayer';
 import type { SerializedItemInventoryData } from './systems/ItemInventory';
@@ -79,6 +80,8 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
   private _lastUnarmedAttackTime: number = 0;
   private _unarmedAttackAudio: Audio;
   private _unarmedHitAudio: Audio;
+
+  private _compassSystem: CompassSystem;
 
   public get playerController(): DefaultPlayerEntityController {
     return this.controller as DefaultPlayerEntityController;
@@ -230,6 +233,7 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     this._weaponSystem = new WeaponSystem(this, this._movementSystem);
     this._cameraSystem = new CameraSystem(this, this._recoilSystem);
     this._extractionSystem = new ExtractionSystem(this);
+    this._compassSystem = new CompassSystem();
 
     // Initialize unarmed combat audio
     this._unarmedAttackAudio = new Audio({
@@ -297,6 +301,9 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
       return;
     }
 
+    // Update compass HUD regardless of inventory state
+    this._compassSystem.update(this);
+
     // Update extraction regardless of inventory state
     this._extractionSystem.update();
     // Extraction may despawn this entity during update; bail out if no longer spawned
@@ -328,6 +335,8 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     // Validate health synchronization periodically
     this._healthSystem.validateAndCorrectHealth();
   }
+
+  // Compass handled by CompassSystem
 
   private _setupController(): void {
     this.playerController.applyDirectionalMovementRotations = false;

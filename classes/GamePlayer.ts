@@ -23,6 +23,8 @@ import MedkitItem from './items/MedkitItem';
 
 import WeaponEntity from './weapons/entities/WeaponEntity';
 import { WeaponFactory } from './weapons/WeaponFactory';
+import PlayerStatsSystem from './systems/PlayerStatsSystem';
+import WeaponProgressionSystem from './systems/WeaponProgressionSystem';
 
 // Register ammo items
 ItemRegistry.registerItem(PistolAmmoItem);
@@ -849,7 +851,6 @@ export default class GamePlayer {
 
   private _sendWeaponProgress(): void {
     try {
-      const { default: WeaponProgressionSystem } = require('./systems/WeaponProgressionSystem');
       const rows = WeaponProgressionSystem.buildMenuRows(this.player);
       this.player.ui.sendData({ type: 'weapon-progress', rows });
     } catch {}
@@ -859,9 +860,7 @@ export default class GamePlayer {
     try {
       const data = (this.player.getPersistedData?.() as any) || {};
       const currency = Math.max(0, Math.floor((data as any)?.currency ?? 0));
-      const { default: PlayerStatsSystem } = require('./systems/PlayerStatsSystem');
       const stats = PlayerStatsSystem.get(this.player);
-      const { default: WeaponProgressionSystem } = require('./systems/WeaponProgressionSystem');
       const weapons = WeaponProgressionSystem.buildMenuRows(this.player);
       this.player.ui.sendData({ type: 'progress-overview', kills: stats.kills, deaths: stats.deaths, currency, weapons });
     } catch {}
@@ -875,7 +874,14 @@ export default class GamePlayer {
       this.player.ui.off(PlayerUIEvent.DATA, this._onPlayerUIData);
       this.player.ui.on(PlayerUIEvent.DATA, this._onProgressionUIData);
       this.player.ui.lockPointer(false);
-      // client will request data on load via requestProgressOverview/openProgression
+      // Proactively send initial data to avoid race where client requests before handler attaches
+      setTimeout(() => {
+        try {
+          if (this._isInMenu) {
+            this._sendProgressOverview();
+          }
+        } catch {}
+      }, 120);
     } catch {}
   }
 

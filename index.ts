@@ -34,10 +34,10 @@ startServer(() => {
   // Define a couple of spawn areas; tune as needed or load from map
   lootSystem.addSpawnArea({ x: 0, y: 20, z: 0 }, 40);
   lootSystem.addSpawnArea({ x: 60, y: 20, z: -30 }, 30);
-  // Spawn a few crates at start
-  lootSystem.spawnCrates(8);
   WorldManager.instance.setDefaultWorld(world);
   world.loadMap(worldMap);
+  // Spawn a few crates
+  lootSystem.spawnCrates(8);
 
   CommandManager.instance.registerCommands([
     new GiveCommand(),

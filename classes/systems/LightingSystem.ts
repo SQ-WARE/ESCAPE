@@ -22,12 +22,12 @@ export class LightingSystem {
   private _sunAzimuthDeg = 45;
   private _sunOrbitRadius = 100;
   private _sunColor: RgbColor = { r: 255, g: 248, b: 240 }; // neutral-warm daylight
-  private _sunIntensity = 1.45;
+  private _sunIntensity = 1.9; // brighter sun so outdoors stays bright
   private _ambientColor: RgbColor | undefined;
-  private _ambientIntensity = 0.16; // low to keep interiors dark
-  private _skyboxIntensity = 0.50;
-  private _fogNear = 40;
-  private _fogFar = 200;
+  private _ambientIntensity = 0.04; // extremely low so interiors without sun access are very dark
+  private _skyboxIntensity = 0.40; // reduced skylight contribution
+  private _fogNear = 35;
+  private _fogFar = 160;
   private _fogColor: RgbColor | undefined;
 
   public constructor(world: World) {

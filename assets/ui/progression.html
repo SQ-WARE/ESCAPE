@@ -43,9 +43,10 @@
     const content = document.getElementById('progression-content');
     content.innerHTML = '';
     if (tab === 'overview') {
-      hytopia.sendData({ type: 'requestProgressOverview' });
+      // slight defer to ensure server listener is ready
+      setTimeout(() => { try { hytopia.sendData({ type: 'requestProgressOverview' }); } catch {} }, 10);
     } else {
-      hytopia.sendData({ type: 'openProgression' });
+      setTimeout(() => { try { hytopia.sendData({ type: 'openProgression' }); } catch {} }, 10);
     }
   }
 
@@ -56,6 +57,12 @@
         break;
       case 'weapon-progress':
         if (activeTab === 'weapons') renderWeaponProgress(data.rows || []);
+        break;
+      case 'openProgression':
+        // server might accidentally echo; request rows explicitly
+        if (activeTab === 'weapons') {
+          setTimeout(() => { try { hytopia.sendData({ type: 'openProgression' }); } catch {} }, 10);
+        }
         break;
     }
   });

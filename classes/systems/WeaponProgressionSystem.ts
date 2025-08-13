@@ -1,5 +1,6 @@
 import type { Player } from 'hytopia';
 import { WeaponFactory } from '../weapons/WeaponFactory';
+import ProgressionSystem from './ProgressionSystem';
 
 export interface WeaponProgressRecord {
   kills: number;
@@ -38,7 +39,6 @@ export default class WeaponProgressionSystem {
       const mult = this._rarityMultiplier(weaponId);
       const xp = Math.floor(baseXP * mult);
       try {
-        const { default: ProgressionSystem } = require('./ProgressionSystem');
         ProgressionSystem.addXP(player, xp);
         const name = WeaponFactory.getWeaponData(weaponId)?.name || weaponId;
         player.ui?.sendData({ type: 'notification', message: `+${xp} XP • ${name} milestone`, color: '00FF00' });

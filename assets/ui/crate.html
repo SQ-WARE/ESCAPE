@@ -41,6 +41,8 @@
   let dropHoverSlot = null;
   const dragGhost = document.querySelector('.drag-ghost');
 
+  // Removed extra auto-sync; server sends initial contents
+
   closeBtn.addEventListener('click', () => {
     hytopia.sendData({ type: 'crate-close', crateId: currentCrateId });
     hytopia.sendData({ type: 'requestHudSync' });
@@ -301,6 +303,7 @@
       setupGrid(hotbarGrid, 9, 9, 'hotbar-slot');
       renderAll(data.items || data.crate || [], data.inventory || [], data.hotbar || []);
       hytopia.lockPointer(false, true);
+      // No additional sync; rely on server updates on interaction
       // Server will push crate-sync after moves; initial payload already has inventories
     }
     if (data.type === 'crate-sync') {

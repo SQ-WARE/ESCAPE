@@ -61,6 +61,7 @@
     </div>
   </div>
   <div id="message-container" class="message-container"></div>
+  <div id="compass-indicator" style="position:fixed; top:12px; right:12px; font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; font-weight:700; font-size:18px; color:#ffffff; text-shadow:0 0 6px rgba(0,0,0,0.7); letter-spacing:1px; opacity:0.85; z-index:9999; pointer-events:none;">N</div>
   <div class="tactical-hotbar">
     <div class="hotbar-grid"></div>
   </div>
@@ -386,6 +387,9 @@
         break;
       case 'screen-fade':
         setScreenFade(data.show === true, data.durationMs);
+        break;
+      case 'compass':
+        updateCompass(data);
         break;
     }
   });
@@ -1074,6 +1078,13 @@
     } else {
       fader.classList.add('hidden');
     }
+  }
+
+  function updateCompass(data) {
+    const el = document.getElementById('compass-indicator');
+    if (!el) return;
+    const letter = (data && data.letter) ? String(data.letter).toUpperCase().charAt(0) : 'N';
+    el.textContent = letter;
   }
 
 </script>

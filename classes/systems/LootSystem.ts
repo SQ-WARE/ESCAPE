@@ -1,4 +1,8 @@
 import { Entity, World, Collider, ColliderShape, RigidBodyType, PlayerEvent, PlayerUIEvent, type Vector3Like, type EventPayloads } from 'hytopia';
+import { WeaponFactory } from '../weapons/WeaponFactory';
+import AmmoItemFactory from '../items/AmmoItemFactory';
+import MedkitItem from '../items/MedkitItem';
+import { WEAPON_DEFINITIONS } from '../weapons/data/WeaponDefinitions';
 import type GamePlayerEntity from '../GamePlayerEntity';
 import ItemInventory from './ItemInventory';
 import type BaseItem from '../items/BaseItem';
@@ -62,6 +66,7 @@ export class LootCrateEntity extends Entity {
     const handler = (evt: EventPayloads[PlayerUIEvent.DATA]) => this._onCrateUIEvent(evt, interactor);
     this._uiHandler = handler;
     interactor.player.ui.on(PlayerUIEvent.DATA, handler);
+    // Send contents after a short delay to ensure UI is fully loaded
     setTimeout(() => {
       try {
         interactor.player.ui.sendData({
@@ -74,7 +79,7 @@ export class LootCrateEntity extends Entity {
           hotbar: this._lootSystem._serializeInventory(interactor.gamePlayer.hotbar),
         });
       } catch {}
-    }, 50);
+    }, 150);
     try { (this as any).startModelOneshotAnimations?.(['Open Lid']); } catch {}
   }
 
@@ -88,7 +93,9 @@ export class LootCrateEntity extends Entity {
 
   private _onCrateUIEvent(evt: EventPayloads[PlayerUIEvent.DATA], playerEntity: GamePlayerEntity): void {
     const { data } = evt;
-    if (!data || data.crateId !== this._crateId) return;
+    if (!data) return;
+    // Allow crate-requestSync without strict crateId (initial UI may not know it yet)
+    if (data.type !== 'crate-requestSync' && data.crateId !== this._crateId) return;
     if (data.type === 'crate-take' && typeof data.index === 'number') {
       const taken = this._lootSystem.takeFromCrate(this._crateId, data.index);
       if (taken) {
@@ -200,10 +207,7 @@ export default class LootSystem {
   constructor(world: World) {
     this.world = world;
     this._initDefaultPools();
-    // Ensure crate UI refreshes for players who join after crates already spawned
-    this.world.on(PlayerEvent.JOINED_WORLD, () => {
-      setTimeout(() => this.refreshCrateUI(), 300);
-    });
+    // Crate UI scene refresh hooks removed
   }
 
   public addSpawnArea(center: Vector3Like, radius: number): void {
@@ -245,7 +249,8 @@ export default class LootSystem {
   public getOrSeedCrateContents(crateId: string, rarity: Rarity): LootItem[] {
     const existing = this.crateContents.get(crateId);
     if (existing) return existing;
-    const rolled = this.rollLoot(rarity, 2 + Math.floor(Math.random() * 2));
+    let rolled = this.rollLoot(rarity, 2 + Math.floor(Math.random() * 2));
+    // No additional fallbacks; allow empty crates based on pool
     this.crateContents.set(crateId, rolled);
     // Also hydrate inventory for crate UI parity
     const rec = this.getOrCreateCrateInventory(crateId);
@@ -295,16 +300,14 @@ export default class LootSystem {
 
   private _weaponName(id: string): string | undefined {
     try {
-      const { WEAPON_DEFINITIONS } = require('../weapons/data/WeaponDefinitions');
-      const def = WEAPON_DEFINITIONS.find((d: any) => d.id === id);
+      const def = (WEAPON_DEFINITIONS as any[]).find((d: any) => d.id === id);
       return def?.name;
     } catch { return undefined; }
   }
 
   private _weaponIcon(id: string): string | undefined {
     try {
-      const { WEAPON_DEFINITIONS } = require('../weapons/data/WeaponDefinitions');
-      const def = WEAPON_DEFINITIONS.find((d: any) => d.id === id);
+      const def = (WEAPON_DEFINITIONS as any[]).find((d: any) => d.id === id);
       return def?.assets?.ui?.icon;
     } catch { return undefined; }
   }
@@ -323,19 +326,16 @@ export default class LootSystem {
   public grantLoot(player: GamePlayerEntity, loot: LootItem): void {
     switch (loot.type) {
       case 'weapon': {
-        const { WeaponFactory } = require('../weapons/WeaponFactory');
         const item = WeaponFactory.create(loot.id);
         if (!player.gamePlayer.hotbar.addItem(item)) player.gamePlayer.backpack.addItem(item);
         break;
       }
       case 'ammo': {
-        const { default: AmmoItemFactory } = require('../items/AmmoItemFactory');
         const item = AmmoItemFactory.create(loot.id, loot.quantity ?? 30);
         if (!player.gamePlayer.hotbar.addItem(item)) player.gamePlayer.backpack.addItem(item);
         break;
       }
       case 'medkit': {
-        const MedkitItem = require('../items/MedkitItem').default;
         const item = new MedkitItem();
         if (!player.gamePlayer.hotbar.addItem(item)) player.gamePlayer.backpack.addItem(item);
         break;
@@ -434,18 +434,9 @@ export default class LootSystem {
 
   private _toItem(it: LootItem): BaseItem | null {
     try {
-      if (it.type === 'weapon') {
-        const { WeaponFactory } = require('../weapons/WeaponFactory');
-        return WeaponFactory.create(it.id);
-      }
-      if (it.type === 'ammo') {
-        const { default: AmmoItemFactory } = require('../items/AmmoItemFactory');
-        return AmmoItemFactory.create(it.id, it.quantity ?? 30);
-      }
-      if (it.type === 'medkit') {
-        const MedkitItem = require('../items/MedkitItem').default;
-        return new MedkitItem();
-      }
+      if (it.type === 'weapon') return WeaponFactory.create(it.id);
+      if (it.type === 'ammo') return AmmoItemFactory.create(it.id, it.quantity ?? 30);
+      if (it.type === 'medkit') return new MedkitItem();
       return null;
     } catch { return null; }
   }
