@@ -2,9 +2,8 @@
 
 # ESCAPE — HYTOPIA Game
 
-An extraction shooter built with the HYTOPIA SDK.
+An extraction shooter built with the HYTOPIA SDK. Under development, not in a playable state.
 
-This may not be playable, still in development.
 Fully coded with Cursor, no prior knowledge on TS, code may be messy.
 
 
