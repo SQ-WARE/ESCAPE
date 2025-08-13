@@ -9,7 +9,7 @@ Fully coded with Cursor, no prior knowledge on TS, code may be messy.
 
 ## Credits
 
-- 3D models by Kaan
+- 3D models by Kaan, Smokahontas
 - HYTOPIA default assets are used under their license; see `assets/LICENSE.md`
 
 
