@@ -1,5 +1,7 @@
 import { Entity, World, Collider, ColliderShape, RigidBodyType, SceneUI, PlayerEvent, PlayerUIEvent, type Vector3Like, type EventPayloads } from 'hytopia';
 import type GamePlayerEntity from '../GamePlayerEntity';
+import ItemInventory from './ItemInventory';
+import type BaseItem from '../items/BaseItem';
 
 type Rarity = 'common' | 'unusual' | 'rare' | 'epic' | 'legendary';
 
@@ -55,7 +57,17 @@ export class LootCrateEntity extends Entity {
     this._uiHandler = handler;
     interactor.player.ui.on(PlayerUIEvent.DATA, handler);
     setTimeout(() => {
-      try { interactor.player.ui.sendData({ type: 'crate-contents', crateId: this._crateId, items: this._lootSystem.getCrateClientContents(this._crateId, this._rarity) }); } catch {}
+      try {
+        interactor.player.ui.sendData({
+          type: 'crate-contents',
+          crateId: this._crateId,
+          items: this._lootSystem.getCrateClientContents(this._crateId, this._rarity),
+          gridWidth: this._lootSystem.getCrateGridWidth(),
+          size: this._lootSystem.getCrateSize(),
+          inventory: this._lootSystem._serializeInventory(interactor.gamePlayer.backpack),
+          hotbar: this._lootSystem._serializeInventory(interactor.gamePlayer.hotbar),
+        });
+      } catch {}
     }, 50);
     try { (this as any).startModelOneshotAnimations?.(['Open Lid']); } catch {}
   }
@@ -94,11 +106,55 @@ export class LootCrateEntity extends Entity {
       const taken = this._lootSystem.takeFromCrate(this._crateId, data.index);
       if (taken) {
         this._lootSystem.grantLoot(playerEntity, taken);
-        try { playerEntity.player.ui.sendData({ type: 'crate-contents', crateId: this._crateId, items: this._lootSystem.getCrateClientContents(this._crateId, this._rarity) }); } catch {}
+        try {
+          playerEntity.player.ui.sendData({
+            type: 'crate-sync',
+            crate: this._lootSystem.getCrateClientContents(this._crateId, this._rarity),
+            inventory: this._lootSystem._serializeInventory(playerEntity.gamePlayer.backpack),
+            hotbar: this._lootSystem._serializeInventory(playerEntity.gamePlayer.hotbar),
+          });
+        } catch {}
       }
     }
+    if (data.type === 'crate-move') {
+      this._lootSystem.enqueueOp(playerEntity, () => {
+        this._lootSystem.moveItemBetween(this._crateId, String(data.fromType), Number(data.fromIndex), String(data.toType), Number(data.toIndex), playerEntity);
+        try {
+          playerEntity.player.ui.sendData({
+            type: 'crate-sync',
+            crate: this._lootSystem.getCrateClientContents(this._crateId, this._rarity),
+            inventory: this._lootSystem._serializeInventory(playerEntity.gamePlayer.backpack),
+            hotbar: this._lootSystem._serializeInventory(playerEntity.gamePlayer.hotbar),
+          });
+        } catch {}
+      });
+    }
+    if (data.type === 'crate-requestSync') {
+      try {
+        playerEntity.player.ui.sendData({
+          type: 'crate-sync',
+          crate: this._lootSystem.getCrateClientContents(this._crateId, this._rarity),
+          inventory: this._lootSystem._serializeInventory(playerEntity.gamePlayer.backpack),
+          hotbar: this._lootSystem._serializeInventory(playerEntity.gamePlayer.hotbar),
+        });
+      } catch {}
+    }
+    if (data.type === 'crate-quickMove') {
+      this._lootSystem.enqueueOp(playerEntity, () => {
+        this._lootSystem.quickMoveBetween(this._crateId, String(data.fromType), Number(data.fromIndex), playerEntity);
+        try {
+          playerEntity.player.ui.sendData({
+            type: 'crate-sync',
+            crate: this._lootSystem.getCrateClientContents(this._crateId, this._rarity),
+            inventory: this._lootSystem._serializeInventory(playerEntity.gamePlayer.backpack),
+            hotbar: this._lootSystem._serializeInventory(playerEntity.gamePlayer.hotbar),
+          });
+        } catch {}
+      });
+    }
     if (data.type === 'crate-close') {
-      try { playerEntity.player.ui.load('ui/menu.html'); } catch {}
+      try { playerEntity.player.ui.load('ui/index.html'); } catch {}
+      try { playerEntity.player.ui.lockPointer(true); } catch {}
       try { if (this._uiHandler) playerEntity.player.ui.off(PlayerUIEvent.DATA, this._uiHandler); } catch {}
       this._uiHandler = undefined;
     }
@@ -111,6 +167,10 @@ export default class LootSystem {
   private readonly spawnAreas: SpawnArea[] = [];
   private readonly crates: LootCrateEntity[] = [];
   private readonly crateContents: Map<string, LootItem[]> = new Map();
+  private readonly crateInventories: Map<string, { inv: ItemInventory; width: number; size: number } > = new Map();
+  // Per-player operation queues to serialize rapid actions (e.g., shift-click spam)
+  private readonly _opQueues: Map<string, Array<() => void>> = new Map();
+  private readonly _opLocks: Set<string> = new Set();
 
   constructor(world: World) {
     this.world = world;
@@ -164,6 +224,9 @@ export default class LootSystem {
     if (existing) return existing;
     const rolled = this.rollLoot(rarity, 2 + Math.floor(Math.random() * 2));
     this.crateContents.set(crateId, rolled);
+    // Also hydrate inventory for crate UI parity
+    const rec = this.getOrCreateCrateInventory(crateId);
+    this._seedInventoryFromLoot(rec.inv, rolled);
     return rolled;
   }
 
@@ -171,14 +234,11 @@ export default class LootSystem {
     return this.crateContents.get(crateId) ?? [];
   }
 
-  public getCrateClientContents(crateId: string, rarity: Rarity): Array<LootItem & { name?: string; iconImageUri?: string }> {
-    const list = this.getOrSeedCrateContents(crateId, rarity);
-    // Enrich minimal server items with UI hints
-    return list.map(it => ({
-      ...it,
-      name: this._resolveItemName(it),
-      iconImageUri: this._resolveItemIcon(it),
-    }));
+  public getCrateClientContents(crateId: string, rarity: Rarity): Array<{ position: number; iconImageUri?: string; name?: string; quantity?: number }> {
+    // Ensure crate exists/seeded, then serialize actual inventory slots
+    this.getOrSeedCrateContents(crateId, rarity);
+    const rec = this.getOrCreateCrateInventory(crateId);
+    return this._serializeInventory(rec.inv);
   }
 
   public takeFromCrate(crateId: string, index: number): LootItem | null {
@@ -187,6 +247,12 @@ export default class LootSystem {
     if (index < 0 || index >= list.length) return null;
     const [removed] = list.splice(index, 1);
     this.crateContents.set(crateId, list);
+    // Reflect in inventory
+    const rec = this.crateInventories.get(crateId);
+    if (rec) {
+      const item = rec.inv.getItemAt(index);
+      if (item) rec.inv.removeItem(index);
+    }
     return removed ?? null;
   }
 
@@ -218,6 +284,17 @@ export default class LootSystem {
       const def = WEAPON_DEFINITIONS.find((d: any) => d.id === id);
       return def?.assets?.ui?.icon;
     } catch { return undefined; }
+  }
+
+  // Expose a minimal UI serializer for inventories
+  public _serializeInventory(inv: ItemInventory): Array<{ position: number; iconImageUri?: string; name?: string; quantity?: number }> {
+    const out: Array<{ position: number; iconImageUri?: string; name?: string; quantity?: number }> = [];
+    for (let i = 0; i < inv.size; i++) {
+      const item = inv.getItemAt(i) as any;
+      if (!item) continue;
+      out.push({ position: i, iconImageUri: item.iconImageUri, name: item.name, quantity: item.quantity });
+    }
+    return out;
   }
 
   public grantLoot(player: GamePlayerEntity, loot: LootItem): void {
@@ -309,6 +386,168 @@ export default class LootSystem {
         { type: 'weapon', id: 'sword_mk18_mjolnir', weight: 1 },
       ],
     });
+  }
+
+  // For UI parity with backpack/stash
+  public getCrateGridWidth(): number { return 9; }
+  public getCrateSize(): number { return 72; }
+
+  public getOrCreateCrateInventory(crateId: string): { inv: ItemInventory; width: number; size: number } {
+    let rec = this.crateInventories.get(crateId);
+    if (rec) return rec;
+    rec = { inv: new ItemInventory(this.getCrateSize(), this.getCrateGridWidth(), 'crate'), width: this.getCrateGridWidth(), size: this.getCrateSize() };
+    this.crateInventories.set(crateId, rec);
+    return rec;
+  }
+
+  private _seedInventoryFromLoot(inv: ItemInventory, loot: LootItem[]): void {
+    // Clear and add sequentially
+    inv.clearAllItems();
+    for (const it of loot) {
+      const item = this._toItem(it);
+      if (item) inv.addItem(item);
+    }
+  }
+
+  private _toItem(it: LootItem): BaseItem | null {
+    try {
+      if (it.type === 'weapon') {
+        const { WeaponFactory } = require('../weapons/WeaponFactory');
+        return WeaponFactory.create(it.id);
+      }
+      if (it.type === 'ammo') {
+        const { default: AmmoItemFactory } = require('../items/AmmoItemFactory');
+        return AmmoItemFactory.create(it.id, it.quantity ?? 30);
+      }
+      if (it.type === 'medkit') {
+        const MedkitItem = require('../items/MedkitItem').default;
+        return new MedkitItem();
+      }
+      return null;
+    } catch { return null; }
+  }
+
+  // Movement between crate and player containers
+  public moveItemBetween(crateId: string, fromType: string, fromIndex: number, toType: string, toIndex: number, player: GamePlayerEntity): boolean {
+    const crateRec = this.getOrCreateCrateInventory(crateId);
+    const source = this._resolveContainer(fromType, crateRec, player);
+    const dest = this._resolveContainer(toType, crateRec, player);
+    if (!source || !dest) return false;
+    if (toIndex < 0 || toIndex >= dest.size) return false;
+    if (fromIndex < 0 || fromIndex >= source.size) return false;
+    const item = source.getItemAt(fromIndex);
+    if (!item) return false;
+    if (!dest.isEmpty(toIndex)) {
+      // swap
+      const swapItem = dest.getItemAt(toIndex);
+      if (swapItem) {
+        // Remove from both
+        const removedDest = dest.removeItem(toIndex);
+        const removedSource = source.removeItem(fromIndex);
+        if (!removedSource) {
+          // restore dest if source removal somehow failed
+          if (removedDest) dest.addItem(removedDest, toIndex);
+          return false;
+        }
+        const placed = dest.addItem(item, toIndex);
+        if (!placed) {
+          // rollback to original state to avoid item loss
+          source.addItem(removedSource, fromIndex);
+          if (removedDest) dest.addItem(removedDest, toIndex);
+          return false;
+        }
+        // place the swapped item back into source
+        if (!source.addItem(swapItem, fromIndex)) {
+          // if exact placement failed, try best-effort place
+          if (!source.addItem(swapItem)) {
+            // if cannot place at all, rollback completely
+            dest.removeItem(toIndex);
+            source.addItem(removedSource, fromIndex);
+            if (removedDest) dest.addItem(removedDest, toIndex);
+            return false;
+          }
+        }
+        return true;
+      }
+    }
+    // simple move
+    const removed = source.removeItem(fromIndex);
+    if (!removed) return false;
+    const placed = dest.addItem(item, toIndex);
+    if (!placed) {
+      // rollback to avoid disappearance
+      source.addItem(removed, fromIndex);
+      return false;
+    }
+    return true;
+  }
+
+  public quickMoveBetween(crateId: string, fromType: string, fromIndex: number, player: GamePlayerEntity): boolean {
+    const crateRec = this.getOrCreateCrateInventory(crateId);
+    const source = this._resolveContainer(fromType, crateRec, player);
+    if (!source) return false;
+    const item = source.getItemAt(fromIndex);
+    if (!item) return false;
+    const removed = source.removeItem(fromIndex);
+    if (!removed) return false;
+    const tryAdd = (inv: ItemInventory | null): boolean => {
+      if (!inv) return false;
+      if (inv.addItem(removed)) return true;
+      return false;
+    };
+    let placed = false;
+    const targets: string[] = (() => {
+      switch ((fromType || '').toLowerCase()) {
+        case 'crate': return ['hotbar', 'backpack'];
+        case 'backpack': return ['crate', 'hotbar'];
+        case 'hotbar': return ['crate', 'backpack'];
+        default: return [];
+      }
+    })();
+    for (const t of targets) {
+      const dest = this._resolveContainer(t, crateRec, player);
+      if (tryAdd(dest)) { placed = true; break; }
+    }
+    if (!placed) {
+      // restore
+      source.addItem(removed, fromIndex);
+      return false;
+    }
+    return true;
+  }
+
+  // ===== Operation queueing (serialize client actions per player) =====
+  public enqueueOp(player: GamePlayerEntity, op: () => void): void {
+    const key = String((player?.player?.id) || (player?.player as any)?.username || 'unknown');
+    const queue = this._opQueues.get(key) || [];
+    queue.push(op);
+    this._opQueues.set(key, queue);
+    if (!this._opLocks.has(key)) {
+      this._drainQueue(key);
+    }
+  }
+
+  private _drainQueue(key: string): void {
+    const queue = this._opQueues.get(key);
+    if (!queue || queue.length === 0) return;
+    this._opLocks.add(key);
+    try {
+      while (queue.length > 0) {
+        const fn = queue.shift()!;
+        try { fn(); } catch {}
+      }
+    } finally {
+      this._opLocks.delete(key);
+    }
+  }
+
+  private _resolveContainer(type: string, crateRec: { inv: ItemInventory }, player: GamePlayerEntity): ItemInventory | null {
+    switch ((type || '').toLowerCase()) {
+      case 'crate': return crateRec.inv;
+      case 'backpack': return player.gamePlayer.backpack as unknown as ItemInventory;
+      case 'hotbar': return player.gamePlayer.hotbar as unknown as ItemInventory;
+      default: return null;
+    }
   }
 }
 

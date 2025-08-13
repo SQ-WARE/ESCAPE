@@ -9,58 +9,239 @@
   </div>
   </div>
 
-<div class="progression-overlay" style="display:flex;">
-  <button class="close-btn" id="crate-close">↩</button>
-  <div class="progression-panel glass-elevated ui-panel" style="width:min(820px,92vw);max-height:78vh;">
-    <div class="progression-header">
-      <span class="progression-title">SUPPLY CRATE</span>
+<div class="stash-overlay" style="display:flex;">
+  <div class="stash-container">
+    <button class="close-btn" id="crate-close">↩</button>
+    <div class="stash-content glass-surface glass-border-strong">
+      <div class="inventory-side">
+        <div class="inventory-section glass-surface">
+          <h3 class="section-title">BACKPACK</h3>
+          <div class="backpack-grid" id="inv-grid" data-container="backpack"></div>
+        </div>
+        <div class="inventory-section glass-surface">
+          <h3 class="section-title">HOTBAR</h3>
+          <div class="hotbar-grid" id="hotbar-grid" data-container="hotbar"></div>
+        </div>
+      </div>
+      <div class="stash-side">
+        <div class="inventory-section glass-surface">
+          <h3 class="section-title">CRATE</h3>
+          <div class="stash-grid" id="crate-grid" data-container="crate"></div>
+        </div>
+      </div>
     </div>
-    <div id="crate-grid" class="progression-content" style="grid-template-columns: repeat(4, 1fr);"></div>
+    <div class="drag-ghost"></div>
   </div>
 </div>
 
-<template id="crate-item">
-  <div class="pg-row ui-panel" style="grid-template-columns: 76px 1fr 120px;align-items:center;">
-    <div class="pg-left"><div class="pg-icon-wrap"><img class="pg-icon"/></div></div>
-    <div class="pg-center">
-      <div class="pg-name"></div>
-      <div class="pg-count"></div>
-    </div>
-    <div class="pg-right"><button class="action-button secondary take-btn"><div class="button-content"><div class="button-text"><span class="button-title">TAKE</span></div></div></button></div>
-  </div>
-</template>
+<template id="crate-slot">
+  <div class="stash-slot"></div>
+  </template>
 
 <script>
   const CDN_ASSETS_URL = '{{CDN_ASSETS_URL}}';
   const grid = document.getElementById('crate-grid');
+  const invGrid = document.getElementById('inv-grid');
+  const hotbarGrid = document.getElementById('hotbar-grid');
   const closeBtn = document.getElementById('crate-close');
-  const tpl = document.getElementById('crate-item');
+  const tpl = document.getElementById('crate-slot');
   let currentCrateId = null;
+  let dragState = null;
+  let hoveredSlot = null;
 
   closeBtn.addEventListener('click', () => {
     hytopia.sendData({ type: 'crate-close', crateId: currentCrateId });
   });
 
-  function render(items) {
-    grid.innerHTML = '';
-    items.forEach((it, idx) => {
+  function buildGrid(container, size, width, type) {
+    container.innerHTML = '';
+    for (let i = 0; i < size; i++) {
       const node = tpl.content.cloneNode(true);
-      const icon = node.querySelector('.pg-icon');
-      const name = node.querySelector('.pg-name');
-      const count = node.querySelector('.pg-count');
-      const btn = node.querySelector('.take-btn');
-      name.textContent = it.name || it.id;
-      count.textContent = it.quantity ? `x${it.quantity}` : '';
-      icon.src = it.iconImageUri ? `${CDN_ASSETS_URL}/${it.iconImageUri}` : `${CDN_ASSETS_URL}/icons/chest.png`;
-      btn.addEventListener('click', () => hytopia.sendData({ type: 'crate-take', crateId: currentCrateId, index: idx }));
-      grid.appendChild(node);
+      const slot = node.querySelector('.stash-slot');
+      if (type === 'backpack') slot.className = 'backpack-slot';
+      if (type === 'hotbar') slot.className = 'hotbar-slot';
+      slot.dataset.index = i;
+      slot.addEventListener('mouseenter', () => { hoveredSlot = slot; });
+      slot.addEventListener('mouseleave', () => { if (hoveredSlot === slot) hoveredSlot = null; });
+      container.appendChild(node);
+    }
+    container.style.gridTemplateColumns = `repeat(${width}, 1fr)`;
+  }
+
+  function render(container, items, type) {
+    const selector = type === 'crate' ? '.stash-slot' : type === 'backpack' ? '.backpack-slot' : '.hotbar-slot';
+    const slots = container.querySelectorAll(selector);
+    slots.forEach((slot, idx) => {
+      slot.innerHTML = '';
+      const found = items.find(it => it.position === idx);
+      if (!found) return;
+      const img = document.createElement('img');
+      img.src = found.iconImageUri ? `${CDN_ASSETS_URL}/${found.iconImageUri}` : `${CDN_ASSETS_URL}/icons/chest.png`;
+      slot.appendChild(img);
+      // Match stash styling: ammo stacks use .ammo-label, others use .item-quantity
+      if (found.quantity && found.quantity > 1) {
+        const isAmmo = !!(found.name && (
+          found.name.includes('9×19mm') ||
+          found.name.includes('7.62×39mm') ||
+          found.name.includes('12.7×108mm') ||
+          found.name.includes('12 Gauge')
+        ));
+        const qty = document.createElement('span');
+        qty.className = isAmmo ? 'ammo-label' : 'item-quantity';
+        qty.textContent = String(found.quantity);
+        slot.appendChild(qty);
+      }
+      // shift-click quick move
+      slot.addEventListener('mousedown', (e) => {
+        if (e.shiftKey && e.button === 0) {
+          e.preventDefault();
+          hytopia.sendData({ type: 'crate-quickMove', crateId: currentCrateId, fromType: type, fromIndex: idx });
+        }
+      });
+      // start drag
+      slot.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        if (!slot.querySelector('img')) return;
+        e.preventDefault();
+        dragState = { slot, from: type, fromIndex: idx, startX: e.clientX, startY: e.clientY, isDragging: false };
+        document.addEventListener('mousemove', handleDragMove, { capture: true });
+        document.addEventListener('mouseup', handleDragUp);
+      });
     });
   }
+
+  const dragGhost = document.querySelector('.drag-ghost');
+  function handleDragMove(e) {
+    if (!dragState) return;
+    const dx = e.clientX - dragState.startX;
+    const dy = e.clientY - dragState.startY;
+    if (!dragState.isDragging && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+      dragState.isDragging = true;
+      startDragGhost(dragState.slot);
+      setEmptySlotHighlighting(true);
+    }
+    if (dragState.isDragging) {
+      dragGhost.style.left = `${e.clientX + 15}px`;
+      dragGhost.style.top = `${e.clientY - 15}px`;
+      dragGhost.style.transform = 'translate(-50%, -50%)';
+      updateDropHover(e);
+    }
+  }
+
+  function handleDragUp(e) {
+    if (dragState && dragState.isDragging) {
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const dropSlot = el ? el.closest('.stash-slot, .hotbar-slot, .backpack-slot') : null;
+      if (dropSlot && dropSlot !== dragState.slot) {
+        let to = dropSlot.classList.contains('backpack-slot') ? 'backpack' : dropSlot.classList.contains('hotbar-slot') ? 'hotbar' : 'crate';
+        const idxAttr = dropSlot.getAttribute('data-index');
+        const toIndex = idxAttr ? parseInt(idxAttr) : Array.from(dropSlot.parentElement.children).indexOf(dropSlot);
+        hytopia.sendData({ type: 'crate-move', crateId: currentCrateId, fromType: dragState.from, fromIndex: dragState.fromIndex, toType: to, toIndex });
+      }
+      // always request a fresh sync after a drop to prevent visual desync
+      hytopia.sendData({ type: 'crate-requestSync', crateId: currentCrateId });
+    }
+    finalizeDragVisuals();
+    setEmptySlotHighlighting(false);
+    document.removeEventListener('mousemove', handleDragMove);
+    document.removeEventListener('mouseup', handleDragUp);
+    dragState = null;
+  }
+
+  function startDragGhost(slot) {
+    if (!dragGhost) return;
+    dragGhost.innerHTML = '';
+    const img = slot.querySelector('img');
+    if (img) dragGhost.appendChild(img.cloneNode(true));
+    dragGhost.classList.add('active');
+  }
+
+  function stopDragGhost() {
+    if (!dragGhost) return;
+    dragGhost.classList.remove('active');
+    dragGhost.innerHTML = '';
+  }
+
+  function setEmptySlotHighlighting(enable) {
+    const allSlots = document.querySelectorAll('.stash-slot, .backpack-slot, .hotbar-slot');
+    allSlots.forEach(slot => {
+      if (enable) {
+        if (!slot.querySelector('img') && (!dragState || slot !== dragState.slot)) {
+          slot.classList.add('drop-target');
+        } else {
+          slot.classList.remove('drop-target');
+        }
+      } else {
+        slot.classList.remove('drop-target', 'drop-hover');
+      }
+    });
+    if (!enable) window.__dropHover = null;
+  }
+
+  function updateDropHover(e) {
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const candidate = el ? el.closest('.stash-slot, .hotbar-slot, .backpack-slot') : null;
+    const isEmpty = candidate && !candidate.querySelector('img');
+    if (window.__dropHover && window.__dropHover !== candidate) {
+      window.__dropHover.classList.remove('drop-hover');
+      window.__dropHover = null;
+    }
+    if (isEmpty) {
+      candidate.classList.add('drop-hover');
+      window.__dropHover = candidate;
+    }
+  }
+
+  function finalizeDragVisuals() {
+    document.querySelectorAll('.stash-slot, .backpack-slot, .hotbar-slot').forEach(slot => slot.classList.remove('drop-target', 'drop-hover'));
+    stopDragGhost();
+  }
+
+  // number keys: mirror stash behavior
+  document.addEventListener('keydown', (e) => {
+    const HOTBAR_SLOTS = 9;
+    const key = parseInt(e.key);
+    if (!isNaN(key) && key >= 1 && key <= HOTBAR_SLOTS) {
+      const hovered = document.querySelector('.stash-slot:hover, .backpack-slot:hover, .hotbar-slot:hover');
+      if (!hovered) return;
+      const numberIndex = key - 1;
+      const hoveredIndex = hovered.getAttribute('data-index') ? parseInt(hovered.getAttribute('data-index')) : Array.from(hovered.parentElement.children).indexOf(hovered);
+      const isBackpackSlot = hovered.classList.contains('backpack-slot');
+      const isHotbarSlot = hovered.classList.contains('hotbar-slot');
+      const isCrateSlot = hovered.classList.contains('stash-slot');
+      if (hovered.querySelector('img')) {
+        const fromType = isBackpackSlot ? 'backpack' : isHotbarSlot ? 'hotbar' : 'crate';
+        hytopia.sendData({ type: 'crate-move', crateId: currentCrateId, fromType, fromIndex: hoveredIndex, toType: 'hotbar', toIndex: numberIndex });
+        finalizeDragVisuals();
+      } else if (isBackpackSlot) {
+        hytopia.sendData({ type: 'crate-move', crateId: currentCrateId, fromType: 'hotbar', fromIndex: numberIndex, toType: 'backpack', toIndex: hoveredIndex });
+        finalizeDragVisuals();
+      } else if (isCrateSlot) {
+        hytopia.sendData({ type: 'crate-move', crateId: currentCrateId, fromType: 'hotbar', fromIndex: numberIndex, toType: 'crate', toIndex: hoveredIndex });
+        finalizeDragVisuals();
+      }
+    }
+  });
 
   hytopia.onData(data => {
     if (data.type === 'crate-contents') {
       currentCrateId = data.crateId;
-      render(data.items || []);
+      const width = data.gridWidth || 9;
+      const size = data.size || 72;
+      buildGrid(grid, size, width, 'crate');
+      buildGrid(invGrid, 27, 9, 'backpack');
+      buildGrid(hotbarGrid, 9, 9, 'hotbar');
+      render(grid, data.items || data.crate || [], 'crate');
+      render(invGrid, (data.inventory || []), 'backpack');
+      render(hotbarGrid, (data.hotbar || []), 'hotbar');
+      hytopia.lockPointer(false, true);
+      // proactively request a fresh sync to avoid stale/empty grids
+      hytopia.sendData({ type: 'crate-requestSync', crateId: currentCrateId });
+    }
+    if (data.type === 'crate-sync') {
+      render(grid, data.crate || [], 'crate');
+      render(invGrid, data.inventory || [], 'backpack');
+      render(hotbarGrid, data.hotbar || [], 'hotbar');
     }
   });
 </script>

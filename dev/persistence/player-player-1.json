@@ -7,11 +7,6 @@
         "ammo": 0
       },
       {
-        "position": 4,
-        "itemId": "sniper_ammo",
-        "quantity": 9984
-      },
-      {
         "position": 0,
         "itemId": "pistol_ammo",
         "quantity": 8869
@@ -22,57 +17,12 @@
         "quantity": 10000
       },
       {
-        "position": 2,
-        "itemId": "rifle_ammo",
-        "quantity": 9626
-      },
-      {
-        "position": 3,
-        "itemId": "m9_beretta"
-      },
-      {
-        "position": 5,
-        "itemId": "desert_eagle"
-      },
-      {
-        "position": 6,
-        "itemId": "glock_17"
-      },
-      {
-        "position": 7,
-        "itemId": "fn_502_tactical_fde"
-      },
-      {
-        "position": 8,
-        "itemId": "akm"
-      },
-      {
         "position": 9,
         "itemId": "spetsnaz_akm_nsb"
       },
       {
         "position": 10,
         "itemId": "mp5a2"
-      },
-      {
-        "position": 12,
-        "itemId": "hk_mp5k"
-      },
-      {
-        "position": 13,
-        "itemId": "hk_mp5sd"
-      },
-      {
-        "position": 14,
-        "itemId": "asvkm"
-      },
-      {
-        "position": 15,
-        "itemId": "victrix_corvo_v"
-      },
-      {
-        "position": 17,
-        "itemId": "kbp_pp90_shotgun"
       }
     ]
   },
@@ -84,43 +34,13 @@
       },
       {
         "position": 0,
-        "itemId": "spetsnaz_akm_nsb",
-        "ammo": 0
-      },
-      {
-        "position": 1,
-        "itemId": "hk_mp5sd",
-        "ammo": 0
-      },
-      {
-        "position": 2,
-        "itemId": "fn_502_tactical_fde",
-        "ammo": 9
-      },
-      {
-        "position": 4,
-        "itemId": "sword_mk18_mjolnir",
-        "ammo": 0
-      },
-      {
-        "position": 3,
-        "itemId": "ingram_m6",
-        "ammo": 0
-      },
-      {
-        "position": 5,
         "itemId": "rifle_ammo",
         "quantity": 30
       },
       {
-        "position": 6,
-        "itemId": "medkit",
-        "quantity": 2
-      },
-      {
-        "position": 7,
+        "position": 1,
         "itemId": "pistol_ammo",
-        "quantity": 15
+        "quantity": 30
       }
     ]
   },

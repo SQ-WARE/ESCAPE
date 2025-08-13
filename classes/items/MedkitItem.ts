@@ -15,7 +15,7 @@ export default class MedkitItem extends BaseItem {
   static override readonly iconImageUri = 'icons/medkit.png';
   static override readonly dropModelUri = 'models/items/medkit.glb';
   static override readonly heldModelUri = 'models/items/medkit.glb';
-  static override readonly stackable = true;
+  static override readonly stackable = false;
 
   public readonly healAmount: number;
   public readonly useTimeMs: number;
