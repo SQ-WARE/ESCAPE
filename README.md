@@ -1,4 +1,5 @@
-![ESCAPE](https://sqware.pro/assets/escape_banner.png)
+![ESCAPE](https://github.com/SQ-WARE/ESCAPE/blob/master/banner.png)
+
 # ESCAPE — HYTOPIA Game
 
 An extraction shooter built with the HYTOPIA SDK.
