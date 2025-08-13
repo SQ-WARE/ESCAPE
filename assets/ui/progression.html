@@ -1,0 +1,166 @@
+<link rel="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/app.css">
+<link rel="preload" as="image" href="{{CDN_ASSETS_URL}}/ui/background2.png">
+<div class="menu-background" style="background: url('{{CDN_ASSETS_URL}}/ui/background2.png') center center / cover no-repeat;">
+  <div class="background-overlay"></div>
+  <div class="smoke-effect">
+    <div class="smoke-layer smoke-layer-1"></div>
+    <div class="smoke-layer smoke-layer-2"></div>
+    <div class="smoke-layer smoke-layer-3"></div>
+  </div>
+</div>
+
+<div class="progression-overlay" style="display: flex;">
+  <button class="close-btn" id="progression-close">↩</button>
+  <div class="progression-panel glass-elevated ui-panel">
+    <div class="progression-header">
+      <span class="progression-title">PROGRESSION</span>
+      <div class="progression-tabs">
+        <button class="tab-btn active" data-tab="overview">OVERVIEW</button>
+        <button class="tab-btn" data-tab="weapons">WEAPONS</button>
+      </div>
+    </div>
+    <div class="progression-content" id="progression-content"></div>
+  </div>
+</div>
+
+<script>
+  const CDN_ASSETS_URL = '{{CDN_ASSETS_URL}}';
+  const progressionClose = document.getElementById('progression-close');
+  const progressionTabs = document.querySelectorAll('.tab-btn');
+  let activeTab = 'overview';
+
+  progressionClose.addEventListener('click', () => {
+    hytopia.sendData({ type: 'backToMenu' });
+  });
+
+  progressionTabs.forEach(btn => {
+    btn.addEventListener('click', () => setActiveTab(btn.getAttribute('data-tab')));
+  });
+
+  function setActiveTab(tab) {
+    activeTab = tab;
+    progressionTabs.forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === tab));
+    const content = document.getElementById('progression-content');
+    content.innerHTML = '';
+    if (tab === 'overview') {
+      hytopia.sendData({ type: 'requestProgressOverview' });
+    } else {
+      hytopia.sendData({ type: 'openProgression' });
+    }
+  }
+
+  hytopia.onData(data => {
+    switch (data.type) {
+      case 'progress-overview':
+        if (activeTab === 'overview') renderOverview(data);
+        break;
+      case 'weapon-progress':
+        if (activeTab === 'weapons') renderWeaponProgress(data.rows || []);
+        break;
+    }
+  });
+
+  function renderOverview(data) {
+    const content = document.getElementById('progression-content');
+    if (!content) return;
+    // Ensure we don't duplicate when re-opening or receiving multiple updates
+    content.innerHTML = '';
+    const stats = document.createElement('div');
+    stats.className = 'ov-stats';
+    const kdr = (data.kills || 0) / Math.max(1, (data.deaths || 0));
+    stats.innerHTML = `
+      <div class="ov-card ui-panel"><div class="ov-label">KILLS</div><div class="ov-value">${data.kills || 0}</div></div>
+      <div class="ov-card ui-panel"><div class="ov-label">DEATHS</div><div class="ov-value">${data.deaths || 0}</div></div>
+      <div class="ov-card ui-panel"><div class="ov-label">KDR</div><div class="ov-value">${kdr.toFixed(2)}</div></div>
+      <div class="ov-card ui-panel"><div class="ov-label">CREDITS</div><div class="ov-value">${data.currency || 0}</div></div>
+    `;
+    content.appendChild(stats);
+  }
+
+  function renderWeaponProgress(rows) {
+    const container = document.getElementById('progression-content');
+    if (!container) return;
+    container.innerHTML = '';
+    // Group rows by category and render headings
+    const groups = new Map();
+    rows.forEach(r => {
+      const cat = String(r.category || '').toLowerCase();
+      if (!groups.has(cat)) groups.set(cat, []);
+      groups.get(cat).push(r);
+    });
+    const order = ['pistol','smg','rifle','shotgun','sniper','lmg',''];
+    const titleMap = { pistol: 'Pistols', smg: 'SMGs', rifle: 'Rifles', shotgun: 'Shotguns', sniper: 'Snipers', lmg: 'LMGs', '': 'Other' };
+    order.forEach(cat => {
+      const list = groups.get(cat);
+      if (!list || list.length === 0) return;
+      const heading = document.createElement('div');
+      heading.className = 'pg-category';
+      heading.textContent = titleMap[cat] || (cat ? cat.charAt(0).toUpperCase()+cat.slice(1) : 'Other');
+      container.appendChild(heading);
+      list.forEach(function(row) {
+        const pct = Math.min(100, Math.floor((row.kills/row.nextKills)*100));
+        const item = document.createElement('div');
+        item.className = 'pg-row ui-panel';
+        item.innerHTML = `
+          <div class="pg-left">
+            <div class="pg-icon-wrap"><img class="pg-icon" src="${CDN_ASSETS_URL}/${row.iconImageUri}"/></div>
+          </div>
+          <div class="pg-center">
+            <div class="pg-name">${row.name}</div>
+            <div class="pg-bar"><div class="pg-fill" style="width:${pct}%"></div></div>
+            <div class="pg-count">${row.kills} KILLS</div>
+          </div>
+          <div class="pg-right">
+            <div class="pg-sub">NEXT MILESTONE</div>
+            <div class="pg-reward">
+              <span class="pg-reward-badge">+${row.nextXP} XP</span>
+              <span class="pg-next-kills">at ${row.nextKills} kills</span>
+            </div>
+          </div>
+        `;
+        container.appendChild(item);
+        const img = item.querySelector('.pg-icon');
+        const wrap = item.querySelector('.pg-icon-wrap');
+        if (img && wrap) applyDynamicIconTheme(img, wrap);
+      });
+    });
+  }
+
+  function applyDynamicIconTheme(img, wrap) {
+    const analyze = () => {
+      try {
+        const size = 24;
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, size, size);
+        const { data } = ctx.getImageData(0, 0, size, size);
+        let sumL = 0, sumR = 0, sumG = 0, sumB = 0, count = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          const a = data[i+3] / 255;
+          if (a < 0.05) continue;
+          const r = data[i], g = data[i+1], b = data[i+2];
+          const l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          sumL += l; sumR += r; sumG += g; sumB += b; count++;
+        }
+        if (count === 0) return;
+        const avgL = sumL / count;
+        const avgR = sumR / count, avgG = sumG / count, avgB = sumB / count;
+        const isDarkIcon = avgL < 120;
+        wrap.classList.toggle('theme-light', isDarkIcon);
+        wrap.classList.toggle('theme-dark', !isDarkIcon);
+        const accent = `rgba(${Math.round(avgR)}, ${Math.round(avgG)}, ${Math.round(avgB)}, 0.35)`;
+        wrap.style.setProperty('--icon-accent', accent);
+      } catch {}
+    };
+    try { img.crossOrigin = 'anonymous'; } catch {}
+    if (img.complete) analyze();
+    else img.addEventListener('load', analyze, { once: true });
+  }
+
+  // initial
+  setActiveTab('overview');
+</script>
+
+

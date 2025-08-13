@@ -1,0 +1,20 @@
+{
+  "name": "game",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@hytopia.com/assets": "^0.3.15",
+    "hytopia": "^0.8.12"
+  },
+  "trustedDependencies": [
+    "mediasoup",
+    "sharp"
+  ]
+}

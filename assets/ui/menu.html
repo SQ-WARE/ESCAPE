@@ -1,0 +1,245 @@
+<link rel="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/app.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700;900&family=Roboto+Condensed:wght@700;900&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="{{CDN_ASSETS_URL}}/ui/background.png">
+<div class="menu-background" style="background: url('{{CDN_ASSETS_URL}}/ui/background.png') center center / cover no-repeat;">
+  <div class="background-overlay"></div>
+  <div class="smoke-effect">
+    <div class="smoke-layer smoke-layer-1"></div>
+    <div class="smoke-layer smoke-layer-2"></div>
+    <div class="smoke-layer smoke-layer-3"></div>
+  </div>
+</div>
+
+  <div class="main-menu">
+  <div class="center-panel">
+    <div class="top-hud">
+      <div class="hud-panel ui-panel" id="profile-hud">
+        <div class="level-badge">
+          <span class="level-label">LVL</span>
+          <span class="level-value" id="hud-level">1</span>
+        </div>
+        <div class="hud-main">
+          <div class="user-row">
+            <div class="user-name" id="hud-username">Player</div>
+            <div class="currency">
+              <span class="currency-label">CREDITS</span>
+              <span class="currency-value" id="hud-currency">0</span>
+            </div>
+          </div>
+          <div class="xp-bar">
+           <div class="xp-fill" id="hud-xp-fill"></div>
+          </div>
+          <div class="xp-text"><span id="hud-xp">0</span>/<span id="hud-xp-next">100</span> XP</div>
+        </div>
+      </div>
+    </div>
+    <div class="game-title">
+      <h1 class="title-text" id="escape-title">ESCAPE</h1>
+    </div>
+    
+    <div class="main-actions">
+      <button class="action-button primary active" id="deploy-button" data-action="deploy">
+        <div class="button-content">
+          <div class="button-text">
+            <span class="button-title">DEPLOY</span>
+          </div>
+        </div>
+      </button>
+      
+      <button class="action-button secondary" id="stash-button" data-action="openStash">
+        <div class="button-content">
+          <div class="button-text">
+            <span class="button-title">STASH</span>
+          </div>
+        </div>
+      </button>
+      
+      <button class="action-button secondary" id="settings-button" data-action="openSettings">
+        <div class="button-content">
+          <div class="button-text">
+            <span class="button-title">SETTINGS</span>
+          </div>
+        </div>
+      </button>
+
+      <button class="action-button secondary" id="progression-button" data-action="openProgression">
+        <div class="button-content">
+          <div class="button-text">
+            <span class="button-title">PROGRESSION</span>
+          </div>
+        </div>
+      </button>
+    </div>
+    
+  </div>
+  <div id="extraction-success" class="extraction-success ui-panel" hidden>
+    <div class="success-title">Successful Extraction</div>
+    <div class="success-subtitle">Gear kept in backpack and hotbar.</div>
+  </div>
+  <div id="death-banner" class="extraction-success ui-panel" hidden>
+    <div class="success-title">You Died</div>
+    <div class="success-subtitle" id="death-banner-sub">You were eliminated</div>
+  </div>
+</div>
+
+
+<!-- Stash overlay removed; dedicated stash.html is used -->
+
+<!-- Scene UI templates not used on menu (defined in index.html) -->
+
+<div class="backdrop-blur"></div> 
+<div class="credits">3D models by Kaan</div>
+
+<script>
+  const CDN_ASSETS_URL = '{{CDN_ASSETS_URL}}';
+  // Slot constants live in dedicated pages
+
+  const deployButton = document.getElementById('deploy-button');
+  const stashButton = document.getElementById('stash-button');
+  const settingsButton = document.getElementById('settings-button');
+  const progressionButton = document.getElementById('progression-button');
+  const menuButtons = Array.from(document.querySelectorAll('.action-button'));
+  const titleEl = document.getElementById('escape-title');
+  // Progression now opens a dedicated page. Stash is also dedicated; no in-menu elements are used.
+
+  // Legacy stash vars not needed on menu
+  let extractionSuccessTimeout = null;
+
+  deployButton.addEventListener('click', () => {
+    hytopia.sendData({ type: 'deploy' });
+  });
+
+  stashButton.addEventListener('click', () => {
+    hytopia.sendData({ type: 'openStash' });
+  });
+
+  settingsButton.addEventListener('click', () => {
+    // placeholder for settings page
+  });
+
+  progressionButton.addEventListener('click', () => {
+    hytopia.sendData({ type: 'openProgression' });
+  });
+
+  // Keyboard navigation for menu buttons
+  function setActiveButton(btn) {
+    menuButtons.forEach(b => b.classList.toggle('active', b === btn));
+  }
+  menuButtons.forEach((btn, idx) => {
+    btn.setAttribute('tabindex', '0');
+    btn.addEventListener('focus', () => setActiveButton(btn));
+    btn.addEventListener('mouseover', () => setActiveButton(btn));
+  });
+  window.addEventListener('keydown', (e) => {
+    const index = menuButtons.findIndex(b => b.classList.contains('active'));
+    if (e.key === 'ArrowDown') {
+      const next = menuButtons[(index + 1) % menuButtons.length];
+      next.focus(); setActiveButton(next); e.preventDefault();
+    } else if (e.key === 'ArrowUp') {
+      const prev = menuButtons[(index - 1 + menuButtons.length) % menuButtons.length];
+      prev.focus(); setActiveButton(prev); e.preventDefault();
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      const active = menuButtons[index] || deployButton;
+      active.click(); e.preventDefault();
+    }
+  });
+
+  // Match menu button width to the ESCAPE title width
+  function applyButtonWidthFromTitle() {
+    try {
+      const rect = titleEl?.getBoundingClientRect();
+      const titleWidth = rect?.width || 0;
+      if (titleWidth > 0) {
+        // Match to title width with comfortable padding; allow larger cap for 120px title
+        const target = Math.max(260, Math.min(520, Math.round(titleWidth - 30)));
+        document.documentElement.style.setProperty('--menu-button-width', `${target}px`);
+      }
+    } catch {}
+  }
+  requestAnimationFrame(applyButtonWidthFromTitle);
+  window.addEventListener('resize', () => requestAnimationFrame(applyButtonWidthFromTitle));
+
+  // Progression close handled in progression.html page
+
+  // Stash open is handled in ui/stash.html
+
+  function showExtractionSuccess(message) {
+    const panel = document.getElementById('extraction-success');
+    if (!panel) return;
+    panel.style.display = 'block';
+    // Auto-hide after a few seconds
+    clearTimeout(extractionSuccessTimeout);
+    extractionSuccessTimeout = setTimeout(() => {
+      panel.style.display = 'none';
+    }, 4000);
+  }
+
+  function showDeathBanner(message) {
+    const panel = document.getElementById('death-banner');
+    const sub = document.getElementById('death-banner-sub');
+    if (!panel || !sub) return;
+    sub.textContent = message || 'You were eliminated';
+    panel.style.display = 'block';
+    clearTimeout(extractionSuccessTimeout);
+    extractionSuccessTimeout = setTimeout(() => {
+      panel.style.display = 'none';
+    }, 4000);
+  }
+  
+  // Stash-related UI and logic lives in ui/stash.html
+  
+  hytopia.onData(data => {
+    switch (data.type) {
+      // Inventory is not managed on the menu page
+      case 'hotbarUpdate':
+      case 'backpackUpdate':
+      case 'stashUpdate':
+      case 'showStash':
+      case 'hideStash':
+        // handled on stash.html
+        break;
+      case 'extraction-success':
+        showExtractionSuccess(data.message || 'Successful Extraction');
+        break;
+      case 'player-death':
+        showDeathBanner(data.message || 'You were eliminated');
+        break;
+      case 'enterMenu':
+        // Request HUD sync on entering menu
+        hytopia.sendData({ type: 'requestMenuHud' });
+        break;
+      case 'menu-hud':
+        updateMenuHud(data);
+        break;
+      // Progression data not used here; progression opens in its own page
+    }
+  });
+  
+  // Removed legacy stash grid helpers from menu page
+
+  function updateMenuHud(data) {
+    try {
+      if (typeof data.username === 'string') {
+        var u = document.getElementById('hud-username');
+        if (u) u.textContent = data.username;
+      }
+      if (typeof data.level === 'number') {
+        document.getElementById('hud-level').textContent = String(data.level);
+      }
+      if (typeof data.currency === 'number') {
+        document.getElementById('hud-currency').textContent = String(data.currency);
+      }
+      if (typeof data.xp === 'number' && typeof data.xpNext === 'number') {
+        document.getElementById('hud-xp').textContent = String(data.xp);
+        document.getElementById('hud-xp-next').textContent = String(data.xpNext);
+        const pct = Math.max(0, Math.min(100, Math.floor((data.xp / Math.max(1, data.xpNext)) * 100)));
+        var xpFillEl = document.getElementById('hud-xp-fill');
+        if (xpFillEl) xpFillEl.style.width = pct + '%';
+      }
+    } catch {}
+  }
+
+  // Removed legacy in-menu progression rendering and stash tooltip/grid helpers from menu page
+</script>

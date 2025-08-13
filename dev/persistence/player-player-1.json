@@ -1,0 +1,312 @@
+{
+  "backpack": {
+    "items": [
+      {
+        "position": null,
+        "itemId": "ingram_m6",
+        "ammo": 0
+      },
+      {
+        "position": 4,
+        "itemId": "sniper_ammo",
+        "quantity": 9984
+      },
+      {
+        "position": 0,
+        "itemId": "pistol_ammo",
+        "quantity": 8869
+      },
+      {
+        "position": 1,
+        "itemId": "shotgun_ammo",
+        "quantity": 10000
+      },
+      {
+        "position": 2,
+        "itemId": "rifle_ammo",
+        "quantity": 9626
+      },
+      {
+        "position": 3,
+        "itemId": "m9_beretta"
+      },
+      {
+        "position": 5,
+        "itemId": "desert_eagle"
+      },
+      {
+        "position": 6,
+        "itemId": "glock_17"
+      },
+      {
+        "position": 7,
+        "itemId": "fn_502_tactical_fde"
+      },
+      {
+        "position": 8,
+        "itemId": "akm"
+      },
+      {
+        "position": 9,
+        "itemId": "spetsnaz_akm_nsb"
+      },
+      {
+        "position": 10,
+        "itemId": "mp5a2"
+      },
+      {
+        "position": 12,
+        "itemId": "hk_mp5k"
+      },
+      {
+        "position": 13,
+        "itemId": "hk_mp5sd"
+      },
+      {
+        "position": 14,
+        "itemId": "asvkm"
+      },
+      {
+        "position": 15,
+        "itemId": "victrix_corvo_v"
+      },
+      {
+        "position": 17,
+        "itemId": "kbp_pp90_shotgun"
+      }
+    ]
+  },
+  "hotbar": {
+    "items": [
+      {
+        "position": null,
+        "itemId": "akm"
+      },
+      {
+        "position": 0,
+        "itemId": "spetsnaz_akm_nsb",
+        "ammo": 0
+      },
+      {
+        "position": 1,
+        "itemId": "hk_mp5sd",
+        "ammo": 0
+      },
+      {
+        "position": 2,
+        "itemId": "fn_502_tactical_fde",
+        "ammo": 9
+      },
+      {
+        "position": 4,
+        "itemId": "sword_mk18_mjolnir",
+        "ammo": 0
+      },
+      {
+        "position": 3,
+        "itemId": "ingram_m6",
+        "ammo": 0
+      },
+      {
+        "position": 5,
+        "itemId": "rifle_ammo",
+        "quantity": 30
+      },
+      {
+        "position": 6,
+        "itemId": "medkit",
+        "quantity": 2
+      },
+      {
+        "position": 7,
+        "itemId": "pistol_ammo",
+        "quantity": 15
+      }
+    ]
+  },
+  "stash": {
+    "items": [
+      {
+        "position": 5,
+        "itemId": "hk_mp5sd",
+        "ammo": 0
+      },
+      {
+        "position": 7,
+        "itemId": "glock_17"
+      },
+      {
+        "position": 8,
+        "itemId": "akm"
+      },
+      {
+        "position": 25,
+        "itemId": "desert_eagle"
+      },
+      {
+        "position": 34,
+        "itemId": "kbp_pp90_shotgun"
+      },
+      {
+        "position": 15,
+        "itemId": "hk_mp5k"
+      },
+      {
+        "position": 0,
+        "itemId": "m9_beretta"
+      },
+      {
+        "position": 1,
+        "itemId": "ingram_m6",
+        "ammo": 0
+      },
+      {
+        "position": 2,
+        "itemId": "desert_eagle"
+      },
+      {
+        "position": 3,
+        "itemId": "victrix_corvo_v",
+        "ammo": 2
+      },
+      {
+        "position": 4,
+        "itemId": "glock_17",
+        "ammo": 0
+      },
+      {
+        "position": 6,
+        "itemId": "kbp_pp90_shotgun"
+      },
+      {
+        "position": 10,
+        "itemId": "sword_mk18_mjolnir"
+      },
+      {
+        "position": 11,
+        "itemId": "desert_eagle",
+        "ammo": 4
+      },
+      {
+        "position": 12,
+        "itemId": "glock_17"
+      },
+      {
+        "position": 13,
+        "itemId": "glock_17",
+        "ammo": 7
+      },
+      {
+        "position": 14,
+        "itemId": "hk_mp5k"
+      },
+      {
+        "position": 16,
+        "itemId": "asvkm"
+      },
+      {
+        "position": 19,
+        "itemId": "sword_mk18_mjolnir",
+        "ammo": 5
+      },
+      {
+        "position": 21,
+        "itemId": "desert_eagle",
+        "ammo": 6
+      },
+      {
+        "position": 22,
+        "itemId": "sword_mk18_mjolnir"
+      },
+      {
+        "position": 27,
+        "itemId": "mp5a2"
+      },
+      {
+        "position": 28,
+        "itemId": "hk_mp5k"
+      },
+      {
+        "position": 29,
+        "itemId": "akm",
+        "ammo": 0
+      },
+      {
+        "position": 30,
+        "itemId": "m9_beretta"
+      },
+      {
+        "position": 31,
+        "itemId": "victrix_corvo_v"
+      },
+      {
+        "position": 32,
+        "itemId": "mp5a2"
+      },
+      {
+        "position": 33,
+        "itemId": "hk_mp5sd"
+      },
+      {
+        "position": 35,
+        "itemId": "hk_mp5sd",
+        "ammo": 30
+      },
+      {
+        "position": 36,
+        "itemId": "asvkm"
+      },
+      {
+        "position": 37,
+        "itemId": "spetsnaz_akm_nsb"
+      },
+      {
+        "position": 38,
+        "itemId": "victrix_corvo_v"
+      },
+      {
+        "position": 39,
+        "itemId": "spetsnaz_akm_nsb",
+        "ammo": 2
+      },
+      {
+        "position": 40,
+        "itemId": "ingram_m6"
+      },
+      {
+        "position": 41,
+        "itemId": "ingram_m6"
+      },
+      {
+        "position": 42,
+        "itemId": "m9_beretta"
+      },
+      {
+        "position": 43,
+        "itemId": "fn_502_tactical_fde",
+        "ammo": 0
+      },
+      {
+        "position": 44,
+        "itemId": "asvkm"
+      }
+    ]
+  },
+  "currency": 0,
+  "progression": {
+    "level": 4,
+    "xp": 25
+  },
+  "weaponProgression": {
+    "hk_mp5sd": {
+      "kills": 2
+    },
+    "glock_17": {
+      "kills": 2
+    }
+  },
+  "stats": {
+    "kills": 4,
+    "deaths": 0
+  }
+}

@@ -1,0 +1,1073 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/app.css">
+</head>
+<body>
+  <div id="sprint-warning" class="sprint-warning" hidden></div>
+  <div id="healing-effect" class="healing-effect"></div>
+  <div id="movement-speed-indicator" class="movement-speed-indicator" hidden>
+    <div class="speed-icon">🚶</div>
+    <div class="speed-text">Movement Slowed</div>
+  </div>
+  <div class="crosshair">
+    <div class="crosshair-dot"></div>
+    <div class="crosshair-line crosshair-line-top"></div>
+    <div class="crosshair-line crosshair-line-bottom"></div>
+    <div class="crosshair-line crosshair-line-left"></div>
+    <div class="crosshair-line crosshair-line-right"></div>
+  </div>
+  <div class="scope-overlay">
+    <div class="scope-reticle"></div>
+  </div>
+  <div class="reload-prompt" hidden>
+    <span class="reload-text">Press R to reload</span>
+  </div>
+  <div class="reload-text-container" hidden>
+    <span class="reload-text">RELOADING...</span>
+  </div>
+  <div class="medkit-progress-container" hidden>
+    <div class="medkit-progress-bar">
+      <div class="medkit-progress-fill"></div>
+    </div>
+    <span class="medkit-text">Using Medkit...</span>
+  </div>
+  <div class="damage-flash"></div>
+  <div class="health-container">
+    <div class="health-bar"></div>
+    <span class="health-text">100</span>
+  </div>
+  <div class="weapon-container" hidden>
+    <div class="weapon-info">
+      <img class="weapon-icon" src="" alt="">
+      <div class="weapon-details">
+        <span class="weapon-name">No Weapon</span>
+        <span class="weapon-description"></span>
+      </div>
+    </div>
+    <div class="ammo-counter">
+      <span class="ammo-text">0/0</span>
+    </div>
+  </div>
+  <div id="extraction-container" class="extraction-container" hidden>
+    <div class="extraction-panel ui-panel">
+      <div class="extraction-title">Extraction</div>
+      <div class="extraction-zone">ZONE: <span id="extraction-zone-name">N/A</span></div>
+      <div class="extraction-progress-bar">
+        <div class="extraction-progress-fill"></div>
+      </div>
+      <div class="extraction-remaining"><span id="extraction-remaining">20</span>s remaining</div>
+    </div>
+  </div>
+  <div id="message-container" class="message-container"></div>
+  <div class="tactical-hotbar">
+    <div class="hotbar-grid"></div>
+  </div>
+  <div class="inventory-overlay" hidden>
+    <div class="tactical-inventory glass-elevated animate-fade-in-scale">
+      <div class="inventory-header">
+        <span class="inventory-title">TACTICAL BACKPACK</span>
+        <button class="close-btn">×</button>
+      </div>
+      <div class="inventory-grid-container glass-surface glass-border-strong">
+        <div class="backpack-grid" data-container="backpack"></div>
+      </div>
+      <div class="hotbar-section">
+        <span class="hotbar-label">QUICK ACCESS</span>
+        <div class="inventory-hotbar-grid" data-container="hotbar"></div>
+      </div>
+      <div class="drag-instructions">
+        <span class="drag-text">Drag items to move • Press Q to drop • ESC to close</span>
+      </div>
+      <div class="drag-ghost"></div>
+    </div>
+  </div>
+
+  <!-- Screen fader (default hidden; server can toggle via 'screen-fade') -->
+  <div id="screen-fader" class="screen-fader hidden"></div>
+
+  <!-- Item nameplate template for dropped items (hologram) -->
+  <template id="item-nameplate">
+    <div class="item-nameplate-container">
+      <div class="item-nameplate ui-panel glass-elevated">
+        <div class="item-nameplate-icon"><img class="item-icon-image" src="" alt=""></div>
+        <div class="item-nameplate-name">Item</div>
+        <div class="item-nameplate-quantity" hidden></div>
+      </div>
+      <div class="item-nameplate-interact">
+        <div class="interact-text">Press F to interact</div>
+      </div>
+    </div>
+  </template>
+
+<script>
+  const CDN_ASSETS_URL = '{{CDN_ASSETS_URL}}';
+  const HOTBAR_SLOTS = 9;
+  const BACKPACK_SLOTS = 27;
+
+  const healthBar = document.querySelector('.health-bar');
+  const healthText = document.querySelector('.health-text');
+  const damageFlash = document.querySelector('.damage-flash');
+  const ammoText = document.querySelector('.ammo-text');
+  const weaponName = document.querySelector('.weapon-name');
+  const weaponIcon = document.querySelector('.weapon-icon');
+  const weaponContainer = document.querySelector('.weapon-container');
+  const weaponDescriptionEl = document.querySelector('.weapon-description');
+  const hotbarGrid = document.querySelector('.hotbar-grid');
+  const reloadPrompt = document.querySelector('.reload-prompt');
+  const reloadTextContainer = document.querySelector('.reload-text-container');
+  const medkitProgressContainer = document.querySelector('.medkit-progress-container');
+  const medkitProgressFill = document.querySelector('.medkit-progress-fill');
+  const inventoryOverlay = document.querySelector('.inventory-overlay');
+  const backpackGrid = document.querySelector('[data-container="backpack"]');
+  const inventoryHotbarGrid = document.querySelector('[data-container="hotbar"]');
+  const dragGhost = document.querySelector('.drag-ghost');
+  const closeBtn = document.querySelector('.close-btn');
+  const crosshairEl = document.querySelector('.crosshair');
+  const crosshairLinesEls = document.querySelectorAll('.crosshair-line');
+  const scopeOverlayEl = document.querySelector('.scope-overlay');
+  const healingEffectEl = document.getElementById('healing-effect');
+  const medkitTextEl = document.querySelector('.medkit-text');
+  const movementSpeedIndicatorEl = document.getElementById('movement-speed-indicator');
+  const sprintWarningEl = document.getElementById('sprint-warning');
+  const extractionContainerEl = document.getElementById('extraction-container');
+  const extractionZoneNameEl = document.getElementById('extraction-zone-name');
+  const extractionProgressFillEl = document.querySelector('.extraction-progress-fill');
+  const extractionRemainingEl = document.getElementById('extraction-remaining');
+  // Register scene UI template for item nameplates so server SceneUI can attach
+  hytopia.registerSceneUITemplate('item-nameplate', (id, onState) => {
+    const tpl = document.getElementById('item-nameplate');
+    const root = tpl.content.cloneNode(true);
+    const nameEl = root.querySelector('.item-nameplate-name');
+    const qtyEl = root.querySelector('.item-nameplate-quantity');
+    const iconEl = root.querySelector('.item-icon-image');
+    const interactText = root.querySelector('.interact-text');
+    onState(state => {
+      if (state && typeof state.name === 'string') {
+        nameEl.textContent = state.name;
+      }
+      if (state && typeof state.iconImageUri === 'string') {
+        iconEl.src = `${CDN_ASSETS_URL}/${state.iconImageUri}`;
+      }
+      if (state && typeof state.quantity === 'number') {
+        if (state.quantity > 1) {
+          qtyEl.style.display = 'inline-block';
+          qtyEl.textContent = `x${state.quantity}`;
+        } else {
+          qtyEl.style.display = 'none';
+        }
+      }
+      if (state && state.showPickupArea === true) {
+        interactText.textContent = 'Press F to pick up';
+      }
+      if (state && state.rarityColor) {
+        const { r, g, b } = state.rarityColor;
+        nameEl.style.color = `rgb(${r}, ${g}, ${b})`;
+      }
+    });
+    return root;
+  });
+
+  let dragState = null;
+  let hoveredSlot = null;
+  let isInventoryOpen = false;
+  let dropHoverSlot = null;
+
+  function openInventory() {
+    inventoryOverlay.style.display = 'flex';
+    isInventoryOpen = true;
+    hytopia.lockPointer(false, true);
+    if (backpackGrid.children.length === 0) {
+      initializeInventoryGrids();
+    }
+    hytopia.sendData({ type: 'inventoryOpened' });
+  }
+
+  function closeInventory() {
+    inventoryOverlay.style.display = 'none';
+    isInventoryOpen = false;
+    hytopia.lockPointer(true);
+    if (dragState) {
+      cancelDragOperation();
+    }
+    hytopia.sendData({ type: 'inventoryClosed' });
+  }
+
+  function cancelDragOperation() {
+    if (dragState) {
+      document.querySelectorAll('.slot').forEach(slot => {
+        slot.classList.remove('drag-source', 'drop-target');
+      });
+      dragGhost.classList.remove('active');
+      dragGhost.innerHTML = '';
+      removeEmptySlotHighlighting();
+      dragState = null;
+    }
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (isInventoryOpen) {
+      handleInventoryKeydown(e);
+    } else {
+      handleGameplayKeydown(e);
+    }
+  });
+
+  function handleInventoryKeydown(e) {
+    if (e.key === 'Escape') {
+      closeInventory();
+      return;
+    }
+    
+    if (e.key === 'q' || e.key === 'Q') {
+      if (hoveredSlot && hoveredSlot.querySelector('img')) {
+        const container = hoveredSlot.parentElement.dataset.container;
+        const index = Array.from(hoveredSlot.parentElement.children).indexOf(hoveredSlot);
+        hytopia.sendData({ type: 'dropItem', fromType: container, fromIndex: index });
+      }
+      return;
+    }
+    
+    const key = parseInt(e.key, 10);
+    if (key >= 1 && key <= HOTBAR_SLOTS) {
+      if (!hoveredSlot) return;
+      const container = hoveredSlot.parentElement?.dataset?.container;
+      const fromIndex = Array.from(hoveredSlot.parentElement.children).indexOf(hoveredSlot);
+      const numberIndex = key - 1;
+
+      if (hoveredSlot.querySelector('img')) {
+        // Assign hovered item to numbered hotbar slot
+        const targetHotbarSlot = hotbarGrid.children[numberIndex];
+        if (targetHotbarSlot) {
+          targetHotbarSlot.classList.add('assigning');
+          setTimeout(() => targetHotbarSlot.classList.remove('assigning'), 300);
+        }
+        hytopia.sendData({
+          type: 'moveItem',
+          fromType: container,
+          fromIndex: fromIndex,
+          toType: 'hotbar',
+          toIndex: numberIndex
+        });
+      } else if (container === 'backpack') {
+        // Move hotbar item at numberIndex into hovered empty backpack slot
+        const toIndex = fromIndex;
+        hytopia.sendData({
+          type: 'moveItem',
+          fromType: 'hotbar',
+          fromIndex: numberIndex,
+          toType: 'backpack',
+          toIndex
+        });
+      }
+    }
+  }
+
+  function handleGameplayKeydown(e) {
+    if (e.key === 'Q' || e.key === 'q') {
+      const activeSlot = document.querySelector('.hotbar-slot.active');
+      if (activeSlot && activeSlot.querySelector('img')) {
+        const index = Array.from(activeSlot.parentElement.children).indexOf(activeSlot);
+        hytopia.sendData({ type: 'dropItem', fromType: 'hotbar', fromIndex: index });
+      }
+    }
+    
+    const key = parseInt(e.key, 10);
+    if (key >= 1 && key <= HOTBAR_SLOTS) {
+      hytopia.sendData({ type: 'setSelectedHotbarIndex', index: key - 1 });
+    }
+  }
+
+  closeBtn.addEventListener('click', closeInventory);
+  
+
+  document.addEventListener('contextmenu', (e) => {
+    if (dragState && dragState.isDragging) {
+      e.preventDefault();
+    }
+  });
+
+  hytopia.onData(data => {
+    switch (data.type) {
+      case 'health':
+        updateHealth(data);
+        break;
+      case 'damage':
+        showDamageFlash();
+        break;
+      case 'ammo':
+        updateAmmoDisplay(data);
+        break;
+      case 'reload':
+        ammoText.textContent = 'RELOADING';
+        reloadPrompt.style.display = 'none';
+        break;
+      case 'ammo-indicator':
+        updateAmmoIndicator(data);
+        break;
+      case 'weapon':
+        updateWeaponDisplay(data);
+        break;
+      case 'hotbarUpdate':
+        updateHotbarSlot(data.position, data);
+        updateInventorySlot(inventoryHotbarGrid, data.position, data);
+        removeEmptySlotHighlighting();
+        break;
+      case 'setSelectedHotbarIndex':
+        setActiveSlot(data.index);
+        break;
+      case 'reload-prompt':
+        reloadPrompt.style.display = data.show ? 'block' : 'none';
+        break;
+      case 'reload-error':
+      case 'reload-success':
+      case 'weapon-message':
+      case 'shoot-error':
+        showMessage(data.message, getMessageType(data.type));
+        break;
+      case 'sprint-warning':
+        updateSprintWarning(data);
+        break;
+      case 'reload-progress':
+        updateReloadProgress(data);
+        break;
+      case 'medkit-use':
+        updateMedkitProgress(data);
+        break;
+      case 'healing-complete':
+        showHealingComplete(data);
+        break;
+      case 'healing-bonus-activated':
+        showHealingBonusActivated(data);
+        break;
+      case 'healing-bonus-ended':
+        showHealingBonusEnded();
+        break;
+      case 'notification':
+        showMessage(data.message, getNotificationType(data.color));
+        break;
+      case 'crosshair-state':
+        updateCrosshairState(data);
+        break;
+      case 'scope-zoom':
+        updateScopeZoom(data);
+        break;
+      case 'recoil':
+        updateRecoil(data);
+        break;
+      case 'extraction-start':
+        showExtraction(data);
+        break;
+      case 'extraction-progress':
+        updateExtraction(data);
+        break;
+      case 'extraction-cancel':
+        hideExtraction();
+        break;
+      case 'hitmarker':
+        showHitmarker(data);
+        break;
+      case 'backpackUpdate':
+        updateInventorySlot(backpackGrid, data.position, data);
+        removeEmptySlotHighlighting();
+        break;
+
+      case 'showInventory':
+        openInventory();
+        break;
+      case 'hideInventory':
+        closeInventory();
+        break;
+      case 'screen-fade':
+        setScreenFade(data.show === true, data.durationMs);
+        break;
+    }
+  });
+
+  function updateHealth(data) {
+    const percentage = (data.health / data.maxHealth) * 100;
+    healthBar.style.width = `${percentage}%`;
+    healthText.textContent = Math.ceil(data.health);
+  }
+
+  function showDamageFlash() {
+    damageFlash.classList.add('active');
+    setTimeout(() => damageFlash.classList.remove('active'), 200);
+  }
+
+  function updateAmmoDisplay(data) {
+    ammoText.textContent = `${data.ammo}/${data.maxAmmo}`;
+    reloadPrompt.style.display = (data.ammo === 0 && data.maxAmmo > 0) ? 'block' : 'none';
+  }
+
+  function updateAmmoIndicator(data) {
+    if (data.show === false) {
+      weaponContainer.style.display = 'none';
+      reloadPrompt.style.display = 'none';
+    } else {
+      weaponContainer.style.display = 'block';
+      if (data.reloading) {
+        ammoText.textContent = 'RELOADING';
+        reloadPrompt.style.display = 'none';
+      } else {
+        updateAmmoDisplay(data);
+      }
+    }
+  }
+
+  function updateWeaponDisplay(data) {
+    weaponName.textContent = data.name.toUpperCase();
+    weaponIcon.src = `${CDN_ASSETS_URL}/${data.iconImageUri}`;
+    
+    if (weaponDescriptionEl && data.description) {
+      const lines = data.description.split('\n');
+      const descLines = [];
+      for (const line of lines) {
+        if (line.trim() === '' || line.includes('Ammo:') || line.includes('Damage:') || 
+            line.includes('Fire Rate:') || line.includes('Range:') || line.includes('Magazine:')) {
+          break;
+        }
+        descLines.push(line.trim());
+      }
+      weaponDescriptionEl.textContent = descLines.join(' ').trim() || '';
+    }
+  }
+
+  function updateSprintWarning(data) {
+    if (data.show) {
+      sprintWarningEl.textContent = data.message;
+      sprintWarningEl.style.display = 'block';
+    } else {
+      sprintWarningEl.style.display = 'none';
+    }
+  }
+
+  function updateReloadProgress(data) {
+    if (data.show === false) {
+      reloadTextContainer.style.display = 'none';
+    } else {
+      reloadTextContainer.style.display = 'block';
+    }
+  }
+
+  function updateMedkitProgress(data) {
+    const isUsing = data.isUsing === true;
+    medkitProgressContainer.style.display = isUsing ? 'block' : 'none';
+    medkitProgressFill.style.width = isUsing ? `${Math.max(0, Math.min(100, data.progress || 0))}%` : '0%';
+    healingEffectEl.classList.toggle('active', isUsing);
+    // Use hidden attribute to control visibility reliably
+    movementSpeedIndicatorEl.hidden = !isUsing;
+    medkitTextEl.textContent = isUsing ? 'HEALING - MOVEMENT SLOWED' : 'HEALING';
+  }
+
+  function updateCrosshairState(data) {
+    if (data.canFire) {
+      crosshairEl.classList.remove('cannot-fire');
+      crosshairEl.classList.add('can-fire');
+    } else {
+      crosshairEl.classList.remove('can-fire');
+      crosshairEl.classList.add('cannot-fire');
+    }
+  }
+
+  function updateScopeZoom(data) {
+    if (data.zoom === 1) {
+      scopeOverlayEl.classList.remove('active');
+    } else {
+      scopeOverlayEl.classList.add('active');
+    }
+  }
+
+  function updateRecoil(data) {
+    const expansionRatio = data.recoil / data.maxRecoil;
+    const baseExpansion = 8;
+    const maxExpansion = 80;
+    const expansion = baseExpansion + (expansionRatio * maxExpansion);
+    
+    if (data.recoil > 0.01) {
+      crosshairEl.classList.add('recoiling');
+    } else {
+      crosshairEl.classList.remove('recoiling');
+    }
+    
+    crosshairLinesEls.forEach(line => {
+      if (line.classList.contains('crosshair-line-top')) {
+        line.style.transform = `translate(-50%, calc(-50% - ${expansion}px))`;
+      } else if (line.classList.contains('crosshair-line-bottom')) {
+        line.style.transform = `translate(-50%, calc(-50% + ${expansion}px))`;
+      } else if (line.classList.contains('crosshair-line-left')) {
+        line.style.transform = `translate(calc(-50% - ${expansion}px), -50%)`;
+      } else if (line.classList.contains('crosshair-line-right')) {
+        line.style.transform = `translate(calc(-50% + ${expansion}px), -50%)`;
+      }
+    });
+    crosshairEl.style.transform = `translate(-50%, -50%)`;
+  }
+
+  function showHitmarker(data) {
+    if (data.hit) {
+      if (data.kill) {
+        crosshairEl.classList.add('hitmarker-kill');
+        setTimeout(() => crosshairEl.classList.remove('hitmarker-kill'), 300);
+      } else {
+        crosshairEl.classList.add('hitmarker-hit');
+        setTimeout(() => crosshairEl.classList.remove('hitmarker-hit'), 200);
+      }
+    }
+  }
+
+  function showExtraction(data) {
+    extractionContainerEl.style.display = 'block';
+    extractionZoneNameEl.textContent = data.zoneName || 'EXFIL';
+    extractionProgressFillEl.style.width = '0%';
+    extractionRemainingEl.textContent = data.holdSeconds ?? 20;
+  }
+
+  function updateExtraction(data) {
+    if (data.zoneName) {
+      extractionZoneNameEl.textContent = data.zoneName;
+    }
+    if (typeof data.progress === 'number') {
+      extractionProgressFillEl.style.width = `${Math.max(0, Math.min(100, data.progress))}%`;
+    }
+    if (typeof data.remainingSeconds === 'number') {
+      extractionRemainingEl.textContent = data.remainingSeconds;
+    }
+  }
+
+  function hideExtraction() {
+    extractionContainerEl.style.display = 'none';
+  }
+
+
+
+  function getMessageType(type) {
+    const types = {
+      'reload-error': 'error',
+      'shoot-error': 'error',
+      'reload-success': 'success',
+      'weapon-message': 'warning'
+    };
+    return types[type] || 'info';
+  }
+
+  function getNotificationType(color) {
+    return color === 'FF0000' ? 'error' : color === '00FF00' ? 'success' : 'info';
+  }
+
+  function showHealingComplete(data) {
+    healingEffectEl.classList.remove('active');
+    movementSpeedIndicatorEl.hidden = true;
+  }
+  function showHealingBonusActivated(data) {
+    const bonusIndicator = document.createElement('div');
+    bonusIndicator.className = 'healing-bonus-indicator';
+    bonusIndicator.innerHTML = `
+      <div class="bonus-icon">💚</div>
+      <div class="bonus-text">Enhanced Regeneration Active</div>
+      <div class="bonus-timer">${Math.ceil(data.duration / 1000)}s</div>
+    `;
+    bonusIndicator.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 255, 0, 0.2);
+      backdrop-filter: blur(16px);
+      border: 2px solid rgba(0, 255, 0, 0.4);
+      border-radius: 12px;
+      padding: 12px 16px;
+      color: #00ff44;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      z-index: 1000;
+      animation: healingBonusSlideIn 0.5s ease-out;
+    `;
+    
+    document.body.appendChild(bonusIndicator);
+    
+    setTimeout(() => {
+      if (bonusIndicator.parentNode) {
+        bonusIndicator.style.animation = 'healingBonusSlideOut 0.5s ease-out';
+        setTimeout(() => {
+          if (bonusIndicator.parentNode) {
+            bonusIndicator.parentNode.removeChild(bonusIndicator);
+          }
+        }, 500);
+      }
+    }, data.duration);
+
+    showMessage(`💚 Enhanced regeneration activated! (${data.multiplier}x healing)`, 'success');
+  }
+
+  function showHealingBonusEnded() {
+    showMessage('Enhanced regeneration ended', 'info');
+  }
+
+  function showMessage(message, type = 'info') {
+    const messageContainer = document.getElementById('message-container');
+    if (!messageContainer) {
+      return;
+    }
+    const messageElement = document.createElement('div');
+    messageElement.className = `message ui-panel message-${type}`;
+    messageElement.textContent = message;
+    messageContainer.appendChild(messageElement);
+    setTimeout(() => {
+      if (messageElement.parentNode) {
+        messageElement.parentNode.removeChild(messageElement);
+      }
+    }, 3000);
+  }
+
+  function updateHotbarSlot(position, itemData) {
+    const slot = hotbarGrid.children[position];
+    if (!slot) return;
+    
+    if (itemData.removed) {
+      slot.innerHTML = `<span class="slot-number">${position + 1}</span>`;
+    } else {
+      const isAmmo = itemData.name && (
+        itemData.name.includes('9×19mm') || 
+        itemData.name.includes('7.62×39mm') || 
+        itemData.name.includes('12.7×108mm')
+      );
+      let quantityDisplay = '';
+      if (isAmmo && itemData.quantity && itemData.quantity > 1) {
+        quantityDisplay = `<span class="ammo-label">${itemData.quantity}</span>`;
+      } else if (itemData.quantity && itemData.quantity > 1) {
+        quantityDisplay = `<span class="item-quantity">${itemData.quantity}</span>`;
+      }
+      slot.innerHTML = `
+        <span class="slot-number">${position + 1}</span>
+        <img src="${CDN_ASSETS_URL}/${itemData.iconImageUri}" title="${itemData.name}">
+        ${quantityDisplay}
+      `;
+    }
+  }
+
+  function updateInventorySlot(grid, position, itemData) {
+    const slot = grid.children[position];
+    if (!slot) return;
+    
+    removeTooltip(slot);
+    
+    if (!dragState || !dragState.isDragging) {
+      slot.classList.remove('drag-source', 'drop-target');
+    } else {
+      slot.classList.remove('drag-source');
+    }
+    
+    if (itemData.removed) {
+      slot.innerHTML = '';
+      slot._itemData = null;
+      if (dragState && dragState.isDragging && !slot.querySelector('img')) {
+        slot.classList.add('drop-target');
+      }
+    } else {
+      if (dragState && dragState.isDragging) {
+        slot.classList.remove('drop-target');
+      }
+      const quantityDisplay = itemData.quantity && itemData.quantity > 1 
+        ? `<span class="item-quantity">${itemData.quantity}</span>` 
+        : '';
+      slot.innerHTML = `
+        <img src="${CDN_ASSETS_URL}/${itemData.iconImageUri}" alt="${itemData.name}">
+        ${quantityDisplay}
+      `;
+      slot._itemData = itemData;
+      slot._tooltipEnabled = true;
+      
+      slot.removeEventListener('mouseenter', createLazyTooltip);
+      slot.addEventListener('mouseenter', createLazyTooltip);
+    }
+    
+    if (grid === inventoryHotbarGrid && itemData.selected !== undefined) {
+      slot.classList.toggle('active', itemData.selected);
+    }
+  }
+
+  function setActiveSlot(index) {
+    document.querySelectorAll('.hotbar-slot').forEach((slot, i) => {
+      slot.classList.toggle('active', i === index);
+    });
+    if (isInventoryOpen) {
+      document.querySelectorAll('.inventory-hotbar-grid .slot').forEach((slot, i) => {
+        slot.classList.toggle('active', i === index);
+      });
+    }
+  }
+
+  function initializeHotbar() {
+    for (let i = 0; i < HOTBAR_SLOTS; i++) {
+      const slot = document.createElement('div');
+      slot.className = 'hotbar-slot';
+      slot.innerHTML = `<span class="slot-number">${i + 1}</span>`;
+      if (i === 0) slot.classList.add('active');
+      slot.addEventListener('click', () => {
+        hytopia.sendData({ type: 'setSelectedHotbarIndex', index: i });
+      });
+      hotbarGrid.appendChild(slot);
+    }
+  }
+
+  function initializeInventoryGrids() {
+    for (let i = 0; i < BACKPACK_SLOTS; i++) {
+      backpackGrid.appendChild(createInventorySlot());
+    }
+    for (let i = 0; i < HOTBAR_SLOTS; i++) {
+      const slot = createInventorySlot();
+      if (i === 0) slot.classList.add('active');
+      slot.addEventListener('click', () => {
+        hytopia.sendData({ type: 'setSelectedHotbarIndex', index: i });
+      });
+      inventoryHotbarGrid.appendChild(slot);
+    }
+  }
+
+  function createInventorySlot() {
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+    slot.addEventListener('mouseenter', (e) => { 
+      hoveredSlot = slot;
+    });
+    slot.addEventListener('mouseleave', () => { 
+      hoveredSlot = null;
+      if (slot._tooltip) {
+        slot._tooltip.style.display = 'none';
+      }
+    });
+    slot.addEventListener('mousedown', handleMouseDown);
+    return slot;
+  }
+
+  function handleMouseDown(e) {
+    const slot = e.currentTarget;
+    const img = slot.querySelector('img');
+    if (!img || e.button !== 0) return;
+    e.preventDefault();
+
+    // Shift+Click quick move between containers
+    if (e.shiftKey) {
+      const container = slot.parentElement.dataset.container;
+      const index = Array.from(slot.parentElement.children).indexOf(slot);
+      hytopia.sendData({ type: 'quickMoveItem', fromType: container, fromIndex: index });
+      return;
+    }
+    
+    removeTooltip(slot);
+    
+    const container = slot.parentElement.dataset.container;
+    const index = Array.from(slot.parentElement.children).indexOf(slot);
+    dragState = {
+      slot,
+      container,
+      index,
+      startX: e.clientX,
+      startY: e.clientY,
+      isDragging: false
+    };
+  // Use capture and passive false to prioritize drag updates
+  document.addEventListener('mousemove', handleMouseMove, { capture: true });
+    document.addEventListener('mouseup', handleMouseUp);
+  }
+
+  function handleMouseMove(e) {
+    if (!dragState) return;
+    const dx = e.clientX - dragState.startX;
+    const dy = e.clientY - dragState.startY;
+    if (!dragState.isDragging && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+      startDrag(e);
+    }
+    if (dragState.isDragging) {
+      // inline for performance: avoid extra function call and layout thrash
+      dragGhost.style.left = `${e.clientX + 15}px`;
+      dragGhost.style.top = `${e.clientY - 15}px`;
+      dragGhost.style.transform = 'translate(-50%, -50%)';
+      updateDropHover(e);
+    }
+  }
+
+  function handleMouseUp(e) {
+    if (dragState && dragState.isDragging) {
+      handleDragEnd(e);
+    }
+    document.querySelectorAll('.slot').forEach(slot => {
+      slot.classList.remove('drag-source', 'drop-target', 'drop-hover');
+    });
+    
+    setEmptySlotHighlighting(false);
+    
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+    dragState = null;
+    
+    setTimeout(() => {
+      document.querySelectorAll('.slot').forEach(slot => {
+        if (slot._itemData) {
+          slot._tooltipEnabled = true;
+        }
+      });
+    }, 100);
+  }
+
+  function startDrag(e) {
+    dragState.isDragging = true;
+    const img = dragState.slot.querySelector('img');
+    const quantity = dragState.slot.querySelector('.item-quantity');
+    dragState.slot.classList.add('drag-source');
+    dragGhost.innerHTML = '';
+    
+    if (img) {
+      const ghostImg = img.cloneNode(true);
+      dragGhost.appendChild(ghostImg);
+    }
+    if (quantity) {
+      const ghostQuantity = quantity.cloneNode(true);
+      dragGhost.appendChild(ghostQuantity);
+    }
+    
+    dragGhost.classList.add('active');
+    updateGhostPosition(e);
+    
+    document.querySelectorAll('.slot').forEach(slot => {
+      removeTooltip(slot);
+      slot._tooltipEnabled = false;
+    });
+    
+    highlightEmptySlots();
+  }
+
+  function handleDragEnd(e) {
+    if (!dragState) return;
+    const dropSlot = document.elementFromPoint(e.clientX, e.clientY)?.closest('.slot');
+    if (dragState.slot) {
+      dragState.slot.classList.remove('drag-source');
+    }
+    if (dropSlot && dropSlot !== dragState.slot && dropSlot.parentElement.dataset.container) {
+      hytopia.sendData({
+        type: 'moveItem',
+        fromType: dragState.container,
+        fromIndex: dragState.index,
+        toType: dropSlot.parentElement.dataset.container,
+        toIndex: Array.from(dropSlot.parentElement.children).indexOf(dropSlot)
+      });
+    }
+    dragGhost.classList.remove('active');
+    dragGhost.innerHTML = '';
+    removeEmptySlotHighlighting();
+  }
+
+  function updateGhostPosition(e) {
+    dragGhost.style.left = `${e.clientX + 15}px`;
+    dragGhost.style.top = `${e.clientY - 15}px`;
+    // Remove rotation and any tilt for a clean ghost
+    dragGhost.style.transform = 'translate(-50%, -50%)';
+  }
+
+  
+
+  function highlightEmptySlots() { setEmptySlotHighlighting(true); }
+
+  function removeEmptySlotHighlighting() { setEmptySlotHighlighting(false); }
+
+  function updateDropHover(e) {
+    const candidate = document.elementFromPoint(e.clientX, e.clientY)?.closest('.slot');
+    const isDroppable = candidate && candidate !== dragState.slot && !candidate.querySelector('img') && candidate.parentElement?.dataset?.container;
+    if (dropHoverSlot && dropHoverSlot !== candidate) {
+      dropHoverSlot.classList.remove('drop-hover');
+      dropHoverSlot = null;
+    }
+    if (isDroppable) {
+      if (dropHoverSlot !== candidate) {
+        candidate.classList.add('drop-hover');
+        dropHoverSlot = candidate;
+      }
+    }
+  }
+
+  function setEmptySlotHighlighting(enable) {
+    document.querySelectorAll('.slot').forEach(slot => {
+      if (enable) {
+        if (!slot.querySelector('img') && slot !== (dragState && dragState.slot)) {
+          slot.classList.add('drop-target');
+        } else {
+          slot.classList.remove('drop-target');
+        }
+      } else {
+        slot.classList.remove('drop-target', 'drop-hover');
+      }
+    });
+    if (!enable) dropHoverSlot = null;
+  }
+
+  function createTooltip(slot, itemData) {
+    const tooltip = document.createElement('div');
+    tooltip.className = 'item-tooltip';
+    const isWeapon = itemData.stats && itemData.ammoType;
+    
+    let tooltipHTML = `
+      <div class="tooltip-header">
+        <span class="tooltip-name rarity-${itemData.rarity || 'common'}">${itemData.name}</span>
+      </div>
+    `;
+    
+    if (isWeapon && itemData.stats) {
+      const { description, bulletType, statsHTML } = createWeaponStatsHTML(itemData.stats, itemData.description || '');
+      if (description) {
+        tooltipHTML += `<div class="tooltip-description">${description}</div>`;
+      }
+      if (bulletType) {
+        tooltipHTML += `<div class="bullet-type">${bulletType}</div>`;
+      }
+      tooltipHTML += statsHTML;
+    } else if (itemData.description) {
+      tooltipHTML += `<div class="tooltip-description">${itemData.description}</div>`;
+    }
+    
+    if (itemData.quantity && itemData.quantity > 1) {
+      tooltipHTML += `<div class="tooltip-quantity">Quantity: ${itemData.quantity}</div>`;
+    }
+    
+    tooltip.innerHTML = tooltipHTML;
+    document.body.appendChild(tooltip);
+    slot._tooltip = tooltip;
+    slot.addEventListener('mouseenter', handleTooltipShow);
+    slot.addEventListener('mouseleave', handleTooltipHide);
+  }
+
+  function removeTooltip(slot) {
+    if (slot._tooltip) {
+      slot._tooltip.remove();
+      slot._tooltip = null;
+    }
+    slot.removeEventListener('mouseenter', handleTooltipShow);
+    slot.removeEventListener('mouseleave', handleTooltipHide);
+  }
+
+  function handleTooltipShow(e) {
+    const slot = e.currentTarget;
+    const tooltip = slot._tooltip;
+    if (tooltip) {
+      tooltip.style.display = 'block';
+      positionTooltip(slot, tooltip);
+    }
+  }
+
+  function handleTooltipHide(e) {
+    const slot = e.currentTarget;
+    const tooltip = slot._tooltip;
+    if (tooltip) {
+      tooltip.style.display = 'none';
+    }
+  }
+
+  function createLazyTooltip(e) {
+    const slot = e.currentTarget;
+    if (slot._itemData && !slot._tooltip) {
+      if (dragState && dragState.isDragging || slot._tooltipEnabled === false) return;
+      
+      createTooltip(slot, slot._itemData);
+      slot.removeEventListener('mouseenter', createLazyTooltip);
+      handleTooltipShow(e);
+    }
+  }
+
+  function positionTooltip(slot, tooltip) {
+    const slotRect = slot.getBoundingClientRect();
+    let left = slotRect.right + 8;
+    let top = slotRect.top;
+    const tooltipWidth = 250;
+    const tooltipHeight = 80;
+    
+    if (left + tooltipWidth > window.innerWidth) {
+      left = slotRect.left - tooltipWidth - 8;
+    }
+    if (top + tooltipHeight > window.innerHeight) {
+      top = window.innerHeight - tooltipHeight - 8;
+    }
+    
+    left = Math.max(8, left);
+    top = Math.max(8, top);
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+  }
+
+  function createWeaponStatsHTML(stats, description) {
+    const getBulletType = (description) => {
+      const ammoMatch = description.match(/Ammo:\s*([^\n]+)/);
+      return ammoMatch ? ammoMatch[1].trim() : null;
+    };
+    
+    const getRealisticDescription = (description) => {
+      const lines = description.split('\n');
+      const descriptionLines = [];
+      for (const line of lines) {
+        if (line.startsWith('Ammo:') || line.startsWith('Damage:') || 
+            line.startsWith('Fire Rate:') || line.startsWith('Range:') || 
+            line.startsWith('Magazine:')) {
+          break;
+        }
+        if (line.trim()) {
+          descriptionLines.push(line.trim());
+        }
+      }
+      return descriptionLines.join(' ');
+    };
+    
+    const bulletType = getBulletType(description);
+    const realisticDescription = getRealisticDescription(description);
+    const statsHTML = `
+      <div class="key-stats">
+        <div class="stat-group">
+          <span class="stat-label">DMG</span>
+          <span class="stat-value">${stats.damage}</span>
+        </div>
+        <div class="stat-group">
+          <span class="stat-label">RPM</span>
+          <span class="stat-value">${stats.fireRate}</span>
+        </div>
+        <div class="stat-group">
+          <span class="stat-label">MAG</span>
+          <span class="stat-value">${stats.magazineSize}</span>
+        </div>
+      </div>
+    `;
+    
+    return {
+      description: realisticDescription,
+      bulletType: bulletType,
+      statsHTML: statsHTML
+    };
+  }
+
+  // Rarity colors handled via CSS classes
+
+  initializeHotbar();
+  initializeInventoryGrids();
+
+  // Initial black until UI is ready
+  window.addEventListener('load', () => {
+    setTimeout(() => setScreenFade(false, 350), 300);
+  });
+
+  function setScreenFade(show, durationMs) {
+    const fader = document.getElementById('screen-fader');
+    if (!fader) return;
+    if (typeof durationMs === 'number') {
+      fader.style.transition = `opacity ${Math.max(80, Math.min(1000, durationMs))}ms ease-in-out`;
+    } else {
+      fader.style.transition = `opacity 250ms ease-in-out`;
+    }
+    if (show) {
+      fader.classList.remove('hidden');
+    } else {
+      fader.classList.add('hidden');
+    }
+  }
+
+</script>
+
+
+</body>
+</html>

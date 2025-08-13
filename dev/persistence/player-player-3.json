@@ -1,0 +1,28 @@
+{
+  "backpack": {
+    "items": []
+  },
+  "hotbar": {
+    "items": [
+      {
+        "position": 1,
+        "itemId": "pistol_ammo",
+        "quantity": 1
+      },
+      {
+        "position": 0,
+        "itemId": "glock_17",
+        "ammo": 3
+      }
+    ]
+  },
+  "weaponAmmoData": {
+    "M9 Beretta_0_-1": {
+      "ammo": 0,
+      "totalAmmo": 0
+    }
+  },
+  "stash": {
+    "items": []
+  }
+}

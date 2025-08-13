@@ -1,0 +1,68 @@
+<link rel="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/app.css">
+
+<div class="menu-background" style="background: url('{{CDN_ASSETS_URL}}/ui/background2.png') center center / cover no-repeat;">
+  <div class="background-overlay"></div>
+  <div class="smoke-effect">
+    <div class="smoke-layer smoke-layer-1"></div>
+    <div class="smoke-layer smoke-layer-2"></div>
+    <div class="smoke-layer smoke-layer-3"></div>
+  </div>
+  </div>
+
+<div class="progression-overlay" style="display:flex;">
+  <button class="close-btn" id="crate-close">↩</button>
+  <div class="progression-panel glass-elevated ui-panel" style="width:min(820px,92vw);max-height:78vh;">
+    <div class="progression-header">
+      <span class="progression-title">SUPPLY CRATE</span>
+    </div>
+    <div id="crate-grid" class="progression-content" style="grid-template-columns: repeat(4, 1fr);"></div>
+  </div>
+</div>
+
+<template id="crate-item">
+  <div class="pg-row ui-panel" style="grid-template-columns: 76px 1fr 120px;align-items:center;">
+    <div class="pg-left"><div class="pg-icon-wrap"><img class="pg-icon"/></div></div>
+    <div class="pg-center">
+      <div class="pg-name"></div>
+      <div class="pg-count"></div>
+    </div>
+    <div class="pg-right"><button class="action-button secondary take-btn"><div class="button-content"><div class="button-text"><span class="button-title">TAKE</span></div></div></button></div>
+  </div>
+</template>
+
+<script>
+  const CDN_ASSETS_URL = '{{CDN_ASSETS_URL}}';
+  const grid = document.getElementById('crate-grid');
+  const closeBtn = document.getElementById('crate-close');
+  const tpl = document.getElementById('crate-item');
+  let currentCrateId = null;
+
+  closeBtn.addEventListener('click', () => {
+    hytopia.sendData({ type: 'crate-close', crateId: currentCrateId });
+  });
+
+  function render(items) {
+    grid.innerHTML = '';
+    items.forEach((it, idx) => {
+      const node = tpl.content.cloneNode(true);
+      const icon = node.querySelector('.pg-icon');
+      const name = node.querySelector('.pg-name');
+      const count = node.querySelector('.pg-count');
+      const btn = node.querySelector('.take-btn');
+      name.textContent = it.name || it.id;
+      count.textContent = it.quantity ? `x${it.quantity}` : '';
+      icon.src = it.iconImageUri ? `${CDN_ASSETS_URL}/${it.iconImageUri}` : `${CDN_ASSETS_URL}/icons/chest.png`;
+      btn.addEventListener('click', () => hytopia.sendData({ type: 'crate-take', crateId: currentCrateId, index: idx }));
+      grid.appendChild(node);
+    });
+  }
+
+  hytopia.onData(data => {
+    if (data.type === 'crate-contents') {
+      currentCrateId = data.crateId;
+      render(data.items || []);
+    }
+  });
+</script>
+
+

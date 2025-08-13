@@ -1,0 +1,343 @@
+<link rel="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/app.css">
+<link rel="preload" as="image" href="{{CDN_ASSETS_URL}}/ui/background2.png">
+<div class="menu-background" style="background: url('{{CDN_ASSETS_URL}}/ui/background2.png') center center / cover no-repeat;">
+  <div class="background-overlay"></div>
+  <div class="smoke-effect">
+    <div class="smoke-layer smoke-layer-1"></div>
+    <div class="smoke-layer smoke-layer-2"></div>
+    <div class="smoke-layer smoke-layer-3"></div>
+  </div>
+</div>
+
+<div class="stash-overlay" style="display: flex;">
+  <div class="stash-container">
+    <button class="close-btn" id="stash-close">↩</button>
+    <div class="stash-content glass-surface glass-border-strong">
+      <div class="inventory-side">
+        <div class="inventory-section glass-surface">
+          <h3 class="section-title">BACKPACK</h3>
+          <div class="backpack-grid" data-container="backpack"></div>
+        </div>
+        <div class="inventory-section glass-surface">
+          <h3 class="section-title">HOTBAR</h3>
+          <div class="hotbar-grid" data-container="hotbar"></div>
+        </div>
+      </div>
+      <div class="stash-side">
+        <div class="inventory-section glass-surface">
+          <h3 class="section-title">STASH</h3>
+          <div class="stash-grid" data-container="stash"></div>
+        </div>
+      </div>
+    </div>
+    <div class="drag-ghost"></div>
+  </div>
+</div>
+
+<script>
+  const CDN_ASSETS_URL = '{{CDN_ASSETS_URL}}';
+  const BACKPACK_SLOTS = 27;
+  const HOTBAR_SLOTS = 9;
+  const STASH_SLOTS = 90;
+
+  const stashClose = document.getElementById('stash-close');
+  const stashGrid = document.querySelector('[data-container="stash"]');
+  const stashBackpackGrid = document.querySelector('[data-container="backpack"]');
+  const stashHotbarGrid = document.querySelector('[data-container="hotbar"]');
+  const dragGhost = document.querySelector('.drag-ghost');
+
+  let stashDragState = null;
+  let hoveredSlot = null;
+
+  function setupGrid(grid, size, slotClass) {
+    for (let i = 0; i < size; i++) {
+      const slot = document.createElement('div');
+      slot.className = slotClass;
+      slot.setAttribute('data-position', i.toString());
+      slot.addEventListener('mouseenter', () => { hoveredSlot = slot; });
+      slot.addEventListener('mouseleave', () => { if (hoveredSlot === slot) hoveredSlot = null; });
+      grid.appendChild(slot);
+    }
+  }
+
+  function initialize() {
+    setupGrid(stashGrid, STASH_SLOTS, 'stash-slot');
+    setupGrid(stashBackpackGrid, BACKPACK_SLOTS, 'backpack-slot');
+    setupGrid(stashHotbarGrid, HOTBAR_SLOTS, 'hotbar-slot');
+    hytopia.sendData({ type: 'requestStashSync' });
+  }
+
+  stashClose.addEventListener('click', () => hytopia.sendData({ type: 'backToMenu' }));
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      // Do nothing: disable returning to menu via ESC from stash
+      e.preventDefault();
+      return;
+    }
+    const key = parseInt(e.key);
+    if (!isNaN(key) && key >= 1 && key <= HOTBAR_SLOTS) {
+      const hovered = document.querySelector('.stash-slot:hover, .backpack-slot:hover, .hotbar-slot:hover');
+      if (!hovered) return;
+
+      const numberIndex = key - 1;
+      const hoveredIndex = parseInt(hovered.getAttribute('data-position'));
+      const isBackpackSlot = hovered.classList.contains('backpack-slot');
+      const isHotbarSlot = hovered.classList.contains('hotbar-slot');
+      const isStashSlot = hovered.classList.contains('stash-slot');
+
+      if (hovered.querySelector('img')) {
+        // Assign hovered item into numbered hotbar slot
+        const fromType = isBackpackSlot ? 'backpack' : isHotbarSlot ? 'hotbar' : 'stash';
+        hytopia.sendData({ type: 'moveItem', fromType, fromIndex: hoveredIndex, toType: 'hotbar', toIndex: numberIndex });
+        finalizeDragVisuals();
+      } else if (isBackpackSlot) {
+        // Move hotbar[number] into hovered empty backpack slot
+        hytopia.sendData({ type: 'moveItem', fromType: 'hotbar', fromIndex: numberIndex, toType: 'backpack', toIndex: hoveredIndex });
+        finalizeDragVisuals();
+      } else if (isStashSlot) {
+        // Move hotbar[number] into hovered empty stash slot
+        hytopia.sendData({ type: 'moveItem', fromType: 'hotbar', fromIndex: numberIndex, toType: 'stash', toIndex: hoveredIndex });
+        finalizeDragVisuals();
+      }
+    }
+  });
+
+  document.addEventListener('mousedown', (e) => {
+    const slot = e.target.closest('.stash-slot, .backpack-slot, .hotbar-slot');
+    if (slot && slot.querySelector('img') && e.button === 0) {
+      e.preventDefault();
+
+      // Shift+Click quick move between stash/backpack/hotbar
+      if (e.shiftKey) {
+        const from = slot.classList.contains('backpack-slot') ? 'backpack' : slot.classList.contains('hotbar-slot') ? 'hotbar' : 'stash';
+        const fromIndex = parseInt(slot.getAttribute('data-position'));
+        hytopia.sendData({ type: 'quickMoveItem', fromType: from, fromIndex });
+        return;
+      }
+
+      let from = slot.classList.contains('backpack-slot') ? 'backpack' : slot.classList.contains('hotbar-slot') ? 'hotbar' : 'stash';
+      stashDragState = { slot, from, fromIndex: parseInt(slot.getAttribute('data-position')), startX: e.clientX, startY: e.clientY, isDragging: false };
+      // Capture true to prioritize cursor updates during drag
+      document.addEventListener('mousemove', handleDragMove, { capture: true });
+      document.addEventListener('mouseup', handleDragUp);
+    }
+  });
+
+  function handleDragMove(e) {
+    if (!stashDragState) return;
+    const dx = e.clientX - stashDragState.startX;
+    const dy = e.clientY - stashDragState.startY;
+    if (!stashDragState.isDragging && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+      stashDragState.isDragging = true;
+      setEmptySlotHighlighting(true);
+      // Start ghost
+      startDragGhost(stashDragState.slot);
+    }
+    if (stashDragState.isDragging) {
+      // inline for performance: avoid extra function call
+      dragGhost.style.left = `${e.clientX + 15}px`;
+      dragGhost.style.top = `${e.clientY - 15}px`;
+      dragGhost.style.transform = 'translate(-50%, -50%)';
+      updateDropHover(e);
+    }
+  }
+
+  function handleDragUp(e) {
+    if (stashDragState && stashDragState.isDragging) {
+      const dropSlot = document.elementFromPoint(e.clientX, e.clientY)?.closest('.stash-slot, .hotbar-slot, .backpack-slot');
+      if (dropSlot && dropSlot !== stashDragState.slot) {
+        let to = dropSlot.classList.contains('backpack-slot') ? 'backpack' : dropSlot.classList.contains('hotbar-slot') ? 'hotbar' : 'stash';
+        hytopia.sendData({ type: 'moveItem', fromType: stashDragState.from, fromIndex: stashDragState.fromIndex, toType: to, toIndex: parseInt(dropSlot.getAttribute('data-position')) });
+      }
+    }
+    // Clear visuals immediately; server updates will also clear via update handlers
+    finalizeDragVisuals();
+    setEmptySlotHighlighting(false);
+    document.removeEventListener('mousemove', handleDragMove);
+    document.removeEventListener('mouseup', handleDragUp);
+    stashDragState = null;
+  }
+
+  function updateDropHover(e) {
+    const candidate = document.elementFromPoint(e.clientX, e.clientY)?.closest('.stash-slot, .hotbar-slot, .backpack-slot');
+    const isEmpty = candidate && !candidate.querySelector('img');
+    if (window.__dropHover && window.__dropHover !== candidate) {
+      window.__dropHover.classList.remove('drop-hover');
+      window.__dropHover = null;
+    }
+    if (isEmpty) {
+      candidate.classList.add('drop-hover');
+      window.__dropHover = candidate;
+    }
+  }
+
+  function setEmptySlotHighlighting(enable) {
+    document.querySelectorAll('.stash-slot, .backpack-slot, .hotbar-slot').forEach(slot => {
+      if (enable) {
+        if (!slot.querySelector('img')) {
+          slot.classList.add('drop-target');
+        } else {
+          slot.classList.remove('drop-target');
+        }
+      } else {
+        slot.classList.remove('drop-target', 'drop-hover');
+      }
+    });
+    if (!enable) window.__dropHover = null;
+  }
+
+  function startDragGhost(slot) {
+    if (!dragGhost) return;
+    const img = slot.querySelector('img');
+    const qty = slot.querySelector('.item-quantity');
+    dragGhost.innerHTML = '';
+    if (img) dragGhost.appendChild(img.cloneNode(true));
+    if (qty) dragGhost.appendChild(qty.cloneNode(true));
+    dragGhost.classList.add('active');
+  }
+
+  function stopDragGhost() {
+    if (!dragGhost) return;
+    dragGhost.classList.remove('active');
+    dragGhost.innerHTML = '';
+  }
+
+  function updateGhostPosition(e) {
+    if (!dragGhost) return;
+    dragGhost.style.left = `${e.clientX + 15}px`;
+    dragGhost.style.top = `${e.clientY - 15}px`;
+    // Remove rotation for a cleaner, non-tilted ghost
+    dragGhost.style.transform = 'translate(-50%, -50%)';
+  }
+
+  function updateSlot(grid, position, itemData) {
+    const slot = grid.children[position];
+    if (!slot) return;
+    if (itemData.removed) {
+      slot.innerHTML = '';
+      slot._itemData = null;
+      // If we're dragging, empty cells should be drop targets
+      if (stashDragState && stashDragState.isDragging) {
+        slot.classList.add('drop-target');
+      } else {
+        slot.classList.remove('drop-target');
+      }
+    } else {
+      const isAmmo = itemData.name && (itemData.name.includes('9×19mm') || itemData.name.includes('7.62×39mm') || itemData.name.includes('12.7×108mm') || itemData.name.includes('12 Gauge'));
+      let quantityDisplay = '';
+      if (isAmmo && itemData.quantity && itemData.quantity > 1) {
+        quantityDisplay = `<span class="ammo-label">${itemData.quantity}</span>`;
+      } else if (itemData.quantity && itemData.quantity > 1) {
+        quantityDisplay = `<span class="item-quantity">${itemData.quantity}</span>`;
+      }
+      slot.innerHTML = `<img src="${CDN_ASSETS_URL}/${itemData.iconImageUri}" alt="${itemData.name}">${quantityDisplay}`;
+      slot._itemData = itemData;
+      slot._tooltipEnabled = true;
+      // Filled cells should not appear as drop targets
+      slot.classList.remove('drop-target');
+      slot.removeEventListener('mouseenter', createStashTooltip);
+      slot.removeEventListener('mouseleave', removeStashTooltip);
+      slot.removeEventListener('mousemove', updateStashTooltipPosition);
+      slot.addEventListener('mouseenter', createStashTooltip);
+      slot.addEventListener('mouseleave', removeStashTooltip);
+      slot.addEventListener('mousemove', updateStashTooltipPosition);
+    }
+  }
+
+  function createWeaponStatsHTML(stats, description, ammoType) {
+    const ammoMap = { pistol: '9×19mm Parabellum', rifle: '7.62×39mm', sniper: '12.7×108mm', shotgun: '12 Gauge' };
+    const bulletType = ammoMap[ammoType] || ammoType || '';
+    const statsHTML = `
+      <div class="key-stats">
+        <div class="stat-group"><span class="stat-label">DMG</span><span class="stat-value">${stats.damage}</span></div>
+        <div class="stat-group"><span class="stat-label">RPM</span><span class="stat-value">${stats.fireRate}</span></div>
+        <div class="stat-group"><span class="stat-label">MAG</span><span class="stat-value">${stats.magazineSize}</span></div>
+      </div>`;
+    return { bulletType, statsHTML, description };
+  }
+
+  function createStashTooltip(e) {
+    const slot = e.currentTarget;
+    const itemData = slot._itemData;
+    if (!itemData || slot._tooltipEnabled === false) return;
+    removeStashTooltip(e);
+    const tooltip = document.createElement('div');
+    tooltip.className = 'item-tooltip';
+    const isWeapon = itemData.stats && itemData.ammoType;
+    let tooltipHTML = `<div class="tooltip-header"><span class="tooltip-name rarity-${itemData.rarity || 'common'}">${itemData.name}</span></div>`;
+    if (isWeapon) {
+      const { bulletType, statsHTML, description: weaponDesc } = createWeaponStatsHTML(itemData.stats, itemData.description || '', itemData.ammoType || 'pistol');
+      if (weaponDesc) tooltipHTML += `<div class="tooltip-description">${weaponDesc}</div>`;
+      if (bulletType) tooltipHTML += `<div class="bullet-type">${bulletType}</div>`;
+      tooltipHTML += statsHTML;
+    } else if (itemData.description) {
+      tooltipHTML += `<div class="tooltip-description">${itemData.description}</div>`;
+    }
+    if (itemData.quantity && itemData.quantity > 1) {
+      tooltipHTML += `<div class="tooltip-quantity">Quantity: ${itemData.quantity}</div>`;
+    }
+    tooltip.innerHTML = tooltipHTML;
+    document.body.appendChild(tooltip);
+    slot._tooltip = tooltip;
+    positionStashTooltip(e, tooltip);
+  }
+
+  // Rarity colors handled via CSS classes
+
+  function removeStashTooltip(e) {
+    const slot = e.currentTarget;
+    if (slot._tooltip) {
+      slot._tooltip.remove();
+      slot._tooltip = null;
+    }
+  }
+
+  function updateStashTooltipPosition(e) {
+    const slot = e.currentTarget;
+    const tooltip = slot._tooltip;
+    if (tooltip) positionStashTooltip(e, tooltip);
+  }
+
+  function positionStashTooltip(e, tooltip) {
+    let left = e.clientX + 15;
+    let top = e.clientY - 10;
+    tooltip.style.display = 'block';
+    const rect = tooltip.getBoundingClientRect();
+    if (left + rect.width > window.innerWidth) left = e.clientX - rect.width - 15;
+    if (top + rect.height > window.innerHeight) top = e.clientY - rect.height - 10;
+    if (top < 10) top = 10;
+    tooltip.style.left = left + 'px';
+    tooltip.style.top = top + 'px';
+  }
+
+  hytopia.onData(data => {
+    switch (data.type) {
+      case 'hotbarUpdate':
+        updateSlot(stashHotbarGrid, data.position, data);
+        clearDropTargets();
+        break;
+      case 'backpackUpdate':
+        updateSlot(stashBackpackGrid, data.position, data);
+        clearDropTargets();
+        break;
+      case 'stashUpdate':
+        updateSlot(stashGrid, data.position, data);
+        clearDropTargets();
+        break;
+    }
+  });
+
+  function clearDropTargets() {
+    document.querySelectorAll('.stash-slot, .backpack-slot, .hotbar-slot').forEach(slot => slot.classList.remove('drop-target', 'drop-hover'));
+  }
+
+  function finalizeDragVisuals() {
+    clearDropTargets();
+    stopDragGhost();
+  }
+
+  initialize();
+</script>
+
+
