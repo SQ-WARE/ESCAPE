@@ -13,4 +13,6 @@ Fully coded with Cursor, no prior knowledge on TS, code may be messy.
 - HYTOPIA default assets are used under their license; see `assets/LICENSE.md`
 
 
-
+https://discord.sqware.pro
+https://x.com/sqwaregames
+contact@astralabs.net
