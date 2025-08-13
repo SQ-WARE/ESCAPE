@@ -6,6 +6,8 @@ import {
 
 import type { WeaponData } from '../weapons/data/WeaponData';
 import GamePlayerEntity from '../GamePlayerEntity';
+import BulletTracerEntity from '../vfx/BulletTracerEntity';
+import ImpactSparkEntity from '../vfx/ImpactSparkEntity';
 
 export default class WeaponEffectsSystem {
   private readonly _weaponData: WeaponData;
@@ -17,6 +19,7 @@ export default class WeaponEffectsSystem {
   private _shotSpotLight?: Light;
   private _shotSpotTimeout?: NodeJS.Timeout;
   private _shotSpotFadeTimeout?: NodeJS.Timeout;
+  private _impactSpark?: ImpactSparkEntity;
   private _lastShotLightTimeMs = 0;
   private _shotLightThrottleMs: number;
   private readonly _muzzleColor: { r: number; g: number; b: number };
@@ -65,7 +68,7 @@ export default class WeaponEffectsSystem {
         try { this._muzzleFlashLight.setPosition(worldPosition); } catch {}
       }
 
-      // Brighter initial pop with reduced ceiling, then quick fake-bounce and falloff
+			// Brighter initial pop with reduced ceiling, then multi-step fake-bounce and falloff
       const envScale = this._getEnvironmentIntensityScale(parent);
       const suppressedScale = this._isSuppressedWeapon() ? 0.55 : 1.0;
       const peak = Math.max(3, Math.min(10, this._muzzleBaseIntensity * (0.85 + this._jitter(0.10))) ) * envScale * suppressedScale;
@@ -74,22 +77,40 @@ export default class WeaponEffectsSystem {
         this._muzzleFlashLight.setIntensity(peak);
       } catch {}
 
-      // Brief bounce flash near the shooter to simulate indirect light
-      setTimeout(() => {
-        try {
-          this._muzzleFlashLight?.setPosition(bouncePosition);
-          const bounce = Math.max(1, Math.min(5, Math.round(peak * 0.35)));
-          this._muzzleFlashLight?.setIntensity(bounce);
-        } catch {}
-      }, 8);
+			// Multiple quick bounces near the shooter to simulate indirect light
+			setTimeout(() => {
+				try {
+					this._muzzleFlashLight?.setPosition(bouncePosition);
+					const bounce1 = Math.max(2, Math.min(6, Math.round(peak * 0.45)));
+					this._muzzleFlashLight?.setIntensity(bounce1);
+				} catch {}
+			}, 6);
+			setTimeout(() => {
+				try {
+					// small lateral jitter for more dynamic feel
+					const jx = this._jitter(0.06);
+					const jz = this._jitter(0.06);
+					this._muzzleFlashLight?.setPosition({ x: bouncePosition.x + jx, y: bouncePosition.y + 0.02, z: bouncePosition.z + jz });
+					const bounce2 = Math.max(1, Math.min(5, Math.round(peak * 0.32)));
+					this._muzzleFlashLight?.setIntensity(bounce2);
+				} catch {}
+			}, 12);
 
-      // Return to muzzle position with a low tail intensity for a couple of milliseconds
+			// Return to muzzle position with a low tail intensity, then a final tiny pulse
       setTimeout(() => {
         try {
           this._muzzleFlashLight?.setPosition(worldPosition);
-          this._muzzleFlashLight?.setIntensity(Math.max(1, Math.min(4, Math.round(peak * 0.25))));
+					this._muzzleFlashLight?.setIntensity(Math.max(1, Math.min(4, Math.round(peak * 0.25))));
         } catch {}
-      }, 16);
+			}, 18);
+			setTimeout(() => {
+				try {
+					const jx = this._jitter(0.04);
+					const jz = this._jitter(0.04);
+					this._muzzleFlashLight?.setPosition({ x: worldPosition.x + jx, y: worldPosition.y, z: worldPosition.z + jz });
+					this._muzzleFlashLight?.setIntensity(Math.max(1, Math.min(3, Math.round(peak * 0.18))));
+				} catch {}
+			}, 24);
 
       if (this._muzzleFlashTimeout) { clearTimeout(this._muzzleFlashTimeout); }
       const lifetime = Math.max(8, Math.round(this._getMuzzleFlashLifetimeMs() * (this._isSuppressedWeapon() ? 0.7 : 1)));
@@ -144,36 +165,90 @@ export default class WeaponEffectsSystem {
 
       const suppressedScale = this._isSuppressedWeapon() ? 0.6 : 1.0;
       const envScale = this._getEnvironmentIntensityScale(parent);
-      const angle = Math.max(0.05, this._getShotLightAngle() * (1 + this._jitter(0.05)));
-      const intensity = Math.max(3, Math.min(12, Math.round(this._muzzleBaseIntensity * (0.6 + this._jitter(0.05)) * envScale * suppressedScale)));
+			const angle = Math.max(0.05, this._getShotLightAngle() * (1 + this._jitter(0.06)));
+			const intensity = Math.max(3, Math.min(14, Math.round(this._muzzleBaseIntensity * (0.65 + this._jitter(0.07)) * envScale * suppressedScale)));
 
       // No wall checks or occlusion probing; let light project naturally
       this._shotSpotLight.setPosition(origin);
       this._shotSpotLight.setTrackedPosition(target);
       this._shotSpotLight.setAngle(angle);
 
-      // Slight soften of hotspot by briefly offsetting tracked target a hair to the side
+			// Slight soften of hotspot by briefly offsetting tracked target a hair to the side
       this._shotSpotLight.setIntensity(intensity);
+      // Launch a visual tracer projectile carrying a small light
+      try {
+        // Perform a long-distance raycast purely for visuals so the tracer/light travels until it actually hits something
+        const tracerMaxDistance = 4096; // map-wide visual range
+        const rc = parent.world?.simulation.raycast(origin, direction, tracerMaxDistance, { filterExcludeRigidBody: parent.rawRigidBody });
+        const hitFound = !!rc?.hitPoint;
+        const endPoint = (rc?.hitPoint as any) ?? {
+          x: origin.x + direction.x * tracerMaxDistance,
+          y: origin.y + direction.y * tracerMaxDistance,
+          z: origin.z + direction.z * tracerMaxDistance,
+        };
+
+        const tracer = new BulletTracerEntity(origin, direction, {
+          modelUri: 'models/projectiles/bullet.glb',
+          modelScale: 0.35,
+          speed: 360, // faster tracer for long shots
+          endPoint,
+        });
+        tracer.spawn(parent.world, origin);
+
+        // Spawn or refresh an impact spark at the exact endpoint (slightly offset along normal dir)
+        if (hitFound) {
+          const sparkPos = {
+            x: endPoint.x - direction.x * 0.02,
+            y: endPoint.y - direction.y * 0.02,
+            z: endPoint.z - direction.z * 0.02,
+          };
+          try {
+            if (!this._impactSpark || !this._impactSpark.isSpawned) {
+              this._impactSpark = new ImpactSparkEntity({
+                color: this._muzzleColor,
+                intensity: Math.max(1.5, Math.min(6, Math.round(this._muzzleBaseIntensity * 0.25))),
+                lifetimeMs: 120,
+              });
+              this._impactSpark.spawn(parent.world, sparkPos);
+            } else {
+              this._impactSpark.refresh(
+                sparkPos,
+                this._muzzleColor,
+                Math.max(1.5, Math.min(6, Math.round(this._muzzleBaseIntensity * 0.25))),
+                120
+              );
+            }
+          } catch {}
+        }
+      } catch {}
+
       setTimeout(() => {
         try {
-          const side = { x: -direction.z * 0.15, y: 0, z: direction.x * 0.15 };
+					const side = { x: -direction.z * 0.22, y: 0, z: direction.x * 0.22 };
           this._shotSpotLight?.setTrackedPosition({ x: target.x + side.x, y: target.y + side.y, z: target.z + side.z });
         } catch {}
-      }, 6);
+			}, 6);
 
       // Optional micro bounce for shot light: briefly widen cone and reduce intensity, then restore
-      setTimeout(() => {
-        try {
-          this._shotSpotLight?.setAngle(Math.max(0.05, angle * 1.08));
-          this._shotSpotLight?.setIntensity(Math.max(3, Math.round(intensity * 0.7)));
-        } catch {}
-      }, 10);
-      setTimeout(() => {
-        try {
-          this._shotSpotLight?.setAngle(angle);
-          this._shotSpotLight?.setIntensity(Math.max(2, Math.round(intensity * 0.5)));
-        } catch {}
-      }, 22);
+			setTimeout(() => {
+				try {
+					this._shotSpotLight?.setAngle(Math.max(0.05, angle * 1.12));
+					this._shotSpotLight?.setIntensity(Math.max(3, Math.round(intensity * 0.68)));
+				} catch {}
+			}, 10);
+			setTimeout(() => {
+				try {
+					this._shotSpotLight?.setAngle(Math.max(0.05, angle * 0.96));
+					this._shotSpotLight?.setIntensity(Math.max(2, Math.round(intensity * 0.52)));
+				} catch {}
+			}, 20);
+			setTimeout(() => {
+				try {
+					// brief over/under oscillation for dynamic feel
+					this._shotSpotLight?.setAngle(angle);
+					this._shotSpotLight?.setTrackedPosition(target);
+				} catch {}
+			}, 28);
 
       // Schedule a single fade to 0 near the end; engine interpolates values
       const lifetime = Math.max(12, Math.round(this._getShotLightLifetimeMs() * (this._isSuppressedWeapon() ? 0.75 : 1)));
@@ -185,6 +260,8 @@ export default class WeaponEffectsSystem {
         try { this._shotSpotLight?.setPosition(this._idleLightPos); } catch {}
         try { this._shotSpotLight?.setTrackedPosition(this._idleLightPos); } catch {}
       }, lifetime);
+
+      
     } catch (error) {
       console.warn('Failed to create shot light:', error);
     }

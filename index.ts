@@ -5,7 +5,7 @@ import {
   WorldManager,
 } from 'hytopia';
 
-import worldMap from './assets/map.json';
+import worldMap from './assets/map.json' with { type: 'json' };
 import GamePlayerEntity from './classes/GamePlayerEntity';
 import GamePlayer from './classes/GamePlayer';
 import { CommandManager } from './classes/commands/CommandManager';

@@ -4,8 +4,8 @@
     "": {
       "name": "game",
       "dependencies": {
-        "@hytopia.com/assets": "^0.3.15",
-        "hytopia": "^0.8.12",
+        "@hytopia.com/assets": "^0.3.18",
+        "hytopia": "^0.9.0",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -36,7 +36,7 @@
 
     "@gltf-transform/functions": ["@gltf-transform/functions@4.2.0", "", { "dependencies": { "@gltf-transform/core": "^4.2.0", "@gltf-transform/extensions": "^4.2.0", "ktx-parse": "^1.0.0", "ndarray": "^1.0.19", "ndarray-lanczos": "^0.3.0", "ndarray-pixels": "^4.1.0" } }, "sha512-Umi/ATt5ktPBylD3a/l5oC1jPbZF60Xnm87qmVBJiLbRMcubN881WB2xP2d7je/UjVSd10fgIZ78GoS37Lpygg=="],
 
-    "@hytopia.com/assets": ["@hytopia.com/assets@0.3.15", "", {}, "sha512-LbZxhMiOl22hjwXXGz/3Y7XzfZPhj2uGU0kgxFMaV/RFjpQGqDRUXJ6E63GWRXZG+uhvX3dBOtz6MupWtQ50Fw=="],
+    "@hytopia.com/assets": ["@hytopia.com/assets@0.3.18", "", {}, "sha512-sIq5tJ2rFeX14vxkbS97gvU2CAWH4XEoBgzW0052XJZJOv/zi+96Q9ScrTdEtpakkSftLyFUzKnDbQKkdqOdKg=="],
 
     "@img/sharp-darwin-arm64": ["@img/sharp-darwin-arm64@0.33.5", "", { "optionalDependencies": { "@img/sharp-libvips-darwin-arm64": "1.0.4" }, "os": "darwin", "cpu": "arm64" }, "sha512-UT4p+iz/2H4twwAoLCqfA9UH5pI6DggwKEGuaPy7nCVQ8ZsiY5PIcrRvD1DzuY3qYL07NtIQcWnBSY/heikIFQ=="],
 
@@ -282,7 +282,7 @@
 
     "hasown": ["hasown@2.0.2", "", { "dependencies": { "function-bind": "^1.1.2" } }, "sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ=="],
 
-    "hytopia": ["hytopia@0.8.12", "", { "dependencies": { "@gltf-transform/cli": "4.1.1", "archiver": "^7.0.1", "sharp": "0.33.5", "ws": "^8.18.2" }, "optionalDependencies": { "mediasoup": "3.15.7" }, "bin": { "hytopia": "bin/scripts.mjs" } }, "sha512-+cp47PbemDMtrNcp9uKHWF+iBn27Jsy9Qq77lbdPN16atHAaiiID6mRAbX4eQoW/BygSWnUaa4vEQvJlX8Poaw=="],
+    "hytopia": ["hytopia@0.9.0", "", { "dependencies": { "@gltf-transform/cli": "4.1.1", "archiver": "^7.0.1", "sharp": "0.33.5", "ws": "^8.18.2" }, "optionalDependencies": { "mediasoup": "3.15.7" }, "bin": { "hytopia": "bin/scripts.js", "hyx": "bin/scripts.js" } }, "sha512-YbfLVZYNaQYDvsVrOAD3qsCMWSGdDgp4MDbdWwcV5viywcXwnq+XjMKLx72q7qpWrm9OjAA2uI/9NJ4TqibWqQ=="],
 
     "ieee754": ["ieee754@1.2.1", "", {}, "sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA=="],
 

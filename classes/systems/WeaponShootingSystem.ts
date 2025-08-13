@@ -88,14 +88,11 @@ export default class WeaponShootingSystem {
       );
       
       this._uiSystem.playHitmarker(parent, damageResult.damageDealt > 0, damageResult.targetKilled);
-      // Cinematic micro‑pulse at hit point (entity center fallback)
-      // Impact light VFX removed
     }
   }
 
   private _handleEnvironmentHit(hitPoint: Vector3Like, hitDirection: Vector3Like, parent: GamePlayerEntity): void {
     this._uiSystem.playEnvironmentHitSound(parent);
-    // Impact light VFX removed
   }
 
   public get damage(): number {
