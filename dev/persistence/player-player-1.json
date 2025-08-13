@@ -8,21 +8,11 @@
       },
       {
         "position": 0,
-        "itemId": "pistol_ammo",
-        "quantity": 8869
+        "itemId": "medkit"
       },
       {
         "position": 1,
-        "itemId": "shotgun_ammo",
-        "quantity": 10000
-      },
-      {
-        "position": 9,
-        "itemId": "spetsnaz_akm_nsb"
-      },
-      {
-        "position": 10,
-        "itemId": "mp5a2"
+        "itemId": "medkit"
       }
     ]
   },
@@ -34,13 +24,8 @@
       },
       {
         "position": 0,
-        "itemId": "rifle_ammo",
-        "quantity": 30
-      },
-      {
-        "position": 1,
-        "itemId": "pistol_ammo",
-        "quantity": 30
+        "itemId": "spetsnaz_akm_nsb",
+        "ammo": 0
       }
     ]
   },

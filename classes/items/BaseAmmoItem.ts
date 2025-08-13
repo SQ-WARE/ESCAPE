@@ -48,6 +48,11 @@ export default abstract class BaseAmmoItem extends BaseItem {
     return true;
   }
 
+  public override adjustQuantity(delta: number): void {
+    const next = (this._ammoQuantity ?? 0) + (delta ?? 0);
+    this._ammoQuantity = Math.max(0, Math.min(next, this.maxStackSize));
+  }
+
   public canStackWith(other: BaseItem): boolean {
     return other instanceof BaseAmmoItem && 
            other.ammoType === this.ammoType && 

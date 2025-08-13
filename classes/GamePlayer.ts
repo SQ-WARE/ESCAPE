@@ -789,6 +789,23 @@ export default class GamePlayer {
       case 'dropItem':
         this._handleDropItem(data as DropItemData);
         break;
+      case 'requestHudSync':
+        // Refresh HUD containers on demand (e.g., after closing crate UI)
+        this.hotbar.syncUI(this.player);
+        this.backpack.syncUI(this.player);
+        break;
+      case 'requestWeaponHud':
+        // Re-send current weapon HUD info
+        if (this._gun) {
+          try {
+            this._gun.updateAmmoIndicatorUI();
+            (this._gun as WeaponEntity).updateFireRateIndicator();
+          } catch {}
+        } else {
+          // ensure HUD hides weapon panel cleanly if there is truly no weapon
+          this.player.ui.sendData({ type: 'ammo-indicator', show: false });
+        }
+        break;
     }
   }
 

@@ -1,15 +1,6 @@
 <link rel="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/app.css">
 
-<div class="menu-background" style="background: url('{{CDN_ASSETS_URL}}/ui/background2.png') center center / cover no-repeat;">
-  <div class="background-overlay"></div>
-  <div class="smoke-effect">
-    <div class="smoke-layer smoke-layer-1"></div>
-    <div class="smoke-layer smoke-layer-2"></div>
-    <div class="smoke-layer smoke-layer-3"></div>
-  </div>
-  </div>
-
-<div class="stash-overlay" style="display:flex;">
+<div class="stash-overlay" style="display:flex; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); background: rgba(0,0,0,0.35);">
   <div class="stash-container">
     <button class="close-btn" id="crate-close">↩</button>
     <div class="stash-content glass-surface glass-border-strong">
@@ -46,81 +37,83 @@
   const closeBtn = document.getElementById('crate-close');
   const tpl = document.getElementById('crate-slot');
   let currentCrateId = null;
-  let dragState = null;
-  let hoveredSlot = null;
+  let crateDragState = null;
+  let dropHoverSlot = null;
+  const dragGhost = document.querySelector('.drag-ghost');
 
   closeBtn.addEventListener('click', () => {
     hytopia.sendData({ type: 'crate-close', crateId: currentCrateId });
+    hytopia.sendData({ type: 'requestHudSync' });
   });
 
-  function buildGrid(container, size, width, type) {
+  // ESC to close
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      hytopia.sendData({ type: 'crate-close', crateId: currentCrateId });
+      hytopia.sendData({ type: 'requestHudSync' });
+      // Ask server to re-broadcast current weapon HUD to avoid "No Weapon" state
+      hytopia.sendData({ type: 'requestWeaponHud' });
+    }
+  });
+
+  function setupGrid(container, size, width, slotClass) {
     container.innerHTML = '';
     for (let i = 0; i < size; i++) {
       const node = tpl.content.cloneNode(true);
       const slot = node.querySelector('.stash-slot');
-      if (type === 'backpack') slot.className = 'backpack-slot';
-      if (type === 'hotbar') slot.className = 'hotbar-slot';
-      slot.dataset.index = i;
-      slot.addEventListener('mouseenter', () => { hoveredSlot = slot; });
-      slot.addEventListener('mouseleave', () => { if (hoveredSlot === slot) hoveredSlot = null; });
+      slot.className = slotClass;
+      slot.setAttribute('data-position', i.toString());
       container.appendChild(node);
     }
     container.style.gridTemplateColumns = `repeat(${width}, 1fr)`;
   }
 
-  function render(container, items, type) {
-    const selector = type === 'crate' ? '.stash-slot' : type === 'backpack' ? '.backpack-slot' : '.hotbar-slot';
-    const slots = container.querySelectorAll(selector);
-    slots.forEach((slot, idx) => {
+  function updateSlot(container, position, itemData) {
+    const slot = container.children[position];
+    if (!slot) return;
+    if (!itemData || itemData.removed) {
       slot.innerHTML = '';
-      const found = items.find(it => it.position === idx);
-      if (!found) return;
-      const img = document.createElement('img');
-      img.src = found.iconImageUri ? `${CDN_ASSETS_URL}/${found.iconImageUri}` : `${CDN_ASSETS_URL}/icons/chest.png`;
-      slot.appendChild(img);
-      // Match stash styling: ammo stacks use .ammo-label, others use .item-quantity
-      if (found.quantity && found.quantity > 1) {
-        const isAmmo = !!(found.name && (
-          found.name.includes('9×19mm') ||
-          found.name.includes('7.62×39mm') ||
-          found.name.includes('12.7×108mm') ||
-          found.name.includes('12 Gauge')
-        ));
-        const qty = document.createElement('span');
-        qty.className = isAmmo ? 'ammo-label' : 'item-quantity';
-        qty.textContent = String(found.quantity);
-        slot.appendChild(qty);
-      }
-      // shift-click quick move
-      slot.addEventListener('mousedown', (e) => {
-        if (e.shiftKey && e.button === 0) {
-          e.preventDefault();
-          hytopia.sendData({ type: 'crate-quickMove', crateId: currentCrateId, fromType: type, fromIndex: idx });
-        }
-      });
-      // start drag
-      slot.addEventListener('mousedown', (e) => {
-        if (e.button !== 0) return;
-        if (!slot.querySelector('img')) return;
+      slot._itemData = null;
+      return;
+    }
+    const isAmmo = itemData.name && (
+      itemData.name.includes('9×19mm') || itemData.name.includes('7.62×39mm') || itemData.name.includes('12.7×108mm') || itemData.name.includes('12 Gauge')
+    );
+    let quantityDisplay = '';
+    if (itemData.quantity && itemData.quantity > 1) {
+      quantityDisplay = `<span class="${isAmmo ? 'ammo-label' : 'item-quantity'}">${itemData.quantity}</span>`;
+    }
+    slot.innerHTML = `<img src="${CDN_ASSETS_URL}/${itemData.iconImageUri || 'icons/chest.png'}" alt="${itemData.name || ''}">${quantityDisplay}`;
+    slot._itemData = itemData;
+
+    slot.onmousedown = (e) => {
+      if (e.shiftKey && e.button === 0) {
         e.preventDefault();
-        dragState = { slot, from: type, fromIndex: idx, startX: e.clientX, startY: e.clientY, isDragging: false };
-        document.addEventListener('mousemove', handleDragMove, { capture: true });
-        document.addEventListener('mouseup', handleDragUp);
-      });
-    });
+        const from = slot.classList.contains('backpack-slot') ? 'backpack' : slot.classList.contains('hotbar-slot') ? 'hotbar' : 'crate';
+        const fromIndex = parseInt(slot.getAttribute('data-position'));
+        hytopia.sendData({ type: 'crate-quickMove', crateId: currentCrateId, fromType: from, fromIndex });
+        return;
+      }
+      if (e.button !== 0 || !slot.querySelector('img')) return;
+      e.preventDefault();
+      const from = slot.classList.contains('backpack-slot') ? 'backpack' : slot.classList.contains('hotbar-slot') ? 'hotbar' : 'crate';
+      crateDragState = { slot, from, fromIndex: parseInt(slot.getAttribute('data-position')), startX: e.clientX, startY: e.clientY, isDragging: false };
+      document.addEventListener('mousemove', handleDragMove, { capture: true });
+      document.addEventListener('mouseup', handleDragUp);
+    };
   }
 
-  const dragGhost = document.querySelector('.drag-ghost');
   function handleDragMove(e) {
-    if (!dragState) return;
-    const dx = e.clientX - dragState.startX;
-    const dy = e.clientY - dragState.startY;
-    if (!dragState.isDragging && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
-      dragState.isDragging = true;
-      startDragGhost(dragState.slot);
+    if (!crateDragState) return;
+    const dx = e.clientX - crateDragState.startX;
+    const dy = e.clientY - crateDragState.startY;
+    if (!crateDragState.isDragging && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+      crateDragState.isDragging = true;
+      startDragGhost(crateDragState.slot);
       setEmptySlotHighlighting(true);
     }
-    if (dragState.isDragging) {
+    if (crateDragState.isDragging) {
       dragGhost.style.left = `${e.clientX + 15}px`;
       dragGhost.style.top = `${e.clientY - 15}px`;
       dragGhost.style.transform = 'translate(-50%, -50%)';
@@ -129,27 +122,22 @@
   }
 
   function handleDragUp(e) {
-    if (dragState && dragState.isDragging) {
-      const el = document.elementFromPoint(e.clientX, e.clientY);
-      const dropSlot = el ? el.closest('.stash-slot, .hotbar-slot, .backpack-slot') : null;
-      if (dropSlot && dropSlot !== dragState.slot) {
+    if (crateDragState && crateDragState.isDragging) {
+      const dropSlot = document.elementFromPoint(e.clientX, e.clientY)?.closest('.stash-slot, .hotbar-slot, .backpack-slot');
+      if (dropSlot && dropSlot !== crateDragState.slot) {
         let to = dropSlot.classList.contains('backpack-slot') ? 'backpack' : dropSlot.classList.contains('hotbar-slot') ? 'hotbar' : 'crate';
-        const idxAttr = dropSlot.getAttribute('data-index');
-        const toIndex = idxAttr ? parseInt(idxAttr) : Array.from(dropSlot.parentElement.children).indexOf(dropSlot);
-        hytopia.sendData({ type: 'crate-move', crateId: currentCrateId, fromType: dragState.from, fromIndex: dragState.fromIndex, toType: to, toIndex });
+        const toIndex = parseInt(dropSlot.getAttribute('data-position')) || Array.from(dropSlot.parentElement.children).indexOf(dropSlot);
+        hytopia.sendData({ type: 'crate-move', crateId: currentCrateId, fromType: crateDragState.from, fromIndex: crateDragState.fromIndex, toType: to, toIndex });
       }
-      // always request a fresh sync after a drop to prevent visual desync
-      hytopia.sendData({ type: 'crate-requestSync', crateId: currentCrateId });
     }
     finalizeDragVisuals();
     setEmptySlotHighlighting(false);
     document.removeEventListener('mousemove', handleDragMove);
     document.removeEventListener('mouseup', handleDragUp);
-    dragState = null;
+    crateDragState = null;
   }
 
   function startDragGhost(slot) {
-    if (!dragGhost) return;
     dragGhost.innerHTML = '';
     const img = slot.querySelector('img');
     if (img) dragGhost.appendChild(img.cloneNode(true));
@@ -157,38 +145,31 @@
   }
 
   function stopDragGhost() {
-    if (!dragGhost) return;
     dragGhost.classList.remove('active');
     dragGhost.innerHTML = '';
   }
 
   function setEmptySlotHighlighting(enable) {
-    const allSlots = document.querySelectorAll('.stash-slot, .backpack-slot, .hotbar-slot');
-    allSlots.forEach(slot => {
+    document.querySelectorAll('.stash-slot, .backpack-slot, .hotbar-slot').forEach(slot => {
       if (enable) {
-        if (!slot.querySelector('img') && (!dragState || slot !== dragState.slot)) {
-          slot.classList.add('drop-target');
-        } else {
-          slot.classList.remove('drop-target');
-        }
+        if (!slot.querySelector('img')) slot.classList.add('drop-target');
+        else slot.classList.remove('drop-target');
       } else {
         slot.classList.remove('drop-target', 'drop-hover');
       }
     });
-    if (!enable) window.__dropHover = null;
   }
 
   function updateDropHover(e) {
-    const el = document.elementFromPoint(e.clientX, e.clientY);
-    const candidate = el ? el.closest('.stash-slot, .hotbar-slot, .backpack-slot') : null;
+    const candidate = document.elementFromPoint(e.clientX, e.clientY)?.closest('.stash-slot, .hotbar-slot, .backpack-slot');
     const isEmpty = candidate && !candidate.querySelector('img');
-    if (window.__dropHover && window.__dropHover !== candidate) {
-      window.__dropHover.classList.remove('drop-hover');
-      window.__dropHover = null;
+    if (dropHoverSlot && dropHoverSlot !== candidate) {
+      dropHoverSlot.classList.remove('drop-hover');
+      dropHoverSlot = null;
     }
     if (isEmpty) {
       candidate.classList.add('drop-hover');
-      window.__dropHover = candidate;
+      dropHoverSlot = candidate;
     }
   }
 
@@ -197,15 +178,14 @@
     stopDragGhost();
   }
 
-  // number keys: mirror stash behavior
+  // number keys assignment like stash
   document.addEventListener('keydown', (e) => {
-    const HOTBAR_SLOTS = 9;
     const key = parseInt(e.key);
-    if (!isNaN(key) && key >= 1 && key <= HOTBAR_SLOTS) {
+    if (!isNaN(key) && key >= 1 && key <= 9) {
       const hovered = document.querySelector('.stash-slot:hover, .backpack-slot:hover, .hotbar-slot:hover');
       if (!hovered) return;
       const numberIndex = key - 1;
-      const hoveredIndex = hovered.getAttribute('data-index') ? parseInt(hovered.getAttribute('data-index')) : Array.from(hovered.parentElement.children).indexOf(hovered);
+      const hoveredIndex = parseInt(hovered.getAttribute('data-position')) || Array.from(hovered.parentElement.children).indexOf(hovered);
       const isBackpackSlot = hovered.classList.contains('backpack-slot');
       const isHotbarSlot = hovered.classList.contains('hotbar-slot');
       const isCrateSlot = hovered.classList.contains('stash-slot');
@@ -223,25 +203,31 @@
     }
   });
 
+  function renderAll(crates, inv, hotbar) {
+    // clear all slots first
+    for (let i = 0; i < grid.children.length; i++) updateSlot(grid, i, { removed: true });
+    for (let i = 0; i < invGrid.children.length; i++) updateSlot(invGrid, i, { removed: true });
+    for (let i = 0; i < hotbarGrid.children.length; i++) updateSlot(hotbarGrid, i, { removed: true });
+    // apply payloads
+    (crates || []).forEach(it => updateSlot(grid, it.position, it));
+    (inv || []).forEach(it => updateSlot(invGrid, it.position, it));
+    (hotbar || []).forEach(it => updateSlot(hotbarGrid, it.position, it));
+  }
+
   hytopia.onData(data => {
     if (data.type === 'crate-contents') {
       currentCrateId = data.crateId;
       const width = data.gridWidth || 9;
       const size = data.size || 72;
-      buildGrid(grid, size, width, 'crate');
-      buildGrid(invGrid, 27, 9, 'backpack');
-      buildGrid(hotbarGrid, 9, 9, 'hotbar');
-      render(grid, data.items || data.crate || [], 'crate');
-      render(invGrid, (data.inventory || []), 'backpack');
-      render(hotbarGrid, (data.hotbar || []), 'hotbar');
+      setupGrid(grid, size, width, 'stash-slot');
+      setupGrid(invGrid, 27, 9, 'backpack-slot');
+      setupGrid(hotbarGrid, 9, 9, 'hotbar-slot');
+      renderAll(data.items || data.crate || [], data.inventory || [], data.hotbar || []);
       hytopia.lockPointer(false, true);
-      // proactively request a fresh sync to avoid stale/empty grids
-      hytopia.sendData({ type: 'crate-requestSync', crateId: currentCrateId });
+      // Server will push crate-sync after moves; initial payload already has inventories
     }
     if (data.type === 'crate-sync') {
-      render(grid, data.crate || [], 'crate');
-      render(invGrid, data.inventory || [], 'backpack');
-      render(hotbarGrid, data.hotbar || [], 'hotbar');
+      renderAll(data.crate || [], data.inventory || [], data.hotbar || []);
     }
   });
 </script>

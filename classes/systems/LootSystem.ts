@@ -153,8 +153,21 @@ export class LootCrateEntity extends Entity {
       });
     }
     if (data.type === 'crate-close') {
-      try { playerEntity.player.ui.load('ui/index.html'); } catch {}
-      try { playerEntity.player.ui.lockPointer(true); } catch {}
+      try {
+        playerEntity.player.ui.load('ui/index.html');
+        playerEntity.player.ui.lockPointer(true);
+        // Brief fader to mask HUD style flash while index initializes
+        setTimeout(() => {
+          try { playerEntity.player.ui.sendData({ type: 'prewarmHud' }); } catch {}
+          try { playerEntity.player.ui.sendData({ type: 'screen-fade', show: true, durationMs: 120 }); } catch {}
+          setTimeout(() => {
+            try { playerEntity.player.ui.sendData({ type: 'screen-fade', show: false, durationMs: 120 }); } catch {}
+            // refresh HUD and weapon HUD once page is ready
+            try { playerEntity.player.ui.sendData({ type: 'requestHudSync' }); } catch {}
+            try { playerEntity.player.ui.sendData({ type: 'requestWeaponHud' }); } catch {}
+          }, 140);
+        }, 10);
+      } catch {}
       try { if (this._uiHandler) playerEntity.player.ui.off(PlayerUIEvent.DATA, this._uiHandler); } catch {}
       this._uiHandler = undefined;
     }
@@ -437,22 +450,74 @@ export default class LootSystem {
     if (fromIndex < 0 || fromIndex >= source.size) return false;
     const item = source.getItemAt(fromIndex);
     if (!item) return false;
+
+    // Remove first so we can allow stacking into dest
+    const removed = source.removeItem(fromIndex);
+    if (!removed) return false;
+
+    // If stackable, perform precise stacking with overflow handling (respect toIndex first)
+    if (removed.stackable) {
+      // Helper to detect compatible stack
+      const isCompatibleStack = (stack: any) => {
+        return stack && (stack.constructor === (removed as any).constructor);
+      };
+      const applied: Array<{ pos: number; amount: number }> = [];
+      const tryApplyToPosition = (pos: number) => {
+        const stack: any = dest.getItemAt(pos);
+        if (isCompatibleStack(stack)) {
+          const max = (stack as any).maxStackSize ?? Infinity;
+          const free = Math.max(0, max - (stack.quantity ?? 0));
+          if (free > 0 && (removed.quantity ?? 0) > 0) {
+            const transfer = Math.min(free, removed.quantity);
+            stack.adjustQuantity(transfer);
+            removed.adjustQuantity(-transfer);
+            applied.push({ pos, amount: transfer });
+          }
+        }
+      };
+      // Target slot first if compatible
+      if (toIndex >= 0 && toIndex < dest.size) tryApplyToPosition(toIndex);
+      // Then scan all remaining positions
+      for (let i = 0; i < dest.size && (removed.quantity ?? 0) > 0; i++) {
+        if (i === toIndex) continue;
+        tryApplyToPosition(i);
+      }
+      if ((removed.quantity ?? 0) === 0) {
+        try { source.syncUI(player.player); } catch {}
+        try { dest.syncUI(player.player); } catch {}
+        return true;
+      }
+      // Place remainder at target index if empty, else anywhere
+      const placedAtTarget = dest.isEmpty(toIndex) && dest.addItem(removed, toIndex);
+      const placedAnywhere = placedAtTarget || dest.addItem(removed);
+      if (!placedAnywhere) {
+        // rollback applied merges
+        for (const a of applied) {
+          const stack: any = dest.getItemAt(a.pos);
+          if (isCompatibleStack(stack)) {
+            stack.adjustQuantity(-a.amount);
+          }
+        }
+        // restore source
+        source.addItem(removed, fromIndex);
+        return false;
+      }
+      try { source.syncUI(player.player); } catch {}
+      try { dest.syncUI(player.player); } catch {}
+      return true;
+    }
+
+    // No stack occurred; try exact placement if empty
     if (!dest.isEmpty(toIndex)) {
       // swap
       const swapItem = dest.getItemAt(toIndex);
       if (swapItem) {
-        // Remove from both
+        // Remove dest item
         const removedDest = dest.removeItem(toIndex);
-        const removedSource = source.removeItem(fromIndex);
-        if (!removedSource) {
-          // restore dest if source removal somehow failed
-          if (removedDest) dest.addItem(removedDest, toIndex);
-          return false;
-        }
-        const placed = dest.addItem(item, toIndex);
+        const placed = dest.addItem(removed, toIndex);
         if (!placed) {
           // rollback to original state to avoid item loss
-          source.addItem(removedSource, fromIndex);
+          source.addItem(removed, fromIndex);
           if (removedDest) dest.addItem(removedDest, toIndex);
           return false;
         }
@@ -462,23 +527,26 @@ export default class LootSystem {
           if (!source.addItem(swapItem)) {
             // if cannot place at all, rollback completely
             dest.removeItem(toIndex);
-            source.addItem(removedSource, fromIndex);
+            source.addItem(removed, fromIndex);
             if (removedDest) dest.addItem(removedDest, toIndex);
             return false;
           }
         }
+        // ensure both containers reflect latest state for any listening UI
+        try { source.syncUI(player.player); } catch {}
+        try { dest.syncUI(player.player); } catch {}
         return true;
       }
     }
-    // simple move
-    const removed = source.removeItem(fromIndex);
-    if (!removed) return false;
-    const placed = dest.addItem(item, toIndex);
+    // simple move (respect explicit target index)
+    const placed = dest.addItem(removed, toIndex);
     if (!placed) {
       // rollback to avoid disappearance
       source.addItem(removed, fromIndex);
       return false;
     }
+    try { source.syncUI(player.player); } catch {}
+    try { dest.syncUI(player.player); } catch {}
     return true;
   }
 

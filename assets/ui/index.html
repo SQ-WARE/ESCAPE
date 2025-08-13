@@ -290,6 +290,11 @@
 
   hytopia.onData(data => {
     switch (data.type) {
+      case 'prewarmHud':
+        // Pre-warm core HUD widgets to avoid style flash on load
+        updateHealth({ health: 100, maxHealth: 100 });
+        setActiveSlot(0);
+        break;
       case 'health':
         updateHealth(data);
         break;
