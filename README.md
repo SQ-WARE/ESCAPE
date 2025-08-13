@@ -1,4 +1,4 @@
-![ESCAPE](https://github.com/SQ-WARE/ESCAPE/blob/master/banner.png)
+![ESCAPE](https://raw.githubusercontent.com/SQ-WARE/ESCAPE/master/banner.png)
 
 # ESCAPE — HYTOPIA Game
 
