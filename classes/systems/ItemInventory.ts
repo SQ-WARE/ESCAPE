@@ -43,7 +43,8 @@ export default class ItemInventory {
     if (this._itemPositions.has(item)) {
       return false;
     }
-    if (item.stackable) {
+    // Only auto-merge when no explicit target position is provided
+    if (item.stackable && (position === undefined || position === null)) {
       for (const existingItem of this._itemPositions.keys()) {
         if (
           existingItem.constructor === item.constructor && 

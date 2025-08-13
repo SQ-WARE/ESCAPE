@@ -1,7 +1,9 @@
-import { Entity, World, Collider, ColliderShape, RigidBodyType, SceneUI, PlayerEvent, PlayerUIEvent, type Vector3Like, type EventPayloads } from 'hytopia';
+import { Entity, World, Collider, ColliderShape, RigidBodyType, PlayerEvent, PlayerUIEvent, type Vector3Like, type EventPayloads } from 'hytopia';
 import type GamePlayerEntity from '../GamePlayerEntity';
 import ItemInventory from './ItemInventory';
 import type BaseItem from '../items/BaseItem';
+import BaseAmmoItem from '../items/BaseAmmoItem';
+import { ItemUIDataHelper } from '../items/ItemUIDataHelper';
 
 type Rarity = 'common' | 'unusual' | 'rare' | 'epic' | 'legendary';
 
@@ -24,14 +26,14 @@ interface SpawnArea {
 
 export class LootCrateEntity extends Entity {
   private _lootGenerated = false;
-  private _ui: any | undefined;
   private readonly _lootSystem: LootSystem;
   private readonly _rarity: Rarity;
   private _crateId: string;
   private _uiHandler: ((evt: EventPayloads[PlayerUIEvent.DATA]) => void) | undefined;
+  private _isOpenByPlayerId: Set<string> = new Set();
 
   constructor(lootSystem: LootSystem, rarity: Rarity, position: Vector3Like) {
-    const scale = 5;
+    const scale = 3.33;
     super({
       name: `Crate_${rarity}`,
       modelUri: 'models/crates/supply_crate_open_animation.glb',
@@ -51,6 +53,10 @@ export class LootCrateEntity extends Entity {
 
   public interact(interactor: GamePlayerEntity): void {
     if (!this.world) return;
+    const pid = String(interactor.player.id || interactor.player.username || 'unknown');
+    if (this._isOpenByPlayerId.has(pid)) return; // already open for this player
+    this._isOpenByPlayerId.add(pid);
+    try { interactor.gamePlayer.setCrateOpen(true); } catch {}
     const contents = this._lootSystem.getOrSeedCrateContents(this._crateId, this._rarity);
     interactor.player.ui.load('ui/crate.html');
     const handler = (evt: EventPayloads[PlayerUIEvent.DATA]) => this._onCrateUIEvent(evt, interactor);
@@ -74,29 +80,10 @@ export class LootCrateEntity extends Entity {
 
   public override spawn(world: World, position?: Vector3Like): void {
     super.spawn(world, position as Vector3Like);
-    this._showUI();
   }
 
   public override despawn(): void {
-    this._hideUI();
     super.despawn();
-  }
-
-  public _showUI(): void {
-    if (!this.world || this._ui) return;
-    const offsetY = (this.modelScale || 0.12) * 3.5;
-    this._ui = new SceneUI({
-      attachedToEntity: this,
-      offset: { x: 0, y: offsetY, z: 0 },
-      templateId: 'item-nameplate',
-      viewDistance: 14,
-      state: { name: `${this._rarity.toUpperCase()} CRATE`, iconImageUri: 'icons/chest.png', showPickupArea: true },
-    });
-    this._ui.load(this.world);
-  }
-
-  public _hideUI(): void {
-    try { this._ui?.unload?.(); } finally { this._ui = undefined; }
   }
 
   private _onCrateUIEvent(evt: EventPayloads[PlayerUIEvent.DATA], playerEntity: GamePlayerEntity): void {
@@ -170,6 +157,11 @@ export class LootCrateEntity extends Entity {
       } catch {}
       try { if (this._uiHandler) playerEntity.player.ui.off(PlayerUIEvent.DATA, this._uiHandler); } catch {}
       this._uiHandler = undefined;
+      try {
+        const pid = String(playerEntity.player.id || playerEntity.player.username || 'unknown');
+        this._isOpenByPlayerId.delete(pid);
+      } catch {}
+      try { playerEntity.gamePlayer.setCrateOpen(false); } catch {}
     }
   }
 }
@@ -216,9 +208,7 @@ export default class LootSystem {
   }
 
   public refreshCrateUI(): void {
-    for (const c of this.crates) {
-      try { (c as any)._showUI?.(); } catch {}
-    }
+    // No-op: crate holograms/scene UI removed by request
   }
 
   public rollLoot(rarity: Rarity, count: number): LootItem[] {
@@ -247,7 +237,7 @@ export default class LootSystem {
     return this.crateContents.get(crateId) ?? [];
   }
 
-  public getCrateClientContents(crateId: string, rarity: Rarity): Array<{ position: number; iconImageUri?: string; name?: string; quantity?: number }> {
+  public getCrateClientContents(crateId: string, rarity: Rarity): Array<Record<string, unknown>> {
     // Ensure crate exists/seeded, then serialize actual inventory slots
     this.getOrSeedCrateContents(crateId, rarity);
     const rec = this.getOrCreateCrateInventory(crateId);
@@ -299,13 +289,13 @@ export default class LootSystem {
     } catch { return undefined; }
   }
 
-  // Expose a minimal UI serializer for inventories
-  public _serializeInventory(inv: ItemInventory): Array<{ position: number; iconImageUri?: string; name?: string; quantity?: number }> {
-    const out: Array<{ position: number; iconImageUri?: string; name?: string; quantity?: number }> = [];
+  // Expose a UI serializer matching stash/inventory payload (includes description, rarity, stats, ammoType, etc.)
+  public _serializeInventory(inv: ItemInventory): Array<Record<string, unknown>> {
+    const out: Array<Record<string, unknown>> = [];
     for (let i = 0; i < inv.size; i++) {
-      const item = inv.getItemAt(i) as any;
+      const item = inv.getItemAt(i) as BaseItem | null;
       if (!item) continue;
-      out.push({ position: i, iconImageUri: item.iconImageUri, name: item.name, quantity: item.quantity });
+      out.push(ItemUIDataHelper.getUIData(item, { position: i, quantity: item.quantity }));
     }
     return out;
   }
@@ -455,34 +445,69 @@ export default class LootSystem {
     const removed = source.removeItem(fromIndex);
     if (!removed) return false;
 
-    // If stackable, perform precise stacking with overflow handling (respect toIndex first)
-    if (removed.stackable) {
-      // Helper to detect compatible stack
-      const isCompatibleStack = (stack: any) => {
-        return stack && (stack.constructor === (removed as any).constructor);
-      };
-      const applied: Array<{ pos: number; amount: number }> = [];
-      const tryApplyToPosition = (pos: number) => {
-        const stack: any = dest.getItemAt(pos);
-        if (isCompatibleStack(stack)) {
-          const max = (stack as any).maxStackSize ?? Infinity;
-          const free = Math.max(0, max - (stack.quantity ?? 0));
-          if (free > 0 && (removed.quantity ?? 0) > 0) {
-            const transfer = Math.min(free, removed.quantity);
-            stack.adjustQuantity(transfer);
-            removed.adjustQuantity(-transfer);
-            applied.push({ pos, amount: transfer });
-          }
-        }
-      };
-      // Target slot first if compatible
-      if (toIndex >= 0 && toIndex < dest.size) tryApplyToPosition(toIndex);
-      // Then scan all remaining positions
-      for (let i = 0; i < dest.size && (removed.quantity ?? 0) > 0; i++) {
-        if (i === toIndex) continue;
-        tryApplyToPosition(i);
+    // Ammo-specific behavior: allow multiple stacks; only merge when user drops onto a compatible target slot
+    if (removed instanceof BaseAmmoItem) {
+      const destItem = dest.getItemAt(toIndex) as BaseItem | null;
+      const isCompat = destItem instanceof BaseAmmoItem && destItem.ammoType === (removed as BaseAmmoItem).ammoType;
+      if (dest.isEmpty(toIndex)) {
+        // place as a separate stack at target if empty
+        if (!dest.addItem(removed, toIndex)) { source.addItem(removed, fromIndex); return false; }
+        try { source.syncUI(player.player); } catch {}
+        try { dest.syncUI(player.player); } catch {}
+        return true;
       }
-      if ((removed.quantity ?? 0) === 0) {
+      if (isCompat) {
+        // merge into target slot only; remainder must be placed as a new separate stack
+        const max = (destItem as any).maxStackSize ?? Infinity;
+        const free = Math.max(0, max - (destItem as any).quantity);
+        let transferred = 0;
+        if (free > 0) {
+          transferred = Math.min(free, (removed as any).quantity);
+          (destItem as any).adjustQuantity(transferred);
+          (removed as any).adjustQuantity(-transferred);
+        }
+        if ((removed as any).quantity > 0) {
+          const empty = this._findFirstEmptySlot(dest);
+          if (empty >= 0 && dest.addItem(removed, empty)) {
+            try { source.syncUI(player.player); } catch {}
+            try { dest.syncUI(player.player); } catch {}
+            return true;
+          }
+          // rollback merge into target
+          if (transferred > 0) { (destItem as any).adjustQuantity(-transferred); (removed as any).adjustQuantity(transferred); }
+          source.addItem(removed, fromIndex);
+          return false;
+        }
+        // fully merged
+        try { source.syncUI(player.player); } catch {}
+        try { dest.syncUI(player.player); } catch {}
+        return true;
+      }
+      // not compatible and target occupied → swap as usual
+      const swapItem = dest.getItemAt(toIndex);
+      if (swapItem) {
+        const removedDest = dest.removeItem(toIndex);
+        const placed = dest.addItem(removed, toIndex);
+        if (!placed) { if (removedDest) dest.addItem(removedDest, toIndex); source.addItem(removed, fromIndex); return false; }
+        if (!source.addItem(swapItem, fromIndex) && !source.addItem(swapItem)) {
+          dest.removeItem(toIndex); source.addItem(removed, fromIndex); if (removedDest) dest.addItem(removedDest, toIndex); return false;
+        }
+        try { source.syncUI(player.player); } catch {}
+        try { dest.syncUI(player.player); } catch {}
+        return true;
+      }
+      // fallback (shouldn't get here)
+      const placed = dest.addItem(removed, toIndex);
+      if (!placed) { source.addItem(removed, fromIndex); return false; }
+      try { source.syncUI(player.player); } catch {}
+      try { dest.syncUI(player.player); } catch {}
+      return true;
+    }
+
+    // If stackable (non-ammo), perform precise stacking with overflow handling (respect toIndex first)
+    if (removed.stackable) {
+      const { fullyMerged, applied } = this._mergeStackableInto(dest, removed, toIndex);
+      if (fullyMerged) {
         try { source.syncUI(player.player); } catch {}
         try { dest.syncUI(player.player); } catch {}
         return true;
@@ -492,9 +517,9 @@ export default class LootSystem {
       const placedAnywhere = placedAtTarget || dest.addItem(removed);
       if (!placedAnywhere) {
         // rollback applied merges
-        for (const a of applied) {
+        for (const a of (applied || [])) {
           const stack: any = dest.getItemAt(a.pos);
-          if (isCompatibleStack(stack)) {
+          if (stack && (stack.constructor === (removed as any).constructor)) {
             stack.adjustQuantity(-a.amount);
           }
         }
@@ -560,8 +585,23 @@ export default class LootSystem {
     if (!removed) return false;
     const tryAdd = (inv: ItemInventory | null): boolean => {
       if (!inv) return false;
-      if (inv.addItem(removed)) return true;
-      return false;
+      if (removed instanceof BaseAmmoItem) {
+        // Always place as a new separate stack if possible; do not auto-merge
+        const empty = this._findFirstEmptySlot(inv);
+        if (empty >= 0 && inv.addItem(removed, empty)) return true;
+        // else try generic add (may merge if user wants that behavior elsewhere)
+        return inv.addItem(removed);
+      }
+      if (removed.stackable) {
+        // Merge into compatible stacks first across entire container
+        const { fullyMerged } = this._mergeStackableInto(inv, removed);
+        if (fullyMerged) return true;
+        // Place remainder if any into first empty slot
+        const empty = this._findFirstEmptySlot(inv);
+        if (empty >= 0 && inv.addItem(removed, empty)) return true;
+        return false;
+      }
+      return inv.addItem(removed);
     };
     let placed = false;
     const targets: string[] = (() => {
@@ -607,6 +647,38 @@ export default class LootSystem {
     } finally {
       this._opLocks.delete(key);
     }
+  }
+
+  // ===== Helpers =====
+  private _findFirstEmptySlot(inv: ItemInventory): number {
+    for (let i = 0; i < inv.size; i++) {
+      if (inv.isEmpty(i)) return i;
+    }
+    return -1;
+  }
+
+  private _mergeStackableInto(dest: ItemInventory, item: BaseItem, preferIndex?: number): { fullyMerged: boolean; applied: Array<{ pos: number; amount: number }>; } {
+    const applied: Array<{ pos: number; amount: number }> = [];
+    const isCompatibleStack = (stack: any) => stack && (stack.constructor === (item as any).constructor);
+    const tryApplyToPosition = (pos: number) => {
+      const stack: any = dest.getItemAt(pos);
+      if (isCompatibleStack(stack)) {
+        const max = (stack as any).maxStackSize ?? Infinity;
+        const free = Math.max(0, max - (stack.quantity ?? 0));
+        if (free > 0 && (item.quantity ?? 0) > 0) {
+          const transfer = Math.min(free, item.quantity);
+          stack.adjustQuantity(transfer);
+          (item as any).adjustQuantity(-transfer);
+          applied.push({ pos, amount: transfer });
+        }
+      }
+    };
+    if (preferIndex !== undefined && preferIndex >= 0 && preferIndex < dest.size) tryApplyToPosition(preferIndex);
+    for (let i = 0; i < dest.size && (item.quantity ?? 0) > 0; i++) {
+      if (i === preferIndex) continue;
+      tryApplyToPosition(i);
+    }
+    return { fullyMerged: (item.quantity ?? 0) === 0, applied };
   }
 
   private _resolveContainer(type: string, crateRec: { inv: ItemInventory }, player: GamePlayerEntity): ItemInventory | null {

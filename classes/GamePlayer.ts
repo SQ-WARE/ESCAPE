@@ -72,6 +72,7 @@ export default class GamePlayer {
   private _gun: WeaponEntity | undefined;
   private _isInMenu: boolean = true;
   private _isDestroyed: boolean = false;
+  private _isCrateOpen: boolean = false;
 
   private constructor(player: Player) {
     this.player = player;
@@ -128,6 +129,10 @@ export default class GamePlayer {
 
   public get isInMenu(): boolean {
     return this._isInMenu;
+  }
+
+  public get isCrateOpen(): boolean {
+    return this._isCrateOpen;
   }
 
   public getCurrency(): number {
@@ -276,6 +281,10 @@ export default class GamePlayer {
     this._gun = undefined;
 
     this.deploy();
+  }
+
+  public setCrateOpen(open: boolean): void {
+    this._isCrateOpen = !!open;
   }
 
   /**

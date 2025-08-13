@@ -218,7 +218,7 @@ export default class WeaponEntity extends Entity {
     const player = parentPlayerEntity.player;
     const gamePlayer = (player as any).gamePlayer || GamePlayer.getOrCreate(player);
     
-    if (gamePlayer && (gamePlayer.isBackpackOpen || gamePlayer.isInMenu)) {
+    if (gamePlayer && (gamePlayer.isBackpackOpen || gamePlayer.isInMenu || (gamePlayer as any).isCrateOpen)) {
       return; // Don't shoot if inventory is open or player is in menu
     }
 

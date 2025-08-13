@@ -75,6 +75,8 @@
     if (!itemData || itemData.removed) {
       slot.innerHTML = '';
       slot._itemData = null;
+      slot._tooltipEnabled = false;
+      if (slot._tooltip) { slot._tooltip.remove(); slot._tooltip = null; }
       return;
     }
     const isAmmo = itemData.name && (
@@ -86,6 +88,15 @@
     }
     slot.innerHTML = `<img src="${CDN_ASSETS_URL}/${itemData.iconImageUri || 'icons/chest.png'}" alt="${itemData.name || ''}">${quantityDisplay}`;
     slot._itemData = itemData;
+    slot._tooltipEnabled = true;
+
+    // Wire tooltip like stash/inventory
+    slot.removeEventListener('mouseenter', createCrateTooltip);
+    slot.removeEventListener('mouseleave', removeCrateTooltip);
+    slot.removeEventListener('mousemove', updateCrateTooltipPosition);
+    slot.addEventListener('mouseenter', createCrateTooltip);
+    slot.addEventListener('mouseleave', removeCrateTooltip);
+    slot.addEventListener('mousemove', updateCrateTooltipPosition);
 
     slot.onmousedown = (e) => {
       if (e.shiftKey && e.button === 0) {
@@ -102,6 +113,72 @@
       document.addEventListener('mousemove', handleDragMove, { capture: true });
       document.addEventListener('mouseup', handleDragUp);
     };
+  }
+
+  // Tooltip helpers (mirror stash behavior)
+  // Tooltip helpers identical to stash
+  function createWeaponStatsHTML(stats, description, ammoType) {
+    const ammoMap = { pistol: '9×19mm Parabellum', rifle: '7.62×39mm', sniper: '12.7×108mm', shotgun: '12 Gauge' };
+    const bulletType = ammoMap[ammoType] || ammoType || '';
+    const statsHTML = `
+      <div class="key-stats">
+        <div class="stat-group"><span class="stat-label">DMG</span><span class="stat-value">${stats.damage}</span></div>
+        <div class="stat-group"><span class="stat-label">RPM</span><span class="stat-value">${stats.fireRate}</span></div>
+        <div class="stat-group"><span class="stat-label">MAG</span><span class="stat-value">${stats.magazineSize}</span></div>
+      </div>`;
+    return { bulletType, statsHTML, description };
+  }
+
+  function createCrateTooltip(e) {
+    const slot = e.currentTarget;
+    const itemData = slot._itemData;
+    if (!itemData || slot._tooltipEnabled === false) return;
+    removeCrateTooltip(e);
+    const tooltip = document.createElement('div');
+    tooltip.className = 'item-tooltip';
+    const isWeapon = itemData.stats && itemData.ammoType;
+    let tooltipHTML = `<div class="tooltip-header"><span class="tooltip-name rarity-${itemData.rarity || 'common'}">${itemData.name || ''}</span></div>`;
+    if (isWeapon) {
+      const { bulletType, statsHTML, description } = createWeaponStatsHTML(itemData.stats, itemData.description || '', itemData.ammoType || 'pistol');
+      if (itemData.description) tooltipHTML += `<div class="tooltip-description">${itemData.description}</div>`;
+      if (bulletType) tooltipHTML += `<div class="bullet-type">${bulletType}</div>`;
+      tooltipHTML += statsHTML;
+    } else if (itemData.description) {
+      tooltipHTML += `<div class="tooltip-description">${itemData.description}</div>`;
+    }
+    if (itemData.quantity && itemData.quantity > 1) {
+      tooltipHTML += `<div class="tooltip-quantity">Quantity: ${itemData.quantity}</div>`;
+    }
+    tooltip.innerHTML = tooltipHTML;
+    document.body.appendChild(tooltip);
+    slot._tooltip = tooltip;
+    positionCrateTooltip(e, tooltip);
+  }
+
+  function removeCrateTooltip(e) {
+    const slot = e.currentTarget;
+    if (slot && slot._tooltip) {
+      slot._tooltip.remove();
+      slot._tooltip = null;
+    }
+  }
+
+  function updateCrateTooltipPosition(e) {
+    const slot = e.currentTarget;
+    const tooltip = slot._tooltip;
+    if (tooltip) positionCrateTooltip(e, tooltip);
+  }
+
+  function positionCrateTooltip(e, tooltip) {
+    let left = e.clientX + 15;
+    let top = e.clientY - 10;
+    tooltip.style.display = 'block';
+    const rect = tooltip.getBoundingClientRect();
+    if (left + rect.width > window.innerWidth) left = e.clientX - rect.width - 15;
+    if (top + rect.height > window.innerHeight) top = e.clientY - rect.height - 10;
+    if (top < 10) top = 10;
+    tooltip.style.left = left + 'px';
+    tooltip.style.top = top + 'px';
   }
 
   function handleDragMove(e) {
