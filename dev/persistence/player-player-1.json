@@ -15,10 +15,6 @@
         "itemId": "spetsnaz_akm_nsb"
       },
       {
-        "position": 6,
-        "itemId": "mp5a2"
-      },
-      {
         "position": 7,
         "itemId": "ingram_m6"
       },
@@ -45,12 +41,12 @@
       {
         "position": 14,
         "itemId": "pistol_ammo",
-        "quantity": 9970
+        "quantity": 9617
       },
       {
         "position": 15,
         "itemId": "rifle_ammo",
-        "quantity": 9970
+        "quantity": 9910
       },
       {
         "position": 16,
@@ -73,7 +69,7 @@
       {
         "position": 0,
         "itemId": "m9_beretta",
-        "ammo": 15
+        "ammo": 8
       },
       {
         "position": 2,
@@ -83,12 +79,17 @@
       {
         "position": 3,
         "itemId": "akm",
-        "ammo": 20
+        "ammo": 30
       },
       {
         "position": 4,
         "itemId": "desert_eagle",
-        "ammo": 1
+        "ammo": 5
+      },
+      {
+        "position": 1,
+        "itemId": "mp5a2",
+        "ammo": 5
       }
     ]
   },

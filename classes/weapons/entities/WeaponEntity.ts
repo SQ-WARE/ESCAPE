@@ -239,7 +239,6 @@ export default class WeaponEntity extends Entity {
         // Play effects
         parentPlayerEntity.startModelOneshotAnimations([this._shootAnimation]);
         this._uiSystem.playShootSound(parentPlayerEntity);
-        this._effectsSystem.createMuzzleFlash(parentPlayerEntity);
         this._effectsSystem.createShotLight(parentPlayerEntity);
         this._effectsSystem.applyWeaponRecoil(parentPlayerEntity);
         
