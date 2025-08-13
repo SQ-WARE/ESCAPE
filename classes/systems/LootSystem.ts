@@ -152,6 +152,26 @@ export class LootCrateEntity extends Entity {
             // refresh HUD and weapon HUD once page is ready
             try { playerEntity.player.ui.sendData({ type: 'requestHudSync' }); } catch {}
             try { playerEntity.player.ui.sendData({ type: 'requestWeaponHud' }); } catch {}
+            try {
+              // Re-equip current selected hotbar item to force weapon entity and UI re-init
+              const gp: any = playerEntity.gamePlayer;
+              if (gp && typeof gp.hotbar?.selectedIndex === 'number') {
+                const sel = gp.hotbar.selectedIndex;
+                // Call handler directly and also send UI event to keep client HUD in sync
+                gp.hotbar.setSelectedIndex(sel);
+                playerEntity.player.ui.sendData({ type: 'setSelectedHotbarIndex', index: sel });
+              }
+            } catch {}
+            // Additionally, directly push weapon HUD if a gun is equipped (covers listener race)
+            try {
+              const gun = playerEntity.gamePlayer.getCurrentWeapon?.();
+              if (gun) {
+                gun.updateAmmoIndicatorUI();
+                (gun as any).updateFireRateIndicator?.();
+                // and push weapon info (name/icon) to avoid 'No Weapon'
+                (gun as any)._uiSystem?.updateWeaponInfo?.(playerEntity);
+              }
+            } catch {}
           }, 140);
         }, 10);
       } catch {}

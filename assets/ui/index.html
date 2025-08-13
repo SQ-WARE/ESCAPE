@@ -1054,6 +1054,11 @@
   // Initial black until UI is ready
   window.addEventListener('load', () => {
     setTimeout(() => setScreenFade(false, 350), 300);
+    // Ask server to refresh HUD and weapon HUD after fresh load (e.g., after closing crate)
+    setTimeout(() => {
+      try { hytopia.sendData({ type: 'requestHudSync' }); } catch {}
+      try { hytopia.sendData({ type: 'requestWeaponHud' }); } catch {}
+    }, 80);
   });
 
   function setScreenFade(show, durationMs) {

@@ -34,7 +34,7 @@
       {
         "position": 0,
         "itemId": "spetsnaz_akm_nsb",
-        "ammo": 0
+        "ammo": 30
       },
       {
         "position": 3,
@@ -48,6 +48,11 @@
       {
         "position": 8,
         "itemId": "akm"
+      },
+      {
+        "position": 1,
+        "itemId": "pistol_ammo",
+        "quantity": 60
       }
     ]
   },
