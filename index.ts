@@ -18,70 +18,119 @@ import { WeaponFactory } from './classes/weapons/WeaponFactory';
 import { LightingSystem } from './classes/systems/LightingSystem.ts';
 import LootSystem from './classes/systems/LootSystem';
 import { CameraEffectsSystem } from './classes/systems/CameraEffectsSystem';
+import SessionManager from './classes/systems/SessionManager';
 
 startServer(() => {
-  const world = WorldManager.instance.createWorld({
-    name: 'ESCAPE',
+  // Create separate instances for ALPHA (day) and OMEGA (night)
+  const alphaWorld = WorldManager.instance.createWorld({
+    name: 'ESCAPE-ALPHA',
     skyboxUri: 'skyboxes/partly_cloudy',
   });
+  const omegaWorld = WorldManager.instance.createWorld({
+    name: 'ESCAPE-OMEGA',
+    skyboxUri: 'skyboxes/night_clear',
+  });
 
-  const lightingSystem = new LightingSystem(world);
+  const lightingAlpha = new LightingSystem(alphaWorld);
+  const lightingOmega = new LightingSystem(omegaWorld);
   const cameraEffectsSystem = new CameraEffectsSystem();
+  SessionManager.instance.initialize();
 
-  lightingSystem.initialize();
-  const lootSystem = new LootSystem(world);
-  (world as any).lootSystem = lootSystem;
-  // Define a couple of spawn areas; tune as needed or load from map
-  lootSystem.addSpawnArea({ x: 0, y: 20, z: 0 }, 40);
-  lootSystem.addSpawnArea({ x: 60, y: 20, z: -30 }, 30);
-  WorldManager.instance.setDefaultWorld(world);
-  world.loadMap(worldMap);
+  lightingAlpha.initialize();
+  lightingOmega.initialize();
+
+  // Favor day lighting for ALPHA: default values already day-like
+  // Favor night lighting for OMEGA: tune intensities lower and ambient cooler
+  try {
+    (omegaWorld as any).setDirectionalLightIntensity?.(0.6);
+    (omegaWorld as any).setAmbientLightIntensity?.(0.02);
+    (omegaWorld as any).setSkyboxIntensity?.(0.2);
+  } catch {}
+
+  const lootAlpha = new LootSystem(alphaWorld);
+  const lootOmega = new LootSystem(omegaWorld);
+  (alphaWorld as any).lootSystem = lootAlpha;
+  (omegaWorld as any).lootSystem = lootOmega;
+  // Define spawn areas; can be the same for both for now
+  lootAlpha.addSpawnArea({ x: 0, y: 20, z: 0 }, 40);
+  lootAlpha.addSpawnArea({ x: 60, y: 20, z: -30 }, 30);
+  lootOmega.addSpawnArea({ x: 0, y: 20, z: 0 }, 40);
+  lootOmega.addSpawnArea({ x: 60, y: 20, z: -30 }, 30);
+  WorldManager.instance.setDefaultWorld(alphaWorld);
+  alphaWorld.loadMap(worldMap);
+  omegaWorld.loadMap(worldMap);
   // Spawn a few crates
-  lootSystem.spawnCrates(8);
+  lootAlpha.spawnCrates(8);
+  lootOmega.spawnCrates(8);
+
+  // Let SessionManager know about the lobby and session worlds
+  SessionManager.instance.setLobbyWorld(alphaWorld);
+  SessionManager.instance.setSessionWorld('alpha', alphaWorld);
+  SessionManager.instance.setSessionWorld('omega', omegaWorld);
 
   CommandManager.instance.registerCommands([
-    new GiveCommand(),
-    new GiveAmmoCommand(),
     new GiveAllWeaponsCommand(),
     new CurrencyCommand(),
   ]);
-  CommandManager.instance.setupCommandHandlers(world);
+  CommandManager.instance.setupCommandHandlers(alphaWorld);
+  CommandManager.instance.setupCommandHandlers(omegaWorld);
 
   setTimeout(() => {
-    const availableWeapons = WeaponFactory.getAllWeaponDefinitions().map(def => def.id);
-    
-    world.chatManager.sendBroadcastMessage('Available Weapons: ' + availableWeapons.join(', '), 'FFFF00');
-    world.chatManager.sendBroadcastMessage('Use /give <weapon> to get weapons', '669966');
-    world.chatManager.sendBroadcastMessage('Use /giveammo <type> [amount] to get ammo', '669966');
-    world.chatManager.sendBroadcastMessage('Ammo Types: pistol (9×19mm Parabellum), rifle (7.62×39mm), sniper (12.7×108mm), shotgun (12 Gauge)', 'CCCCCC');
-    world.chatManager.sendBroadcastMessage('Use /giveallweapons to get all weapons and ammo for testing', 'FF6600');
+    alphaWorld.chatManager.sendBroadcastMessage('Use /giveallweapons to get all weapons and ammo for testing', 'FF6600');
+    omegaWorld.chatManager.sendBroadcastMessage('Use /giveallweapons to get all weapons and ammo for testing', 'FF6600');
   }, 1000);
 
-  world.on(PlayerEvent.JOINED_WORLD, ({ player }) => {
+  const onJoined = ({ player }: { player: any }) => {
     const gamePlayer = GamePlayer.getOrCreate(player);
-    
-    gamePlayer.loadMenu();
+    const playerId = player.id || player.username;
+
+    // If a session transfer was in progress, end it and avoid reloading the menu mid-deploy
+    try {
+      if (SessionManager.instance.isTransferringById(playerId)) {
+        SessionManager.instance.markTransferEndById(playerId);
+        // Resume deploy after transfer to the target session world
+        setTimeout(() => {
+          try {
+            (gamePlayer as any).resumeDeployAfterTransfer?.();
+          } catch {}
+        }, 120);
+      } else {
+        gamePlayer.loadMenu();
+      }
+    } catch {
+      gamePlayer.loadMenu();
+    }
     cameraEffectsSystem.setupPlayerCamera(player);
     
     setTimeout(() => {
-      const availableWeapons = WeaponFactory.getAllWeaponDefinitions().map(def => def.id);
-      
-      world.chatManager.sendPlayerMessage(player, `Welcome to ESCAPE, ${player.username}`, 'CC6600');
-      world.chatManager.sendPlayerMessage(player, `Use /give <weapon> to get weapons (${availableWeapons.join(', ')})`, 'CCCCCC');
-      world.chatManager.sendPlayerMessage(player, `Use /giveammo <type> [amount] to get ammo`, 'CCCCCC');
-      world.chatManager.sendPlayerMessage(player, `Ammo Types: pistol (9×19mm Parabellum), rifle (7.62×39mm), sniper (12.7×108mm), shotgun (12 Gauge)`, 'CCCCCC');
-      world.chatManager.sendPlayerMessage(player, `Use /giveallweapons to get all weapons and ammo for testing`, 'FF6600');
+      player.world?.chatManager.sendPlayerMessage(player, `Welcome to ESCAPE, ${player.username}`, 'CC6600');
+      player.world?.chatManager.sendPlayerMessage(player, `Use /giveallweapons to get all weapons and ammo for testing`, 'FF6600');
     }, 2000);
-  });
+  };
+  alphaWorld.on(PlayerEvent.JOINED_WORLD, onJoined);
+  omegaWorld.on(PlayerEvent.JOINED_WORLD, onJoined);
 
-  world.on(PlayerEvent.LEFT_WORLD, ({ player }) => {
+  const onLeft = ({ player }: { player: any }) => {
+    // Skip cleanup if we're actively transferring to another world
+    const pid = player.id || player.username;
+    if (SessionManager.instance.isTransferringById(pid)) {
+      return;
+    }
+    try { SessionManager.instance.clearPlayerById(pid); } catch {}
     GamePlayer.remove(player);
     cameraEffectsSystem.cleanupPlayer(player);
-  });
+  };
+  alphaWorld.on(PlayerEvent.LEFT_WORLD, onLeft);
+  omegaWorld.on(PlayerEvent.LEFT_WORLD, onLeft);
 
   new Audio({
     uri: 'audio/music/hytopia-main-theme.mp3',
     loop: true,
     volume: 0.06,
-  }).play(world);
+  }).play(alphaWorld);
+  new Audio({
+    uri: 'audio/music/hytopia-main-theme.mp3',
+    loop: true,
+    volume: 0.06,
+  }).play(omegaWorld);
 });

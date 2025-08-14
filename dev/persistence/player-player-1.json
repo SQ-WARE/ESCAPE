@@ -3,99 +3,82 @@
   "backpack": {
     "items": [
       {
-        "position": 2,
-        "itemId": "glock_17"
-      },
-      {
-        "position": 5,
+        "position": 0,
         "itemId": "spetsnaz_akm_nsb"
       },
       {
-        "position": 7,
+        "position": 1,
         "itemId": "ingram_m6"
       },
       {
-        "position": 9,
-        "itemId": "hk_mp5sd"
+        "position": 2,
+        "itemId": "akm"
       },
       {
-        "position": 10,
+        "position": 3,
+        "itemId": "victrix_corvo_v",
+        "ammo": 0
+      },
+      {
+        "position": 4,
         "itemId": "asvkm"
       },
       {
-        "position": 11,
-        "itemId": "victrix_corvo_v"
-      },
-      {
-        "position": 13,
-        "itemId": "kbp_pp90_shotgun"
-      },
-      {
-        "position": 14,
+        "position": 5,
         "itemId": "pistol_ammo",
-        "quantity": 9431
+        "quantity": 9970
       },
       {
-        "position": 15,
-        "itemId": "rifle_ammo",
-        "quantity": 9910
+        "position": 6,
+        "itemId": "hk_mp5k"
       },
       {
-        "position": 16,
-        "itemId": "sniper_ammo",
-        "quantity": 9985
-      },
-      {
-        "position": 19,
-        "itemId": "m9_beretta"
+        "position": 7,
+        "itemId": "fn_502_tactical_fde"
       }
     ]
   },
   "hotbar": {
     "items": [
       {
+        "position": 0,
+        "itemId": "hk_mp5sd",
+        "ammo": 20
+      },
+      {
+        "position": 1,
+        "itemId": "kbp_pp90_shotgun"
+      },
+      {
+        "position": 2,
+        "itemId": "m9_beretta"
+      },
+      {
         "position": 3,
-        "itemId": "akm",
-        "ammo": 9
+        "itemId": "mp5a2"
       },
       {
         "position": 4,
         "itemId": "desert_eagle",
-        "ammo": 4
-      },
-      {
-        "position": 1,
-        "itemId": "mp5a2",
-        "ammo": 15
-      },
-      {
-        "position": 5,
-        "itemId": "fn_502_tactical_fde",
-        "ammo": 14
-      },
-      {
-        "position": 0,
-        "itemId": "sword_mk18_mjolnir",
         "ammo": 0
       },
       {
-        "position": 2,
-        "itemId": "m9_beretta",
-        "ammo": 13
+        "position": 5,
+        "itemId": "glock_17"
       },
       {
         "position": 6,
-        "itemId": "rifle_ammo",
-        "quantity": 30
+        "itemId": "shotgun_ammo",
+        "quantity": 10000
       },
       {
         "position": 7,
-        "itemId": "pistol_ammo",
-        "quantity": 30
+        "itemId": "sword_mk18_mjolnir"
       },
       {
         "position": 8,
-        "itemId": "medkit"
+        "itemId": "sniper_ammo",
+        "quantity": 10000
       }
     ]
   },
@@ -111,5 +94,18 @@
         "quantity": 10000
       }
     ]
+  },
+  "progression": {
+    "level": 4,
+    "xp": 55
+  },
+  "stats": {
+    "kills": 4,
+    "deaths": 3
+  },
+  "weaponProgression": {
+    "akm": {
+      "kills": 1
+    }
   }
 }

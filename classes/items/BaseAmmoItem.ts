@@ -81,4 +81,13 @@ export default abstract class BaseAmmoItem extends BaseItem {
 
   static override readonly defaultRelativePositionAsChild = { x: 0, y: 0, z: 0 };
   static override readonly defaultRelativeRotationAsChild = { x: 0, y: 0, z: 0, w: 1 };
+
+  // Ensure cloning preserves ammo quantity for drops/pickups
+  public override clone(overrides?: AmmoOverrides): BaseAmmoItem {
+    const ItemClass = this.constructor as any;
+    return new ItemClass({
+      quantity: this._ammoQuantity,
+      ...overrides,
+    });
+  }
 } 

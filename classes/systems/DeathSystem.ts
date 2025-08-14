@@ -5,6 +5,7 @@ import WeaponItem from '../weapons/items/WeaponItem';
 import ProgressionSystem from './ProgressionSystem';
 import WeaponProgressionSystem from './WeaponProgressionSystem';
 import PlayerStatsSystem from './PlayerStatsSystem';
+import SessionManager from './SessionManager';
 
 export interface DeathEvent {
   player: GamePlayerEntity;
@@ -68,6 +69,31 @@ export class DeathSystem {
     this._returnToMainMenu(player, killer);
   }
 
+  /**
+   * Marks the player as MIA due to raid timer expiration.
+   * Drops inventory, clears hotbar/backpack, and returns to menu with MIA banner.
+   */
+  public handleMIA(player: GamePlayerEntity): void {
+    if (!player.world) return;
+
+    console.log(`Handling MIA for player ${player.player.username || player.player.id}`);
+
+    // Save ammo then drop items
+    this._saveWeaponAmmoData(player);
+    this._dropAllItems(player);
+
+    player.gamePlayer.hotbar.clearAllItems();
+    player.gamePlayer.backpack.clearAllItems();
+
+    // Inform player via UI and chat
+    try {
+      player.world.chatManager.sendPlayerMessage(player.player, 'You went M.I.A. — gear lost', 'FF0000');
+    } catch {}
+
+    // Return to main menu with MIA banner
+    this._returnToMainMenuMIA(player);
+  }
+
   private _dropAllItems(player: GamePlayerEntity): void {
     if (!player.world) return;
 
@@ -102,8 +128,8 @@ export class DeathSystem {
 
   private _saveWeaponAmmoData(player: GamePlayerEntity): void {
     // Save ammo data from equipped weapon to the corresponding weapon item
-    if (player.gamePlayer._gun) {
-      const gun = player.gamePlayer._gun;
+    const gun = player.gamePlayer.getCurrentWeapon?.();
+    if (gun) {
       const ammo = gun.ammo;
       
       // Find the weapon item in hotbar and backpack and save ammo data
@@ -126,6 +152,7 @@ export class DeathSystem {
   }
 
   private _dropItem(item: any, basePosition: Vector3Like, world: World): void {
+    // Clone with preserved stack quantity/ammo
     const droppedItem = item.clone();
     
     const offsetX = (Math.random() - 0.5) * 2;
@@ -158,6 +185,7 @@ export class DeathSystem {
     
     player.despawn();
     player.gamePlayer.clearCurrentEntity();
+    try { SessionManager.instance.clearPlayer(player.gamePlayer); } catch {}
     
     this._goToMainMenu(player);
 
@@ -168,6 +196,19 @@ export class DeathSystem {
           type: 'player-death',
           message: killedBy ? `You were eliminated by ${killedBy}` : 'You were eliminated',
         });
+      } catch {}
+    }, 150);
+  }
+
+  private _returnToMainMenuMIA(player: GamePlayerEntity): void {
+    if (!player.world) return;
+    player.despawn();
+    player.gamePlayer.clearCurrentEntity();
+    try { SessionManager.instance.clearPlayer(player.gamePlayer); } catch {}
+    this._goToMainMenu(player);
+    setTimeout(() => {
+      try {
+        player.player.ui.sendData({ type: 'player-mia', message: 'You went M.I.A.' });
       } catch {}
     }, 150);
   }

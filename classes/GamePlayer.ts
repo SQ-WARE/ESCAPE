@@ -25,6 +25,7 @@ import WeaponEntity from './weapons/entities/WeaponEntity';
 import { WeaponFactory } from './weapons/WeaponFactory';
 import PlayerStatsSystem from './systems/PlayerStatsSystem';
 import WeaponProgressionSystem from './systems/WeaponProgressionSystem';
+import SessionManager from './systems/SessionManager';
 
 // Register ammo items
 ItemRegistry.registerItem(PistolAmmoItem);
@@ -75,6 +76,8 @@ export default class GamePlayer {
   private _isInMenu: boolean = true;
   private _isDestroyed: boolean = false;
   private _isCrateOpen: boolean = false;
+	private _isDeploying: boolean = false;
+	private _pendingDeploy: boolean = false;
 
   private constructor(player: Player) {
     this.player = player;
@@ -253,6 +256,20 @@ export default class GamePlayer {
 
   public deploy(): void {
     if (this._currentEntity || !this.player.world) return;
+    if (!SessionManager.instance.beforeDeploy(this)) return;
+
+		// If a world transfer was triggered by session selection, wait until it completes.
+    try {
+      const pid = (this.player as any).id || this.player.username;
+      if (SessionManager.instance.isTransferringById(pid)) {
+				this._pendingDeploy = true;
+				return; // onJoined handler will resume deploy after transfer completes
+      }
+    } catch {}
+
+		if (this._isDeploying) return;
+		this._isDeploying = true;
+		this._pendingDeploy = false;
 
     this._isInMenu = false;
     // Ensure menu-related listeners are detached so UI events cannot bring the user back to menu while in-game
@@ -269,8 +286,33 @@ export default class GamePlayer {
     this.player.ui.on(PlayerUIEvent.DATA, this._onPlayerUIData);
     this.player.ui.lockPointer(true);
     
-    this.player.ui.sendData({ type: 'exitMenu' });
+    // Ensure HUD is properly initialized for the session
+    const sessionId = SessionManager.instance.getPlayerSessionId(this);
+    if (sessionId) {
+      const secondsLeft = SessionManager.instance.getSecondsLeftForSession(sessionId);
+      if (typeof secondsLeft === 'number') {
+        const session = SessionManager.instance.getMenuSessionSummaries().find(s => s.id === sessionId);
+        if (session) {
+          this.player.ui.sendData({ 
+            type: 'raid-timer', 
+            secondsLeft, 
+            totalSeconds: session.durationSeconds, 
+            sessionId: session.id, 
+            worldHour: session.worldHour, 
+            worldMinute: session.worldMinute 
+          });
+        }
+      }
+    }
+    
+		this.player.ui.sendData({ type: 'exitMenu' });
+		this._isDeploying = false;
   }
+
+	public resumeDeployAfterTransfer(): void {
+		if (!this._pendingDeploy) return;
+		this.deploy();
+	}
 
   public rejoin(): void {
     if (this._currentEntity) {
@@ -346,6 +388,9 @@ export default class GamePlayer {
 
     // Persist
     this.save();
+
+    // Clear session assignment upon successful extraction
+    try { SessionManager.instance.onExtractionSuccess(this); } catch {}
 
     // Load menu and notify success (slight delay to ensure UI listeners are ready)
     this.loadMenu();
@@ -730,6 +775,11 @@ export default class GamePlayer {
       case 'deploy':
         this.deploy();
         break;
+      case 'selectSession':
+        if (typeof data.sessionId === 'string') {
+          try { SessionManager.instance.handleSelectSession(this, data.sessionId); this._sendMenuHud(); } catch {}
+        }
+        break;
       case 'openStash':
       case 'openProgression':
         // Prevent opening other menus unless currently in menu
@@ -838,6 +888,7 @@ export default class GamePlayer {
       const xpNext = 100 + 25 * Math.max(0, level - 1);
       const currency = Math.max(0, Math.floor((data as any)?.currency ?? 0));
       const username = this.player.username || this.player.id || 'Player';
+      const sessionExtras = SessionManager.instance.getMenuHudExtras(this);
       this.player.ui.sendData({
         type: 'menu-hud',
         username,
@@ -845,6 +896,7 @@ export default class GamePlayer {
         xp,
         xpNext,
         currency,
+        ...sessionExtras,
       });
     } catch {}
   }

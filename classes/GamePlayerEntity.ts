@@ -148,27 +148,48 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     // Apply damage using DamageSystem for proper tracking
     const damageResult = DamageSystem.instance.applyDamage(hitEntity, damage, hitDirection, this);
     
-    // Apply knockback to the hit player
-    const knockbackDistance = 1.6; // Distance to push the player back
-    const currentPos = hitEntity.position;
-    const newPosition = {
-      x: currentPos.x + (hitDirection.x * knockbackDistance),
-      y: currentPos.y, // Keep same Y position
-      z: currentPos.z + (hitDirection.z * knockbackDistance),
-    };
-    
-    try {
-      const impulse = {
-        x: hitDirection.x * 15.0,
-        y: 0,
-        z: hitDirection.z * 15.0,
-      };
-      hitEntity.applyImpulse(impulse);
-      
-      setTimeout(() => {
-        hitEntity.setPosition(newPosition);
-      }, 50);
-    } catch (error) {
+		// Apply collision-safe knockback to the hit player
+		try {
+			// Normalize horizontal hit direction
+			const len = Math.hypot(hitDirection.x, hitDirection.z) || 1;
+			const dirX = hitDirection.x / len;
+			const dirZ = hitDirection.z / len;
+			
+			// Raycast a short distance in the push direction from target's chest height
+			const origin = { x: hitEntity.position.x, y: hitEntity.position.y + 1.2, z: hitEntity.position.z };
+			const dir = { x: dirX, y: 0, z: dirZ };
+			const maxProbe = 1.6; // desired knockback path check
+			const raycastHit = hitEntity.world?.simulation.raycast(origin, dir, maxProbe, {
+				filterExcludeRigidBody: hitEntity.rawRigidBody,
+			});
+			
+			// If a wall is very close (< 0.3m), skip impulse to avoid clipping
+			let impulseScale = 1.0;
+			if (raycastHit && (raycastHit as any).hitPoint) {
+				const hp = (raycastHit as any).hitPoint;
+				const dx = hp.x - origin.x;
+				const dz = hp.z - origin.z;
+				const obstacleDistance = Math.hypot(dx, dz);
+				if (obstacleDistance < 0.3) {
+					impulseScale = 0.0;
+				} else {
+					// Scale impulse down if obstacle within probe range
+					impulseScale = Math.max(0.2, Math.min(1.0, obstacleDistance / maxProbe));
+				}
+			}
+			
+			// Clamp impulse magnitude to avoid tunneling through thin walls
+			const baseImpulse = 6.5; // reduced from 15.0 to be collision-safe
+			const impulse = {
+				x: dirX * baseImpulse * impulseScale,
+				y: 0,
+				z: dirZ * baseImpulse * impulseScale,
+			};
+			
+			if (impulseScale > 0) {
+				hitEntity.applyImpulse(impulse);
+			}
+		} catch (error) {
       console.error(`🥊 Failed to apply knockback:`, error);
     }
     

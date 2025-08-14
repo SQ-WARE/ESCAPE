@@ -48,7 +48,7 @@ export default class WeaponEffectsSystem {
 
       const tracer = new BulletTracerEntity(origin, direction, {
         modelUri: 'models/projectiles/bullet.glb',
-        modelScale: 0.35,
+        modelScale: 1,
         speed: 360,
         endPoint,
       });

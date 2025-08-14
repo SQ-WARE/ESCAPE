@@ -147,9 +147,9 @@ export default class HealthSystem {
     this._stopAutoHealTicker();
     
     // Import DeathSystem dynamically to avoid circular dependency
-    const { DeathSystem } = require('./DeathSystem');
-    // Pass through last damage source for proper attribution
-    DeathSystem.instance.handlePlayerDeath(this._player, this._player.lastDamageSource);
+    import('./DeathSystem').then(({ DeathSystem }) => {
+      DeathSystem.instance.handlePlayerDeath(this._player, this._player.lastDamageSource);
+    }).catch(() => {});
   }
 
   private _updatePlayerUIHealth(): void {

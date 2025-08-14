@@ -29,7 +29,6 @@ interface SpawnArea {
 }
 
 export class LootCrateEntity extends Entity {
-  private _lootGenerated = false;
   private readonly _lootSystem: LootSystem;
   private readonly _rarity: Rarity;
   private _crateId: string;
@@ -61,25 +60,13 @@ export class LootCrateEntity extends Entity {
     if (this._isOpenByPlayerId.has(pid)) return; // already open for this player
     this._isOpenByPlayerId.add(pid);
     try { interactor.gamePlayer.setCrateOpen(true); } catch {}
-    const contents = this._lootSystem.getOrSeedCrateContents(this._crateId, this._rarity);
+    this._lootSystem.getOrSeedCrateContents(this._crateId, this._rarity);
     interactor.player.ui.load('ui/crate.html');
     const handler = (evt: EventPayloads[PlayerUIEvent.DATA]) => this._onCrateUIEvent(evt, interactor);
     this._uiHandler = handler;
     interactor.player.ui.on(PlayerUIEvent.DATA, handler);
-    // Send contents after a short delay to ensure UI is fully loaded
-    setTimeout(() => {
-      try {
-        interactor.player.ui.sendData({
-          type: 'crate-contents',
-          crateId: this._crateId,
-          items: this._lootSystem.getCrateClientContents(this._crateId, this._rarity),
-          gridWidth: this._lootSystem.getCrateGridWidth(),
-          size: this._lootSystem.getCrateSize(),
-          inventory: this._lootSystem._serializeInventory(interactor.gamePlayer.backpack),
-          hotbar: this._lootSystem._serializeInventory(interactor.gamePlayer.hotbar),
-        });
-      } catch {}
-    }, 150);
+    // Send initial contents shortly after UI loads
+    setTimeout(() => this._lootSystem.sendCrateContents(interactor, this._crateId, this._rarity), 80);
     try { (this as any).startModelOneshotAnimations?.(['Open Lid']); } catch {}
   }
 
@@ -100,50 +87,22 @@ export class LootCrateEntity extends Entity {
       const taken = this._lootSystem.takeFromCrate(this._crateId, data.index);
       if (taken) {
         this._lootSystem.grantLoot(playerEntity, taken);
-        try {
-          playerEntity.player.ui.sendData({
-            type: 'crate-sync',
-            crate: this._lootSystem.getCrateClientContents(this._crateId, this._rarity),
-            inventory: this._lootSystem._serializeInventory(playerEntity.gamePlayer.backpack),
-            hotbar: this._lootSystem._serializeInventory(playerEntity.gamePlayer.hotbar),
-          });
-        } catch {}
+        this._lootSystem.sendCrateSync(playerEntity, this._crateId, this._rarity);
       }
     }
     if (data.type === 'crate-move') {
       this._lootSystem.enqueueOp(playerEntity, () => {
         this._lootSystem.moveItemBetween(this._crateId, String(data.fromType), Number(data.fromIndex), String(data.toType), Number(data.toIndex), playerEntity);
-        try {
-          playerEntity.player.ui.sendData({
-            type: 'crate-sync',
-            crate: this._lootSystem.getCrateClientContents(this._crateId, this._rarity),
-            inventory: this._lootSystem._serializeInventory(playerEntity.gamePlayer.backpack),
-            hotbar: this._lootSystem._serializeInventory(playerEntity.gamePlayer.hotbar),
-          });
-        } catch {}
+        this._lootSystem.sendCrateSync(playerEntity, this._crateId, this._rarity);
       });
     }
     if (data.type === 'crate-requestSync') {
-      try {
-        playerEntity.player.ui.sendData({
-          type: 'crate-sync',
-          crate: this._lootSystem.getCrateClientContents(this._crateId, this._rarity),
-          inventory: this._lootSystem._serializeInventory(playerEntity.gamePlayer.backpack),
-          hotbar: this._lootSystem._serializeInventory(playerEntity.gamePlayer.hotbar),
-        });
-      } catch {}
+      this._lootSystem.sendCrateSync(playerEntity, this._crateId, this._rarity);
     }
     if (data.type === 'crate-quickMove') {
       this._lootSystem.enqueueOp(playerEntity, () => {
         this._lootSystem.quickMoveBetween(this._crateId, String(data.fromType), Number(data.fromIndex), playerEntity);
-        try {
-          playerEntity.player.ui.sendData({
-            type: 'crate-sync',
-            crate: this._lootSystem.getCrateClientContents(this._crateId, this._rarity),
-            inventory: this._lootSystem._serializeInventory(playerEntity.gamePlayer.backpack),
-            hotbar: this._lootSystem._serializeInventory(playerEntity.gamePlayer.hotbar),
-          });
-        } catch {}
+        this._lootSystem.sendCrateSync(playerEntity, this._crateId, this._rarity);
       });
     }
     if (data.type === 'crate-close') {
@@ -267,6 +226,31 @@ export default class LootSystem {
     this.getOrSeedCrateContents(crateId, rarity);
     const rec = this.getOrCreateCrateInventory(crateId);
     return this._serializeInventory(rec.inv);
+  }
+
+  public sendCrateContents(player: GamePlayerEntity, crateId: string, rarity: Rarity): void {
+    try {
+      player.player.ui.sendData({
+        type: 'crate-contents',
+        crateId,
+        items: this.getCrateClientContents(crateId, rarity),
+        gridWidth: this.getCrateGridWidth(),
+        size: this.getCrateSize(),
+        inventory: this._serializeInventory(player.gamePlayer.backpack),
+        hotbar: this._serializeInventory(player.gamePlayer.hotbar),
+      });
+    } catch {}
+  }
+
+  public sendCrateSync(player: GamePlayerEntity, crateId: string, rarity: Rarity): void {
+    try {
+      player.player.ui.sendData({
+        type: 'crate-sync',
+        crate: this.getCrateClientContents(crateId, rarity),
+        inventory: this._serializeInventory(player.gamePlayer.backpack),
+        hotbar: this._serializeInventory(player.gamePlayer.hotbar),
+      });
+    } catch {}
   }
 
   public takeFromCrate(crateId: string, index: number): LootItem | null {
@@ -597,17 +581,13 @@ export default class LootSystem {
     const tryAdd = (inv: ItemInventory | null): boolean => {
       if (!inv) return false;
       if (removed instanceof BaseAmmoItem) {
-        // Always place as a new separate stack if possible; do not auto-merge
         const empty = this._findFirstEmptySlot(inv);
         if (empty >= 0 && inv.addItem(removed, empty)) return true;
-        // else try generic add (may merge if user wants that behavior elsewhere)
         return inv.addItem(removed);
       }
       if (removed.stackable) {
-        // Merge into compatible stacks first across entire container
         const { fullyMerged } = this._mergeStackableInto(inv, removed);
         if (fullyMerged) return true;
-        // Place remainder if any into first empty slot
         const empty = this._findFirstEmptySlot(inv);
         if (empty >= 0 && inv.addItem(removed, empty)) return true;
         return false;

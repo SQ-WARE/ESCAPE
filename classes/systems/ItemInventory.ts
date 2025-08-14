@@ -45,6 +45,7 @@ export default class ItemInventory {
     }
     // Only auto-merge when no explicit target position is provided
     if (item.stackable && (position === undefined || position === null)) {
+      // First pass: try exact class/name merge (legacy path)
       for (const existingItem of this._itemPositions.keys()) {
         if (
           existingItem.constructor === item.constructor && 
@@ -54,6 +55,20 @@ export default class ItemInventory {
           existingItem.adjustQuantity(item.quantity);
           this.onSlotChanged(this._itemPositions.get(existingItem)!, existingItem);
           return true;
+        }
+      }
+      // Second pass: ammo-aware merge using canStackWith/addToStack
+      for (const existingItem of this._itemPositions.keys()) {
+        if (typeof (existingItem as any).canStackWith === 'function' && (existingItem as any).canStackWith(item)) {
+          const leftover = (existingItem as any).addToStack(item.quantity);
+          this.onSlotChanged(this._itemPositions.get(existingItem)!, existingItem);
+          if (leftover <= 0) {
+            return true;
+          } else {
+            // Update carried item quantity and continue placing leftover in a new slot
+            (item as any).quantity = leftover;
+            break;
+          }
         }
       }
     }

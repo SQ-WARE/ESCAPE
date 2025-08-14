@@ -3,7 +3,7 @@
   "specifiers": {
     "npm:@hytopia.com/assets@~0.3.18": "0.3.18",
     "npm:@types/bun@latest": "1.2.20",
-    "npm:hytopia@~0.9.2": "0.9.2"
+    "npm:hytopia@~0.9.4": "0.9.4"
   },
   "npm": {
     "@colors/colors@1.5.0": {
@@ -910,8 +910,8 @@
     "graceful-fs@4.2.11": {
       "integrity": "sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ=="
     },
-    "h264-profile-level-id@2.2.2": {
-      "integrity": "sha512-ffHXSG/2zNkDT1P6ivRts0D5VGdzoK3MFujSZpJHqyD53IctMIwNMqLY4+94dSy0f/TZzUDYxM/UiWT3Dz/j8g==",
+    "h264-profile-level-id@2.2.3": {
+      "integrity": "sha512-LhhB3zIIu2TTZFyBC57s+pBddH6eTz8NMr6CwlWWRdy2kurhxxOU5TS0CguJ3i9MEc2B6a0aElAwBxMqS6FdLA==",
       "dependencies": [
         "debug"
       ]
@@ -934,8 +934,8 @@
         "function-bind"
       ]
     },
-    "hytopia@0.9.2": {
-      "integrity": "sha512-9B40jXLEhn2R/tvR9Qur0WJEE0JsNbGRL8VUiYG1vDLB63bldEzt0I58x2Vkx/j7MhAzTE7+IB68iYS+ItstMA==",
+    "hytopia@0.9.4": {
+      "integrity": "sha512-GdWUyrQ2h+IqRgWrfYngYJIcq2h2wcTc2VYjRRPN2BtePUkr+EnY5OCLOcEjwvKYXnCNo6bL1Q0mlRDWAbA0xQ==",
       "dependencies": [
         "@gltf-transform/cli",
         "archiver",
@@ -1659,7 +1659,7 @@
       "dependencies": [
         "npm:@hytopia.com/assets@~0.3.18",
         "npm:@types/bun@latest",
-        "npm:hytopia@~0.9.2"
+        "npm:hytopia@~0.9.4"
       ]
     }
   }

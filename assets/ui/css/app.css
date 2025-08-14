@@ -1,7 +1,7 @@
 /* Combined UI stylesheet: credits, tooltips, smoke effects, title, menu (imports removed), stash, game, theme-glass */
 
 /* === Variables & Base Resets === */
-:root { --glass-bg: rgba(20, 20, 25, 0.26); --glass-bg-strong: rgba(30, 30, 38, 0.36); --glass-border: rgba(255, 255, 255, 0.16); --glass-border-strong: rgba(255, 255, 255, 0.22); --glass-shadow: 0 10px 36px rgba(0, 0, 0, 0.38); --glass-radius: 12px; --glass-radius-lg: 20px; --glass-blur: 20px; --glass-saturate: 1.22; --accent: #ff6b35;
+:root { --glass-bg: rgba(20, 20, 25, 0.26); --glass-bg-strong: rgba(30, 30, 38, 0.36); --glass-border: rgba(255, 255, 255, 0.16); --glass-border-strong: rgba(255, 255, 255, 0.22); --glass-shadow: 0 10px 36px rgba(0, 0, 0, 0.38); --glass-radius: 12px; --glass-radius-lg: 20px; --glass-blur: 20px; --glass-saturate: 1.22; --accent: #ff7a59; --accent-strong: #ff5a2b; --brand-cyan: #1ec8ff; --brand-deep: #0b1d2d; --brand-panel: rgba(16, 18, 24, 0.82);
   /* Gridline composite backgrounds */
   --grid-bg-neutral: radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,0.03), transparent 70%),
                      repeating-linear-gradient(0deg, rgba(255,255,255,0.05), rgba(255,255,255,0.05) 2px, transparent 2px, transparent 6px),
@@ -503,16 +503,16 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
   position: relative;
   padding: 0;
   height: 52px;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: border-color 0.12s ease, background 0.12s ease;
+  transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, transform 0.06s ease;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(0, 0, 0, 0.10);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: linear-gradient(180deg, rgba(32, 34, 40, 0.85), rgba(24, 26, 32, 0.78));
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   outline: none;
-  box-shadow: none;
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.28);
   width: var(--menu-button-width, clamp(260px, 28vw, 520px));
 }
 .action-button::before {
@@ -526,23 +526,36 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
 }
 .action-button:hover,
 .action-button:focus-visible {
-  background: rgba(255, 255, 255, 0.9);
-  border-color: rgba(0, 0, 0, 0.14);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 12px 42px rgba(0, 0, 0, 0.34);
 }
 .action-button:hover::before,
 .action-button:focus-visible::before {
   background: var(--accent);
 }
-.action-button.active { background: rgba(255, 255, 255, 0.92); border-color: rgba(0,0,0,0.16); }
+.action-button.active { border-color: rgba(255,255,255,0.24); box-shadow: 0 14px 48px rgba(0,0,0,0.38); }
 .action-button.active::before { background: var(--accent); }
 .action-button.primary,
 .action-button.secondary { box-shadow: none; }
+.action-button.primary {
+  background: linear-gradient(90deg, var(--accent-strong), var(--accent));
+  border-color: rgba(255, 122, 89, 0.7);
+}
+.action-button.primary:hover,
+.action-button.primary:focus-visible { background: linear-gradient(90deg, #ff8b68, var(--accent)); border-color: rgba(255, 122, 89, 0.85); }
+.action-button.secondary {
+  background: linear-gradient(180deg, rgba(34, 36, 44, 0.85), rgba(26, 28, 36, 0.82));
+  border-color: rgba(255, 255, 255, 0.10);
+}
+.action-button.secondary:hover,
+.action-button.secondary:focus-visible { border-color: rgba(255, 255, 255, 0.18); }
 .action-button:focus-visible { outline: none; }
 .action-button:focus { outline: none; }
 .button-content { display: flex; align-items: center; justify-content: flex-start; padding: 0 16px 0 20px; height: 100%; box-sizing: border-box; }
 .button-text { display: flex; flex-direction: column; gap: 2px; text-align: left; }
-.button-title { font-size: 20px; font-weight: 900; letter-spacing: 0.5px; color: #111111; text-shadow: none; }
-.action-button.primary .button-title { color: #111111; text-shadow: none; }
+.button-title { font-size: 20px; font-weight: 900; letter-spacing: 0.5px; color: #e8eef5; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+.action-button.primary .button-title { color: #ffffff; text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
+.action-button.secondary .button-title { color: #e8eef5; }
 .button-subtitle { display: none; }
 /* Hotbar glass adjustments */
 .tactical-hotbar { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; border: 0; border-radius: 0; box-shadow: none; }
@@ -595,5 +608,54 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
 .ammo-label { background: rgba(25, 25, 30, 0.95); color: #e0e0e0; font-size: 10px; font-weight: 700; padding: 2px 4px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.2); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); }
 /* Drag ghost surface */
 .drag-ghost { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; border: 0; border-radius: 0; box-shadow: none; }
+
+/* === Session Chooser (ALPHA / OMEGA) === */
+#session-chooser { display: flex; gap: 10px; width: var(--menu-button-width, clamp(260px, 28vw, 520px)); }
+.section-label { font-weight: 900; font-size: 12px; letter-spacing: 1.6px; color: #cfe8ff; opacity: 0.9; margin: 0 2px 8px; }
+.session-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.session-card { 
+  background: var(--glass-bg-strong);
+  border: 1.5px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  padding: 12px 14px; 
+  transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+}
+.session-card:hover, .session-card:focus-visible { 
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+.session-card.active {
+  border-color: rgba(255, 165, 0, 0.55);
+  box-shadow: 0 10px 36px rgba(0,0,0,0.48), 0 0 14px rgba(255,165,0,0.28);
+}
+.session-card .session-meta { display: flex; justify-content: flex-end; }
+.session-pill { font-size: 10px; font-weight: 900; padding: 2px 8px; border-radius: 999px; letter-spacing: 1px; }
+.session-pill-alpha { color: #1b3a0a; background: linear-gradient(90deg, #c6ffdd, #fbd786); border: 1px solid rgba(255,255,255,0.28); }
+.session-pill-omega { color: #0a163a; background: linear-gradient(90deg, #00c6ff, #0072ff); border: 1px solid rgba(255,255,255,0.28); }
+.session-card .session-title { 
+  font-size: 11px; 
+  font-weight: 900; 
+  letter-spacing: 1.4px; 
+  color: #e8eef5; 
+  text-transform: uppercase; 
+  opacity: 0.9;
+}
+.session-card .session-subtitle { font-size: 10px; color: #9fb6c9; letter-spacing: 1px; }
+.session-card .session-world-subtitle { font-size: 10px; color: #9fb6c9; letter-spacing: 1px; margin-top: 4px; }
+.session-card .session-timer-left { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 18px; font-weight: 900; color: #ffffff; letter-spacing: 1px; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+.session-card .session-timer-world { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 16px; font-weight: 800; color: #d0e8ff; letter-spacing: 0.5px; text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
+.session-card .session-timer { 
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 18px; 
+  font-weight: 900; 
+  color: #ffffff; 
+  letter-spacing: 1px; 
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+.session-card[data-session="alpha"] .session-title { color: #64b5f6; }
+.session-card[data-session="omega"] .session-title { color: #81c784; }
 
 

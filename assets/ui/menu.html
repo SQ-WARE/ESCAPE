@@ -40,6 +40,27 @@
     </div>
     
     <div class="main-actions">
+      <div id="session-chooser" class="ui-panel" style="margin-top: 0; padding: 12px; display: none; gap: 12px; align-items: stretch; flex-direction: column;">
+        <div class="section-label">CHOOSE SESSION</div>
+        <div class="session-grid">
+          <div id="session-a" class="session-card" data-session="alpha" tabindex="0" style="flex:1; display:flex; flex-direction:column; gap:6px; cursor:pointer;">
+            <div class="session-meta"><span class="session-pill session-pill-alpha">DAY</span></div>
+            <div class="session-title">ALPHA</div>
+            <div class="session-subtitle">TIME LEFT</div>
+            <div class="session-timer-left" data-for-left="alpha">--:--</div>
+            <div class="session-world-subtitle">WORLD TIME</div>
+            <div class="session-timer-world" data-for-world="alpha">--:--</div>
+          </div>
+          <div id="session-b" class="session-card" data-session="omega" tabindex="0" style="flex:1; display:flex; flex-direction:column; gap:6px; cursor:pointer;">
+            <div class="session-meta"><span class="session-pill session-pill-omega">NIGHT</span></div>
+            <div class="session-title">OMEGA</div>
+            <div class="session-subtitle">TIME LEFT</div>
+            <div class="session-timer-left" data-for-left="omega">--:--</div>
+            <div class="session-world-subtitle">WORLD TIME</div>
+            <div class="session-timer-world" data-for-world="omega">--:--</div>
+          </div>
+        </div>
+      </div>
       <button class="action-button primary active" id="deploy-button" data-action="deploy">
         <div class="button-content">
           <div class="button-text">
@@ -81,6 +102,10 @@
   <div id="death-banner" class="extraction-success ui-panel" hidden>
     <div class="success-title">You Died</div>
     <div class="success-subtitle" id="death-banner-sub">You were eliminated</div>
+  </div>
+  <div id="mia-banner" class="extraction-success ui-panel" hidden>
+    <div class="success-title">M.I.A.</div>
+    <div class="success-subtitle" id="mia-banner-sub">You went missing in action</div>
   </div>
 </div>
 
@@ -206,6 +231,18 @@
       case 'player-death':
         showDeathBanner(data.message || 'You were eliminated');
         break;
+      case 'player-mia':
+        (function(){
+          const panel = document.getElementById('mia-banner');
+          const sub = document.getElementById('mia-banner-sub');
+          if (panel) {
+            if (sub && data && data.message) sub.textContent = data.message;
+            panel.style.display = 'block';
+            clearTimeout(extractionSuccessTimeout);
+            extractionSuccessTimeout = setTimeout(() => { panel.style.display = 'none'; }, 4000);
+          }
+        })();
+        break;
       case 'enterMenu':
         // Request HUD sync on entering menu
         hytopia.sendData({ type: 'requestMenuHud' });
@@ -221,6 +258,12 @@
 
   function updateMenuHud(data) {
     try {
+      // Cache sessions for live countdown
+      if (Array.isArray(data.sessions)) {
+        window.__sessions = data.sessions.map(s => ({ id: s.id, label: s.label, endsAt: s.endsAt, worldHour: s.worldHour, worldMinute: s.worldMinute }));
+        window.__assignedSessionId = data.assignedSessionId || null;
+        ensureSessionTicker();
+      }
       if (typeof data.username === 'string') {
         var u = document.getElementById('hud-username');
         if (u) u.textContent = data.username;
@@ -238,6 +281,71 @@
         var xpFillEl = document.getElementById('hud-xp-fill');
         if (xpFillEl) xpFillEl.style.width = pct + '%';
       }
+      // Sessions
+      try {
+        const chooser = document.getElementById('session-chooser');
+        if (Array.isArray(data.sessions) && data.sessions.length > 0) {
+          chooser.style.display = 'flex';
+          renderSessionTimers();
+        } else {
+          chooser.style.display = 'none';
+        }
+      } catch {}
+    } catch {}
+  }
+
+  // Session selection handlers
+  document.addEventListener('click', (e) => {
+    const card = e.target.closest && e.target.closest('.session-card');
+    if (card) {
+      const sid = card.getAttribute('data-session');
+      if (sid) {
+        try { hytopia.sendData({ type: 'selectSession', sessionId: sid }); } catch {}
+      }
+    }
+  });
+
+  // Warn on deploy if no session selected
+  deployButton.addEventListener('click', (e) => {
+    const active = document.querySelector('.session-card.active');
+    if (!active) {
+      try { hytopia.sendData({ type: 'notification', message: 'Select a session (ALPHA or OMEGA) to deploy', color: 'FF0000' }); } catch {}
+    }
+  });
+
+  // Live countdown using server-provided endsAt
+  let __sessionTicker = null;
+  function ensureSessionTicker() {
+    if (__sessionTicker) return;
+    __sessionTicker = setInterval(renderSessionTimers, 1000);
+  }
+  function renderSessionTimers() {
+    try {
+      const sessions = (window.__sessions || []);
+      const assigned = window.__assignedSessionId || null;
+      const now = Date.now();
+      function fmt(left) {
+        const sec = Math.max(0, Math.ceil(left / 1000));
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      }
+      function applyFor(id) {
+        const s = sessions.find(x => x.id === id);
+        const elLeft = document.querySelector(`.session-timer-left[data-for-left="${id}"]`);
+        const elWorld = document.querySelector(`.session-timer-world[data-for-world="${id}"]`);
+        const card = document.querySelector(`.session-card[data-session="${id}"]`);
+        if (s) {
+          const left = fmt(Math.max(0, s.endsAt - now));
+          const wh = (s.worldHour ?? 0).toString().padStart(2, '0');
+          const wm = (s.worldMinute ?? 0).toString().padStart(2, '0');
+          if (elLeft) elLeft.textContent = left;
+          if (elWorld) elWorld.textContent = `${wh}:${wm}`;
+        }
+        if (card) card.classList.toggle('active', assigned === id);
+      }
+      applyFor('alpha');
+      applyFor('omega');
     } catch {}
   }
 
