@@ -1,20 +1,23 @@
 {
   "name": "game",
-  "module": "index.ts",
+  "version": "1.0.0",
+  "description": "ESCAPE - Hytopia extraction shooter game",
+  "main": "index.ts",
   "type": "module",
   "private": true,
-  "devDependencies": {
-    "@types/bun": "latest"
+  "scripts": {
+    "start": "node --loader ts-node/esm index.ts",
+    "dev": "node --loader ts-node/esm --watch index.ts",
+    "build": "tsc",
+    "type-check": "tsc --noEmit"
   },
-  "peerDependencies": {
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.0",
     "typescript": "^5.8.3"
   },
   "dependencies": {
     "@hytopia.com/assets": "^0.3.18",
-    "hytopia": "^0.9.4"
-  },
-  "trustedDependencies": [
-    "mediasoup",
-    "sharp"
-  ]
+    "hytopia": "^0.10.0"
+  }
 }
