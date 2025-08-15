@@ -118,10 +118,7 @@ export default class WeaponEntity extends Entity {
   }
 
   public getMuzzleFlashPositionRotation(): { position: Vector3Like, rotation: QuaternionLike } {
-    // Use weapon-specific muzzle flash position if defined, otherwise use defaults
-    const defaultPosition = { x: 0, y: 0.03, z: -1.2 };
-    const defaultRotation = { x: 0, y: 0, z: 0, w: 1 };
-    
+    // Use weapon-specific muzzle flash position if defined, otherwise use category-specific defaults
     if (this._weaponData.assets.effects?.muzzleFlash) {
       return {
         position: this._weaponData.assets.effects.muzzleFlash.position,
@@ -129,10 +126,55 @@ export default class WeaponEntity extends Entity {
       };
     }
     
+    // Category-specific default positions for better visual alignment
+    const { position, rotation } = this._getCategoryDefaultMuzzleFlash();
+    
     return {
-      position: defaultPosition,
-      rotation: defaultRotation
+      position,
+      rotation
     };
+  }
+
+  private _getCategoryDefaultMuzzleFlash(): { position: Vector3Like, rotation: QuaternionLike } {
+    // Use Quaternion.fromEuler to face the muzzle flash forwards
+    
+    switch (this._weaponData.category) {
+      case 'pistol':
+        return {
+          position: { x: 0.03, y: 0.1, z: -0.3 },
+          rotation: Quaternion.fromEuler(0, 0, 0)
+        };
+      case 'smg':
+        return {
+          position: { x: 0.01, y: 0.1, z: -0.2 },
+          rotation: Quaternion.fromEuler(0, 0, 0)
+        };
+      case 'rifle':
+        return {
+          position: { x: 0.01, y: 0.03, z: -1.2 },
+          rotation: Quaternion.fromEuler(0, 0, 0)
+        };
+      case 'shotgun':
+        return {
+          position: { x: 0.03, y: 0.1, z: -1.3 },
+          rotation: Quaternion.fromEuler(0, 0, 0)
+        };
+      case 'lmg':
+        return {
+          position: { x: 0.02, y: 0.05, z: -1.6 },
+          rotation: Quaternion.fromEuler(0, 0, 0)
+        };
+      case 'sniper':
+        return {
+          position: { x: 0.015, y: 0.02, z: -1.4 },
+          rotation: Quaternion.fromEuler(0, 0, 0)
+        };
+      default:
+        return {
+          position: { x: 0, y: 0.03, z: -1.0 },
+          rotation: Quaternion.fromEuler(0, 0, 0)
+        };
+    }
   }
 
   public get ammo(): number {
@@ -239,6 +281,7 @@ export default class WeaponEntity extends Entity {
         // Play effects
         parentPlayerEntity.startModelOneshotAnimations([this._shootAnimation]);
         this._uiSystem.playShootSound(parentPlayerEntity);
+        this._effectsSystem.createMuzzleFlash(parentPlayerEntity);
         this._effectsSystem.createShotLight(parentPlayerEntity);
         this._effectsSystem.applyWeaponRecoil(parentPlayerEntity);
         

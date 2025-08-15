@@ -260,7 +260,7 @@
     try {
       // Cache sessions for live countdown
       if (Array.isArray(data.sessions)) {
-        window.__sessions = data.sessions.map(s => ({ id: s.id, label: s.label, endsAt: s.endsAt, worldHour: s.worldHour, worldMinute: s.worldMinute }));
+        window.__sessions = data.sessions.map(s => ({ id: s.id, label: s.label, endsAt: s.endsAt, worldHour: s.worldHour, worldMinute: s.worldMinute, worldTimeFormatted: s.worldTimeFormatted }));
         window.__assignedSessionId = data.assignedSessionId || null;
         ensureSessionTicker();
       }
@@ -337,10 +337,8 @@
         const card = document.querySelector(`.session-card[data-session="${id}"]`);
         if (s) {
           const left = fmt(Math.max(0, s.endsAt - now));
-          const wh = (s.worldHour ?? 0).toString().padStart(2, '0');
-          const wm = (s.worldMinute ?? 0).toString().padStart(2, '0');
           if (elLeft) elLeft.textContent = left;
-          if (elWorld) elWorld.textContent = `${wh}:${wm}`;
+          if (elWorld) elWorld.textContent = s.worldTimeFormatted || '12:00 AM';
         }
         if (card) card.classList.toggle('active', assigned === id);
       }

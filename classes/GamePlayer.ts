@@ -299,7 +299,8 @@ export default class GamePlayer {
             totalSeconds: session.durationSeconds, 
             sessionId: session.id, 
             worldHour: session.worldHour, 
-            worldMinute: session.worldMinute 
+            worldMinute: session.worldMinute,
+            worldTimeFormatted: session.worldTimeFormatted
           });
         }
       }

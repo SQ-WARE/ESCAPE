@@ -17,7 +17,7 @@ export class LightingSystem {
   private readonly SKY_HORIZON_COLOR: RgbColor = { r: 190, g: 210, b: 235 }; // lighter horizon
   private readonly DEFAULT_FOG_COLOR: RgbColor = { r: 190, g: 200, b: 210 }; // slightly cool haze
 
-  // Active settings
+  // Active settings (defaults tuned for day)
   private _sunAngleDeg = 88; // almost overhead, slightly off
   private _sunAzimuthDeg = 135; // due south-east
   private _sunOrbitRadius = 100;
@@ -38,6 +38,27 @@ export class LightingSystem {
     if (this.isInitialized) return;
     this.apply();
     this.isInitialized = true;
+  }
+
+  /**
+   * Configure for a night-time preset: cool moonlight, low ambient, darker skybox.
+   */
+  public useNightPreset(): LightingSystem {
+    // Low moon elevation and cool tint
+    this._sunAngleDeg = 12;
+    this._sunAzimuthDeg = 135;
+    this._sunColor = { r: 200, g: 220, b: 255 };
+    this._sunIntensity = 0.25;
+    // Very low, cool ambient
+    this._ambientColor = { r: 42, g: 52, b: 72 };
+    this._ambientIntensity = 0.02;
+    // Dimmer skybox
+    this._skyboxIntensity = 0.18;
+    // Dark, realistic night fog
+    this._fogNear = 26;
+    this._fogFar = 110;
+    this._fogColor = { r: 26, g: 30, b: 38 };
+    return this;
   }
 
   public apply(): void {

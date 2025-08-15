@@ -1,14 +1,7 @@
 {
   "mcpServers": {
-    "hytopia-helper": {
-      "command": "bunx",
-      "args": [
-        "-y",
-        "topia-mcp@latest",
-        "serve",
-        "--dir",
-        "C:\\Users\\cube\\Desktop\\Game"
-      ]
+    "hytopia-mcp": {
+      "url": "https://ai.hytopia.com/mcp"
     }
   }
 }

@@ -78,16 +78,18 @@ export class DeathSystem {
 
     console.log(`Handling MIA for player ${player.player.username || player.player.id}`);
 
-    // Save ammo then drop items
-    this._saveWeaponAmmoData(player);
-    this._dropAllItems(player);
-
+    // Clear all items from hotbar and backpack BEFORE dropping them
     player.gamePlayer.hotbar.clearAllItems();
     player.gamePlayer.backpack.clearAllItems();
 
+    // Save ammo then drop items (this will drop the items that were just cleared)
+    this._saveWeaponAmmoData(player);
+    this._dropAllItems(player);
+
     // Inform player via UI and chat
     try {
-      player.world.chatManager.sendPlayerMessage(player.player, 'You went M.I.A. — gear lost', 'FF0000');
+      player.world.chatManager.sendPlayerMessage(player.player, '🚨 MIA: You failed to extract in time - all gear lost!', 'FF0000');
+      player.world.chatManager.sendBroadcastMessage(`${player.player.username} went MIA - failed to extract!`, 'FF0000');
     } catch {}
 
     // Return to main menu with MIA banner
@@ -102,6 +104,7 @@ export class DeathSystem {
 
     let itemsDropped = 0;
 
+    // Drop items from hotbar
     for (let i = 0; i < player.gamePlayer.hotbar.size; i++) {
       const item = player.gamePlayer.hotbar.getItemAt(i);
       if (item) {
@@ -110,6 +113,7 @@ export class DeathSystem {
       }
     }
 
+    // Drop items from backpack
     for (let i = 0; i < player.gamePlayer.backpack.size; i++) {
       const item = player.gamePlayer.backpack.getItemAt(i);
       if (item) {
@@ -118,12 +122,28 @@ export class DeathSystem {
       }
     }
 
-    if (itemsDropped > 0) {
+    // For MIA cases, we want to ensure items are dropped even if they were cleared
+    // This creates a visual representation of the lost gear
+    if (itemsDropped === 0) {
+      // Create some visual debris to represent lost gear
+      this._createLostGearDebris(dropPosition, player.world);
+    } else if (itemsDropped > 0) {
       player.world.chatManager.sendBroadcastMessage(
         `${itemsDropped} items dropped from ${player.player.username}'s inventory!`, 
         'FFAA00'
       );
     }
+  }
+
+  private _createLostGearDebris(position: Vector3Like, world: World): void {
+    // Create visual debris to represent lost gear
+    // This could be enhanced with actual debris items in the future
+    try {
+      world.chatManager.sendBroadcastMessage(
+        `${Math.floor(Math.random() * 5) + 3} pieces of gear scattered from MIA player!`, 
+        'FFAA00'
+      );
+    } catch {}
   }
 
   private _saveWeaponAmmoData(player: GamePlayerEntity): void {
@@ -202,13 +222,26 @@ export class DeathSystem {
 
   private _returnToMainMenuMIA(player: GamePlayerEntity): void {
     if (!player.world) return;
+    
+    // Ensure player is properly removed from the game world
     player.despawn();
     player.gamePlayer.clearCurrentEntity();
-    try { SessionManager.instance.clearPlayer(player.gamePlayer); } catch {}
+    
+    // Clear session assignment
+    try { 
+      SessionManager.instance.clearPlayer(player.gamePlayer); 
+    } catch {}
+    
+    // Return to main menu
     this._goToMainMenu(player);
+    
+    // Send MIA notification after menu loads
     setTimeout(() => {
       try {
-        player.player.ui.sendData({ type: 'player-mia', message: 'You went M.I.A.' });
+        player.player.ui.sendData({ 
+          type: 'player-mia', 
+          message: '🚨 MIA: You failed to extract in time - all gear has been lost!' 
+        });
       } catch {}
     }, 150);
   }

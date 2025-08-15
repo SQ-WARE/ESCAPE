@@ -572,21 +572,35 @@
     timeEl.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
     lbl.textContent = String(data.sessionId || '').toUpperCase();
     if (worldTimeEl) {
-      const wh = Math.max(0, parseInt(data.worldHour || 0));
-      const wm = Math.max(0, parseInt(data.worldMinute || 0));
-      worldTimeEl.textContent = `${String(wh).padStart(2,'0')}:${String(wm).padStart(2,'0')}`;
+      worldTimeEl.textContent = data.worldTimeFormatted || '12:00 AM';
     }
     el.style.display = 'inline-block';
-    // color shift when low
-    if (left <= 30) {
-      el.style.borderColor = 'rgba(255,0,0,0.5)';
-      el.style.boxShadow = '0 0 12px rgba(255,0,0,0.35)';
+    // Enhanced color shift when low - more urgent visual warnings
+    if (left <= 10) {
+      // Critical - flashing red
+      el.style.borderColor = 'rgba(255,0,0,0.8)';
+      el.style.boxShadow = '0 0 20px rgba(255,0,0,0.6)';
+      el.style.animation = 'pulse-critical 0.5s ease-in-out infinite alternate';
+    } else if (left <= 30) {
+      // Very urgent - solid red
+      el.style.borderColor = 'rgba(255,0,0,0.7)';
+      el.style.boxShadow = '0 0 15px rgba(255,0,0,0.5)';
+      el.style.animation = 'pulse-urgent 1s ease-in-out infinite alternate';
+    } else if (left <= 60) {
+      // Urgent - orange-red
+      el.style.borderColor = 'rgba(255,100,0,0.6)';
+      el.style.boxShadow = '0 0 12px rgba(255,100,0,0.4)';
+      el.style.animation = '';
     } else if (left <= 120) {
+      // Warning - orange
       el.style.borderColor = 'rgba(255,160,0,0.5)';
       el.style.boxShadow = '0 0 12px rgba(255,160,0,0.35)';
+      el.style.animation = '';
     } else {
+      // Normal
       el.style.borderColor = '';
       el.style.boxShadow = '';
+      el.style.animation = '';
     }
   }
 

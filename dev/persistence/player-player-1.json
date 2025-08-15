@@ -1,111 +1,28 @@
 {
   "currency": 0,
   "backpack": {
-    "items": [
-      {
-        "position": 0,
-        "itemId": "spetsnaz_akm_nsb"
-      },
-      {
-        "position": 1,
-        "itemId": "ingram_m6"
-      },
-      {
-        "position": 2,
-        "itemId": "akm"
-      },
-      {
-        "position": 3,
-        "itemId": "victrix_corvo_v",
-        "ammo": 0
-      },
-      {
-        "position": 4,
-        "itemId": "asvkm"
-      },
-      {
-        "position": 5,
-        "itemId": "pistol_ammo",
-        "quantity": 9970
-      },
-      {
-        "position": 6,
-        "itemId": "hk_mp5k"
-      },
-      {
-        "position": 7,
-        "itemId": "fn_502_tactical_fde"
-      }
-    ]
+    "items": []
   },
   "hotbar": {
-    "items": [
-      {
-        "position": 0,
-        "itemId": "hk_mp5sd",
-        "ammo": 20
-      },
-      {
-        "position": 1,
-        "itemId": "kbp_pp90_shotgun"
-      },
-      {
-        "position": 2,
-        "itemId": "m9_beretta"
-      },
-      {
-        "position": 3,
-        "itemId": "mp5a2"
-      },
-      {
-        "position": 4,
-        "itemId": "desert_eagle",
-        "ammo": 0
-      },
-      {
-        "position": 5,
-        "itemId": "glock_17"
-      },
-      {
-        "position": 6,
-        "itemId": "shotgun_ammo",
-        "quantity": 10000
-      },
-      {
-        "position": 7,
-        "itemId": "sword_mk18_mjolnir"
-      },
-      {
-        "position": 8,
-        "itemId": "sniper_ammo",
-        "quantity": 10000
-      }
-    ]
+    "items": []
   },
   "stash": {
-    "items": [
-      {
-        "position": 0,
-        "itemId": "hk_mp5k"
-      },
-      {
-        "position": 9,
-        "itemId": "shotgun_ammo",
-        "quantity": 10000
-      }
-    ]
+    "items": []
   },
   "progression": {
-    "level": 4,
-    "xp": 55
+    "level": 5,
+    "xp": 130
   },
   "stats": {
-    "kills": 4,
-    "deaths": 3
+    "kills": 6,
+    "deaths": 8
   },
   "weaponProgression": {
     "akm": {
       "kills": 1
+    },
+    "mp5a2": {
+      "kills": 2
     }
   }
 }

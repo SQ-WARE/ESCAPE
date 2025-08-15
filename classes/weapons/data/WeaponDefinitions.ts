@@ -39,7 +39,7 @@ export const M9_BERETTA: WeaponData = {
     },
     effects: {
       muzzleFlash: {
-        position: { x: 0, y: 0.02, z: -0.8 },
+        position: { x: 0.03, y: 0.1, z: -3.4 },
         rotation: Quaternion.fromEuler(0, 0, 0),
       },
     },
@@ -89,6 +89,12 @@ export const FN_502_TACTICAL_FDE: WeaponData = {
       empty: 'audio/sfx/sfx/pistol-empty.mp3',
     },
     ui: { icon: 'icons/pistol_fn_502.png' },
+    effects: {
+      muzzleFlash: {
+        position: { x: 0.03, y: 0.1, z: -5.6 },
+        rotation: Quaternion.fromEuler(0, 0, 0),
+      },
+    },
   },
   behavior: {
     ammoType: 'pistol',
@@ -134,7 +140,7 @@ export const DESERT_EAGLE: WeaponData = {
     },
     effects: {
       muzzleFlash: {
-        position: { x: 0, y: 0.03, z: -0.9 },
+        position: { x: 0.03, y: 0.1, z: -5.6 },
         rotation: Quaternion.fromEuler(0, 0, 0),
       },
     },
@@ -187,7 +193,7 @@ export const GLOCK_17: WeaponData = {
     },
     effects: {
       muzzleFlash: {
-        position: { x: 0, y: 0.02, z: -0.75 },
+        position: { x: 0.03, y: 0.1, z: -5.6 },
         rotation: Quaternion.fromEuler(0, 0, 0),
       },
     },
@@ -238,7 +244,7 @@ export const AKM: WeaponData = {
     },
     effects: {
       muzzleFlash: {
-        position: { x: 0, y: 0.05, z: -1.3 },
+        position: { x: 0.03, y: 0.1, z: -5.6 },
         rotation: Quaternion.fromEuler(0, 0, 0),
       },
     },
@@ -331,7 +337,7 @@ export const MP5A2: WeaponData = {
     },
     effects: {
       muzzleFlash: {
-        position: { x: 0, y: 0.04, z: -1.1 },
+        position: { x: 0.03, y: 0.1, z: -5.6 },
         rotation: Quaternion.fromEuler(0, 0, 0),
       },
     },
@@ -381,7 +387,7 @@ export const INGRAM_M6: WeaponData = {
     },
     effects: {
       muzzleFlash: {
-        position: { x: 0, y: 0.03, z: -1.0 },
+        position: { x: 0.03, y: 0.1, z: -5.6 },
         rotation: Quaternion.fromEuler(0, 0, 0),
       },
     },
@@ -516,7 +522,7 @@ export const ASVKM: WeaponData = {
     },
     effects: {
       muzzleFlash: {
-        position: { x: 0, y: 0.08, z: -1.8 },
+        position: { x: 0.03, y: 0.1, z: -5.6 },
         rotation: Quaternion.fromEuler(0, 0, 0),
       },
     },
@@ -652,7 +658,7 @@ export const KBP_PP90_SHOTGUN: WeaponData = {
     ui: { icon: 'icons/shotgun_kbp_pp90.png' },
     effects: {
       muzzleFlash: {
-        position: { x: 0, y: 0.05, z: -1.25 },
+        position: { x: 0, y: 0.05, z: -4.25 },
         rotation: Quaternion.fromEuler(0, 0, 0),
       },
     },

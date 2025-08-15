@@ -17,6 +17,7 @@ interface SessionSummary {
   durationSeconds: number;
   worldHour: number;
   worldMinute: number;
+  worldTimeFormatted: string; // 12-hour format with AM/PM
 }
 
 /**
@@ -56,8 +57,8 @@ export default class SessionManager {
     this._sessions.push({ id: 'alpha', label: 'ALPHA', durationSeconds: d, startTimeMs: alphaStart });
     this._sessions.push({ id: 'omega', label: 'OMEGA', durationSeconds: d, startTimeMs: omegaStart });
     // Configure world clocks: ALPHA starts midday, OMEGA starts late night
-    this._clockConfig['alpha'] = { baseHour: 12, minutesPerRealSecond: 0.5 }; // 6h progression over 12m
-    this._clockConfig['omega'] = { baseHour: 22, minutesPerRealSecond: 0.5 }; // 6h progression over 12m
+    this._clockConfig['alpha'] = { baseHour: 0, minutesPerRealSecond: 0.5 }; // 6h progression over 12m
+    this._clockConfig['omega'] = { baseHour: 0, minutesPerRealSecond: 0.5 }; // 6h progression over 12m
     
     
     
@@ -224,31 +225,46 @@ export default class SessionManager {
 
           // Push HUD timer update
           try {
-            const { hour, minute } = this._computeWorldClock(session.id);
-            gp.player.ui.sendData({ type: 'raid-timer', secondsLeft, totalSeconds: session.durationSeconds, sessionId: session.id, worldHour: hour, worldMinute: minute });
+            const { hour, minute, formatted } = this._computeWorldClock(session.id);
+            gp.player.ui.sendData({ type: 'raid-timer', secondsLeft, totalSeconds: session.durationSeconds, sessionId: session.id, worldHour: hour, worldMinute: minute, worldTimeFormatted: formatted });
           } catch {}
 
-          // Threshold warnings tuned for engagement (15m, 10m, 5m, 2m, 1m, 30s, 10s)
-          if (secondsLeft === 900 || secondsLeft === 600 || secondsLeft === 300 || secondsLeft === 120 || secondsLeft === 60 || secondsLeft === 30 || secondsLeft === 10) {
+          // Enhanced raid ending warnings - more frequent and urgent
+          if (secondsLeft === 900 || secondsLeft === 600 || secondsLeft === 300 || secondsLeft === 180 || secondsLeft === 120 || secondsLeft === 90 || secondsLeft === 60 || secondsLeft === 45 || secondsLeft === 30 || secondsLeft === 20 || secondsLeft === 15 || secondsLeft === 10 || secondsLeft === 5) {
             try {
-              gp.player.ui.sendData({ type: 'notification', message: `Raid ending in ${secondsLeft}s`, color: 'FF0000' });
+              let message: string;
+              if (secondsLeft >= 60) {
+                const minutes = Math.floor(secondsLeft / 60);
+                message = `⚠️ WARNING! Raid ends in ${minutes}m ${secondsLeft % 60}s - Find an extraction zone or you will be MIA!`;
+              } else {
+                message = `🚨 CRITICAL! Raid ends in ${secondsLeft}s - EXTRACT NOW or lose everything!`;
+              }
+              gp.player.ui.sendData({ type: 'notification', message, color: 'FF0000' });
+            } catch {}
+          }
+
+          // Continuous warning for last 30 seconds
+          if (secondsLeft <= 30 && secondsLeft > 0 && secondsLeft % 5 === 0) {
+            try {
+              const message = `🚨 FINAL WARNING! ${secondsLeft}s remaining - EXTRACT IMMEDIATELY!`;
+              gp.player.ui.sendData({ type: 'notification', message, color: 'FF0000' });
             } catch {}
           }
 
           // Time over → MIA
           if (secondsLeft <= 0) {
-            
             try {
               // Mark MIA and clear mapping
               if (gp.currentEntity) {
-                
                 DeathSystem.instance.handleMIA(gp.currentEntity);
               } else {
-                
+                // Player not in raid but still assigned to session - clear assignment
+                console.log(`Clearing session assignment for player ${playerId} (not in raid)`);
               }
             } catch (error) {
               console.error('Error handling MIA:', error);
             }
+            // Remove player assignment after MIA handling
             this._playerAssignments.delete(playerId);
           }
         } catch (error) {
@@ -262,7 +278,16 @@ export default class SessionManager {
     const secondsLeft = this._secondsLeft(s);
     const endsAt = s.startTimeMs + s.durationSeconds * 1000;
     const clock = this._computeWorldClock(s.id);
-    return { id: s.id, label: s.label, endsAt, secondsLeft, durationSeconds: s.durationSeconds, worldHour: clock.hour, worldMinute: clock.minute };
+    return { 
+      id: s.id, 
+      label: s.label, 
+      endsAt, 
+      secondsLeft, 
+      durationSeconds: s.durationSeconds, 
+      worldHour: clock.hour, 
+      worldMinute: clock.minute,
+      worldTimeFormatted: clock.formatted
+    };
   }
 
   private _secondsLeft(s: Session): number {
@@ -278,15 +303,39 @@ export default class SessionManager {
     return secondsLeft;
   }
 
-  private _computeWorldClock(sessionId: string): { hour: number; minute: number } {
+  private _computeWorldClock(sessionId: string): { hour: number; minute: number; formatted: string } {
     const s = this._sessions.find(x => x.id === sessionId);
-    if (!s) return { hour: 0, minute: 0 };
+    if (!s) return { hour: 0, minute: 0, formatted: '12:00 AM' };
     const cfg = this._clockConfig[sessionId] || { baseHour: 12, minutesPerRealSecond: 0.5 };
     const elapsedSec = Math.max(0, Math.floor((Date.now() - s.startTimeMs) / 1000));
-    const worldMinutes = (cfg.baseHour * 60 + Math.floor(elapsedSec * cfg.minutesPerRealSecond)) % (24 * 60);
-    const hour = Math.floor(worldMinutes / 60);
-    const minute = worldMinutes % 60;
-    return { hour, minute };
+    const elapsedMinutes = Math.floor(elapsedSec * cfg.minutesPerRealSecond);
+    
+    let hour: number;
+    let minute: number;
+    
+    if (sessionId === 'alpha') {
+      // Alpha world: stay in day time range (6:00-18:00, 12 hours)
+      const dayMinutes = (cfg.baseHour * 60 + elapsedMinutes) % (12 * 60); // 12-hour cycle
+      hour = (Math.floor(dayMinutes / 60) + 6) % 24; // Offset to 6:00-18:00 range, wrap around
+      minute = dayMinutes % 60;
+    } else if (sessionId === 'omega') {
+      // Omega world: stay in night time range (18:00-6:00, 12 hours)
+      const nightMinutes = (cfg.baseHour * 60 + elapsedMinutes) % (12 * 60); // 12-hour cycle
+      hour = (Math.floor(nightMinutes / 60) + 18) % 24; // Offset to 18:00-6:00 range, wrap around
+      minute = nightMinutes % 60;
+    } else {
+      // Fallback: full 24-hour cycle
+      const fullCycleMinutes = (cfg.baseHour * 60 + elapsedMinutes) % (24 * 60);
+      hour = Math.floor(fullCycleMinutes / 60);
+      minute = fullCycleMinutes % 60;
+    }
+    
+    // Format to 12-hour time with AM/PM
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    const formatted = `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
+    
+    return { hour, minute, formatted };
   }
 
   private _ensurePlayerInSessionWorld(gamePlayer: GamePlayer, sessionId: string): void {

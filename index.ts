@@ -9,12 +9,11 @@ import worldMap from './assets/map.json' with { type: 'json' };
 import GamePlayerEntity from './classes/GamePlayerEntity';
 import GamePlayer from './classes/GamePlayer';
 import { CommandManager } from './classes/commands/CommandManager';
-import { GiveCommand } from './classes/commands/GiveCommand';
-import GiveAmmoCommand from './classes/commands/GiveAmmoCommand';
+
 import GiveAllWeaponsCommand from './classes/commands/GiveAllWeaponsCommand';
 import CurrencyCommand from './classes/commands/CurrencyCommand';
-import { ItemRegistry } from './classes/items/ItemRegistry';
-import { WeaponFactory } from './classes/weapons/WeaponFactory';
+
+
 import { LightingSystem } from './classes/systems/LightingSystem.ts';
 import LootSystem from './classes/systems/LootSystem';
 import { CameraEffectsSystem } from './classes/systems/CameraEffectsSystem';
@@ -28,7 +27,7 @@ startServer(() => {
   });
   const omegaWorld = WorldManager.instance.createWorld({
     name: 'ESCAPE-OMEGA',
-    skyboxUri: 'skyboxes/night_clear',
+    skyboxUri: 'skyboxes/night',
   });
 
   const lightingAlpha = new LightingSystem(alphaWorld);
@@ -37,15 +36,11 @@ startServer(() => {
   SessionManager.instance.initialize();
 
   lightingAlpha.initialize();
-  lightingOmega.initialize();
+  lightingOmega.useNightPreset().initialize();
 
   // Favor day lighting for ALPHA: default values already day-like
   // Favor night lighting for OMEGA: tune intensities lower and ambient cooler
-  try {
-    (omegaWorld as any).setDirectionalLightIntensity?.(0.6);
-    (omegaWorld as any).setAmbientLightIntensity?.(0.02);
-    (omegaWorld as any).setSkyboxIntensity?.(0.2);
-  } catch {}
+  // Explicit skybox intensity tuning for omega can be driven by preset now
 
   const lootAlpha = new LootSystem(alphaWorld);
   const lootOmega = new LootSystem(omegaWorld);
