@@ -259,7 +259,7 @@ export default class SessionManager {
                 DeathSystem.instance.handleMIA(gp.currentEntity);
               } else {
                 // Player not in raid but still assigned to session - clear assignment
-                console.log(`Clearing session assignment for player ${playerId} (not in raid)`);
+          
               }
             } catch (error) {
               console.error('Error handling MIA:', error);
@@ -295,10 +295,7 @@ export default class SessionManager {
     const endMs = s.startTimeMs + s.durationSeconds * 1000;
     const secondsLeft = Math.max(0, Math.ceil((endMs - now) / 1000));
     
-    // Debug logging for very low times
-    if (secondsLeft <= 10) {
-      
-    }
+
     
     return secondsLeft;
   }

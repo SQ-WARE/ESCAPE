@@ -61,7 +61,7 @@ export default class WeaponEntity extends Entity {
     this._uiSystem = new WeaponUISystem(weaponData);
     this._shootingSystem = new WeaponShootingSystem(weaponData, this._uiSystem);
     this._reloadSystem = new WeaponReloadSystem(weaponData, options.ammo ?? 0);
-    this._effectsSystem = new WeaponEffectsSystem(weaponData, this);
+    this._effectsSystem = new WeaponEffectsSystem(weaponData, this, this._shootingSystem);
   }
 
   // Getters

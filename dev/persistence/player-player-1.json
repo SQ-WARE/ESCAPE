@@ -1,10 +1,89 @@
 {
   "currency": 0,
   "backpack": {
-    "items": []
+    "items": [
+      {
+        "position": 0,
+        "itemId": "m9_beretta"
+      },
+      {
+        "position": 1,
+        "itemId": "desert_eagle"
+      },
+      {
+        "position": 2,
+        "itemId": "glock_17"
+      },
+      {
+        "position": 4,
+        "itemId": "akm"
+      },
+      {
+        "position": 5,
+        "itemId": "spetsnaz_akm_nsb"
+      },
+      {
+        "position": 6,
+        "itemId": "mp5a2"
+      },
+      {
+        "position": 7,
+        "itemId": "ingram_m6"
+      },
+      {
+        "position": 8,
+        "itemId": "hk_mp5k"
+      },
+      {
+        "position": 9,
+        "itemId": "hk_mp5sd"
+      },
+      {
+        "position": 10,
+        "itemId": "asvkm"
+      },
+      {
+        "position": 11,
+        "itemId": "victrix_corvo_v"
+      },
+      {
+        "position": 12,
+        "itemId": "sword_mk18_mjolnir"
+      },
+      {
+        "position": 13,
+        "itemId": "kbp_pp90_shotgun"
+      },
+      {
+        "position": 14,
+        "itemId": "pistol_ammo",
+        "quantity": 9810
+      },
+      {
+        "position": 15,
+        "itemId": "rifle_ammo",
+        "quantity": 10000
+      },
+      {
+        "position": 16,
+        "itemId": "sniper_ammo",
+        "quantity": 10000
+      },
+      {
+        "position": 17,
+        "itemId": "shotgun_ammo",
+        "quantity": 10000
+      }
+    ]
   },
   "hotbar": {
-    "items": []
+    "items": [
+      {
+        "position": 0,
+        "itemId": "fn_502_tactical_fde",
+        "ammo": 15
+      }
+    ]
   },
   "stash": {
     "items": [

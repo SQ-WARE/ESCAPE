@@ -293,17 +293,15 @@ export default class GamePlayer {
         const playerMember = partyData.members.find(member => member.playerId === this.player.id);
         if (playerMember && playerMember.isHost) {
           // Player is party host, deploy entire party
-          console.log(`🎯 Party host ${this.player.username} initiating party deployment`);
           const success = PartySystem.instance.initiateDeploy(this.player);
           if (success) {
             this._isDeploying = false;
             return; // Party deployment handled by PartySystem
           } else {
-            console.log(`🎯 Party deployment failed for ${this.player.username}`);
+            // Party deployment failed
           }
         } else if (partyData) {
           // Player is in party but not host, show message
-          console.log(`🎯 Non-host player ${this.player.username} tried to deploy party`);
           this.player.ui.sendData({
             type: 'show-message',
             message: 'Only the party host can deploy the group.',
@@ -314,7 +312,6 @@ export default class GamePlayer {
         }
       } else if (partyData && partyData.members.length === 1) {
         // Solo player, allow deployment
-        console.log(`🎯 Solo player ${this.player.username} deploying`);
       }
     } catch (error) {
       console.error('Error checking party status:', error);
@@ -328,7 +325,6 @@ export default class GamePlayer {
    * Deploys a party member (bypasses party checks)
    */
   public deployPartyMember(): void {
-    console.log(`🎯 Deploying party member: ${this.player.username}`);
     this._deploySolo();
   }
 

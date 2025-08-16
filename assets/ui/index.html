@@ -405,8 +405,6 @@
         updateRaidTimer(data);
         break;
               case 'kill-feed':
-          console.log('🎯 Received kill feed data:', data);
-          console.log('🎯 Kill feed container exists:', !!killFeedContainer);
           addKillFeedEntry(data.killerName, data.weaponIconUri, data.victimName);
           break;
     }
@@ -590,6 +588,7 @@
     healingEffectEl.classList.remove('active');
     movementSpeedIndicatorEl.hidden = true;
   };
+
   const showHealingBonusActivated = data => {
     const bonusIndicator = document.createElement('div');
     bonusIndicator.className = 'healing-bonus-indicator';
@@ -1064,17 +1063,12 @@
 
   // Kill Feed System
   const killFeedContainer = document.querySelector('.kill-feed-container');
-  console.log('🎯 Kill feed container found:', killFeedContainer);
   const killFeedEntries = [];
   const MAX_KILL_FEED_ENTRIES = 5;
   const KILL_FEED_DURATION = 4000; // 4 seconds
 
   const addKillFeedEntry = (killerName, weaponIconUri, victimName) => {
-    console.log('🎯 Adding kill feed entry:', { killerName, weaponIconUri, victimName });
-    console.log('🎯 Kill feed container:', killFeedContainer);
-    console.log('🎯 CDN_ASSETS_URL:', CDN_ASSETS_URL);
     if (!killFeedContainer) {
-      console.error('🎯 Kill feed container not found!');
       return;
     }
 
@@ -1087,10 +1081,7 @@
       <span class="kill-feed-victim">${victimName}</span>
     `;
 
-    console.log('🎯 Created kill feed entry element:', entry);
-    console.log('🎯 Entry HTML:', entry.innerHTML);
     killFeedContainer.appendChild(entry);
-    console.log('🎯 Entry added to container. Container children count:', killFeedContainer.children.length);
     killFeedEntries.push(entry);
 
     // Remove oldest entry if we exceed max

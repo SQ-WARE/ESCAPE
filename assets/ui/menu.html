@@ -304,7 +304,6 @@
     if (data.type === 'party-update') {
       updatePartyList(data.partyData);
     } else if (data.type === 'party-disbanded') {
-      console.log('🎯 Party disbanded, creating new solo party');
       // Create a new solo party for the current player
       const currentPlayer = {
         username: document.getElementById('hud-username')?.textContent || 'Player',
@@ -317,8 +316,6 @@
         maxMembers: 4
       });
     } else if (data.type === 'party-kicked') {
-      console.log('🎯 Player was kicked from party:', data.reason);
-      
       // Create a new solo party for the kicked player
       const currentPlayer = {
         username: document.getElementById('hud-username')?.textContent || 'Player',
@@ -374,7 +371,6 @@
   // Ensure popup is hidden on page load
   if (partyInvitePopup) {
     partyInvitePopup.hidden = true;
-    console.log('🎯 Party invite popup: Hidden on page load');
   }
 
   function showInvite(inviteId, fromUsername) {
@@ -564,8 +560,6 @@
     try {
       // Cache sessions for live countdown
       if (Array.isArray(data.sessions)) {
-        window.__sessions = data.sessions.map(s => ({ id: s.id, label: s.label, endsAt: s.endsAt, worldHour: s.worldHour, worldMinute: s.worldMinute, worldTimeFormatted: s.worldTimeFormatted }));
-        window.__assignedSessionId = data.assignedSessionId || null;
         ensureSessionTicker();
       }
       if (typeof data.username === 'string') {
@@ -625,8 +619,14 @@
   }
   function renderSessionTimers() {
     try {
-      const sessions = (window.__sessions || []);
-      const assigned = window.__assignedSessionId || null;
+      // Get session data from DOM elements instead of debug variables
+      const sessionElements = document.querySelectorAll('.session-card');
+      const sessions = Array.from(sessionElements).map(el => ({
+        id: el.getAttribute('data-session'),
+        endsAt: parseInt(el.getAttribute('data-ends-at') || '0'),
+        worldTimeFormatted: el.getAttribute('data-world-time') || '12:00 AM'
+      }));
+      const assigned = document.querySelector('.session-card.active')?.getAttribute('data-session') || null;
       const now = Date.now();
       function fmt(left) {
         const sec = Math.max(0, Math.ceil(left / 1000));

@@ -187,7 +187,7 @@ export default class HealthSystem {
             this._player.player.ui.sendData({
               type: 'healing-bonus-ended'
             });
-            console.log('💚 Healing bonus ended');
+        
           }
         }
         

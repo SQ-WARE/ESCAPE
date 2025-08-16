@@ -10,14 +10,16 @@ import ImpactSparkEntity from '../vfx/ImpactSparkEntity';
 export default class WeaponEffectsSystem {
   private readonly _weaponData: WeaponData;
   private readonly _weaponEntity: any;
+  private _shootingSystem?: any;
 
   private _impactSpark?: ImpactSparkEntity;
   private readonly _muzzleColor: { r: number; g: number; b: number };
   private readonly _muzzleBaseIntensity: number;
 
-  constructor(weaponData: WeaponData, weaponEntity: any) {
+  constructor(weaponData: WeaponData, weaponEntity: any, shootingSystem?: any) {
     this._weaponData = weaponData;
     this._weaponEntity = weaponEntity;
+    this._shootingSystem = shootingSystem;
 
     // Cache muzzle color/intensity (constant per weapon)
     this._muzzleColor = this._getMuzzleFlashColor();
@@ -33,49 +35,34 @@ export default class WeaponEffectsSystem {
     if (!parent || !parent.world || !this._weaponEntity) return;
 
     try {
-      const origin = this._computeMuzzleWorldPosition(parent);
-      const { direction } = this._getShootOriginDirection(parent);
-
-      // Perform a long-distance raycast purely for visuals so the tracer travels until it actually hits something
-      const tracerMaxDistance = 4096;
-      const rc = parent.world?.simulation.raycast(origin, direction, tracerMaxDistance, { filterExcludeRigidBody: parent.rawRigidBody });
-      const hitFound = !!rc?.hitPoint;
-      const endPoint = (rc?.hitPoint as any) ?? {
-        x: origin.x + direction.x * tracerMaxDistance,
-        y: origin.y + direction.y * tracerMaxDistance,
-        z: origin.z + direction.z * tracerMaxDistance,
+      // Use the same origin and direction as the shooting system for accurate impact detection
+      const { origin, direction } = this._shootingSystem?.getShootOriginDirection(parent) || { 
+        origin: { x: 0, y: 0, z: 0 }, 
+        direction: { x: 0, y: 0, z: 1 } 
       };
 
-      const tracer = new BulletTracerEntity(origin, direction, {
-        modelUri: 'models/projectiles/bullet.glb',
-        modelScale: 1,
-        speed: 360,
-        endPoint,
-      });
-      tracer.spawn(parent.world, origin);
-
-      // Spawn or refresh an impact spark at the exact endpoint (slightly offset along normal dir)
-      if (hitFound) {
+      // Simple raycast for impact detection
+      const maxDistance = 1000;
+      const rc = parent.world?.simulation.raycast(origin, direction, maxDistance, { filterExcludeRigidBody: parent.rawRigidBody });
+      
+      if (rc?.hitPoint) {
+        // Create impact spark at hit point
         const sparkPos = {
-          x: endPoint.x - direction.x * 0.02,
-          y: endPoint.y - direction.y * 0.02,
-          z: endPoint.z - direction.z * 0.02,
+          x: rc.hitPoint.x - direction.x * 0.02,
+          y: rc.hitPoint.y - direction.y * 0.02,
+          z: rc.hitPoint.z - direction.z * 0.02,
         };
+        
         try {
           if (!this._impactSpark || !this._impactSpark.isSpawned) {
             this._impactSpark = new ImpactSparkEntity({
               color: this._muzzleColor,
-              intensity: Math.max(1.5, Math.min(6, Math.round(this._muzzleBaseIntensity * 0.25))),
+              intensity: 3,
               lifetimeMs: 120,
             });
             this._impactSpark.spawn(parent.world, sparkPos);
           } else {
-            this._impactSpark.refresh(
-              sparkPos,
-              this._muzzleColor,
-              Math.max(1.5, Math.min(6, Math.round(this._muzzleBaseIntensity * 0.25))),
-              120
-            );
+            this._impactSpark.refresh(sparkPos, this._muzzleColor, 3, 120);
           }
         } catch {}
       }
@@ -89,7 +76,7 @@ export default class WeaponEffectsSystem {
     
     try {
       const recoilForce = this._calculateRecoilForce();
-      const { direction } = this._getShootOriginDirection(parent);
+      const { direction } = this._shootingSystem?.getShootOriginDirection(parent) || { direction: { x: 0, y: 0, z: 1 } };
       
       const impulse = {
         x: -direction.x * recoilForce,
@@ -102,26 +89,13 @@ export default class WeaponEffectsSystem {
       const weaponRecoil = this._weaponData.stats.recoil;
       parent.recoilSystem.applyRecoil(weaponRecoil, true);
       
-      console.log(`🔫 Weapon: ${this._weaponData.name}, Recoil: ${weaponRecoil}, Force: ${recoilForce.toFixed(2)}, Impulse:`, impulse);
+
     } catch (error) {
       console.warn('Failed to apply weapon recoil:', error);
     }
   }
 
-  private _getShootOriginDirection(parent: GamePlayerEntity): { origin: Vector3Like, direction: Vector3Like } {
-    if (!parent) {
-      return { origin: { x: 0, y: 0, z: 0 }, direction: { x: 0, y: 0, z: 1 } };
-    }
 
-    const { x, y, z } = parent.position;
-    const cameraYOffset = parent.player.camera.offset.y;
-    const direction = parent.player.camera.facingDirection;
-    
-    return {
-      origin: { x, y: y + cameraYOffset, z },
-      direction
-    };
-  }
 
 
 
@@ -187,111 +161,11 @@ export default class WeaponEffectsSystem {
 
   // Removed shot light helpers
 
-  private _computeMuzzleWorldPosition(parent: GamePlayerEntity): Vector3Like {
-    const { position: local } = this._weaponEntity.getMuzzleFlashPositionRotation();
-    const base = {
-      x: parent.position.x,
-      y: parent.position.y + (parent.player.camera.offset?.y ?? 0),
-      z: parent.position.z,
-    };
-    
-    // Use actual camera direction vectors for proper vertical alignment
-    const f = parent.player.camera.facingDirection;
-    const fLen = Math.hypot(f.x, f.y, f.z) || 1;
-    const forward = { x: f.x / fLen, y: f.y / fLen, z: f.z / fLen };
-    
-    // Handle edge case when looking straight up or down
-    const upThreshold = 0.99; // Threshold for "straight up/down"
-    const absY = Math.abs(forward.y);
-    
-    let right: Vector3Like;
-    let up: Vector3Like;
-    
-    if (absY > upThreshold) {
-      // Looking nearly straight up or down - use a fallback coordinate system
-      if (forward.y > 0) {
-        // Looking up - use world forward as right, world right as up
-        right = { x: 0, y: 0, z: 1 };
-        up = { x: 1, y: 0, z: 0 };
-      } else {
-        // Looking down - use world forward as right, world left as up
-        right = { x: 0, y: 0, z: 1 };
-        up = { x: -1, y: 0, z: 0 };
-      }
-    } else {
-      // Normal case - calculate coordinate system
-      const worldUp = { x: 0, y: 1, z: 0 };
-      right = {
-        x: forward.y * worldUp.z - forward.z * worldUp.y,
-        y: forward.z * worldUp.x - forward.x * worldUp.z,
-        z: forward.x * worldUp.y - forward.y * worldUp.x
-      };
-      
-      // Normalize right vector
-      const rightLen = Math.hypot(right.x, right.y, right.z) || 1;
-      right.x /= rightLen;
-      right.y /= rightLen;
-      right.z /= rightLen;
-      
-      // Calculate up vector as cross product of right and forward
-      up = {
-        x: right.y * forward.z - right.z * forward.y,
-        y: right.z * forward.x - right.x * forward.z,
-        z: right.x * forward.y - right.y * forward.x
-      };
-    }
 
-    // Transform local -> world (weapon local axes aligned to camera basis)
-    let world = {
-      x: base.x + right.x * local.x + up.x * local.y + forward.x * local.z,
-      y: base.y + right.y * local.x + up.y * local.y + forward.y * local.z,
-      z: base.z + right.z * local.x + up.z * local.y + forward.z * local.z,
-    };
-
-    // Small rightward nudge for visual alignment with typical right-hand weapons
-    world = this._offsetRight(parent, world, 0.12);
-    return world;
-  }
 
   // Removed light occlusion/raycast helpers and jitter
 
-  private _offsetRight(parent: GamePlayerEntity, pos: Vector3Like, amount: number): Vector3Like {
-    // Compute right vector from camera facing; use proper 3D direction
-    const f = parent.player.camera.facingDirection;
-    const len = Math.hypot(f.x, f.y, f.z) || 1;
-    const forward = { x: f.x / len, y: f.y / len, z: f.z / len };
-    
-    // Handle edge case when looking straight up or down
-    const upThreshold = 0.99;
-    const absY = Math.abs(forward.y);
-    
-    let right: Vector3Like;
-    
-    if (absY > upThreshold) {
-      // Looking nearly straight up or down - use fallback right vector
-      right = { x: 0, y: 0, z: 1 };
-    } else {
-      // Normal case - calculate right vector
-      const worldUp = { x: 0, y: 1, z: 0 };
-      right = {
-        x: forward.y * worldUp.z - forward.z * worldUp.y,
-        y: forward.z * worldUp.x - forward.x * worldUp.z,
-        z: forward.x * worldUp.y - forward.y * worldUp.x
-      };
-      
-      // Normalize right vector
-      const rightLen = Math.hypot(right.x, right.y, right.z) || 1;
-      right.x /= rightLen;
-      right.y /= rightLen;
-      right.z /= rightLen;
-    }
-    
-    return {
-      x: pos.x + right.x * amount,
-      y: pos.y + right.y * amount,
-      z: pos.z + right.z * amount,
-    };
-  }
+
 
 
 

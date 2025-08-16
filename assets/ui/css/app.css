@@ -417,12 +417,7 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
 @keyframes sprintWarningPulse { 0%, 100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1);} 50% { opacity: 1; transform: translate(-50%, -50%) scale(1.05);} }
 /* Tactical Hotbar */
 .tactical-hotbar { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 3px; padding: 8px 10px; }
-.hotbar-grid { display: grid; grid-template-columns: repeat(9, 44px); gap: 3px; background:
-  radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,0.02), transparent 70%),
-  repeating-linear-gradient(0deg, rgba(255,255,255,0.04), rgba(255,255,255,0.04) 2px, transparent 2px, transparent 6px),
-  linear-gradient(180deg, rgba(70, 70, 76, 0.32), rgba(70, 70, 76, 0.18));
-  padding: 4px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.10);
-}
+.hotbar-grid { display: grid; grid-template-columns: repeat(9, 44px); gap: 3px; padding: 4px; }
 .hotbar-slot { width: 44px; height: 44px; border-radius: 6px; display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; transition: all 0.2s ease; }
 .hotbar-slot:hover { transform: scale(1.02); }
 .hotbar-slot.active { transform: scale(1.03); }
