@@ -88,9 +88,9 @@ export default class WeaponEffectsSystem {
     if (!parent || !parent.world) return;
     
     try {
-      // Apply physical recoil (impulse)
       const recoilForce = this._calculateRecoilForce();
       const { direction } = this._getShootOriginDirection(parent);
+      
       const impulse = {
         x: -direction.x * recoilForce,
         y: 0,
@@ -99,9 +99,10 @@ export default class WeaponEffectsSystem {
       
       parent.applyImpulse(impulse);
       
-      // Apply crosshair recoil
       const weaponRecoil = this._weaponData.stats.recoil;
       parent.recoilSystem.applyRecoil(weaponRecoil, true);
+      
+      console.log(`🔫 Weapon: ${this._weaponData.name}, Recoil: ${weaponRecoil}, Force: ${recoilForce.toFixed(2)}, Impulse:`, impulse);
     } catch (error) {
       console.warn('Failed to apply weapon recoil:', error);
     }
@@ -121,10 +122,6 @@ export default class WeaponEffectsSystem {
       direction
     };
   }
-
-
-
-  // No light cleanup needed
 
 
 
@@ -233,28 +230,44 @@ export default class WeaponEffectsSystem {
 
 
   private _calculateRecoilForce(): number {
-    const baseForce = this._weaponData.stats.damage * 0.067;
+    // Enhanced recoil calculation for more noticeable knockback
+    const recoilStat = this._weaponData.stats.recoil;
+    const damage = this._weaponData.stats.damage;
+    
+    // Base force from recoil stat (0-100 scale)
+    const baseForce = (recoilStat / 100) * 8.0; // Scale 0-100 to 0-8
+    
+    // Damage multiplier for heavier weapons
+    const damageMultiplier = 1.0 + (damage - 20) * 0.02; // +2% per damage point above 20
     
     let categoryMultiplier = 1.0;
     switch (this._weaponData.category) {
       case 'pistol':
-        categoryMultiplier = 0.77;
+        categoryMultiplier = 0.8; // Reduced for pistols
         break;
       case 'smg':
-        categoryMultiplier = 0.77;
+        categoryMultiplier = 0.9; // Slightly reduced for SMGs
         break;
       case 'rifle':
-        categoryMultiplier = 1.33;
+        categoryMultiplier = 1.2; // Enhanced for rifles
+        break;
+      case 'shotgun':
+        categoryMultiplier = 1.5; // Strong knockback for shotguns
+        break;
+      case 'lmg':
+        categoryMultiplier = 1.3; // Heavy LMG knockback
         break;
       case 'sniper':
-        categoryMultiplier = 1.8;
+        categoryMultiplier = 2.0; // Maximum knockback for snipers
         break;
       default:
         categoryMultiplier = 1.0;
     }
     
-    const finalForce = baseForce * categoryMultiplier;
-    return Math.max(0.67, Math.min(5.3, finalForce));
+    const finalForce = baseForce * damageMultiplier * categoryMultiplier;
+    
+    // Clamp to reasonable range with higher minimum for noticeable effect
+    return Math.max(1.0, Math.min(12.0, finalForce));
   }
 
   // Removed suppression/environment helpers used only for lights

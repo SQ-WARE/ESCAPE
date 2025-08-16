@@ -18,6 +18,7 @@ import { LightingSystem } from './classes/systems/LightingSystem.ts';
 import LootSystem from './classes/systems/LootSystem';
 import { CameraEffectsSystem } from './classes/systems/CameraEffectsSystem';
 import SessionManager from './classes/systems/SessionManager';
+import { PartySystem } from './classes/systems/PartySystem';
 
 startServer(() => {
   // Create separate instances for ALPHA (day) and OMEGA (night)
@@ -34,6 +35,9 @@ startServer(() => {
   const lightingOmega = new LightingSystem(omegaWorld);
   const cameraEffectsSystem = new CameraEffectsSystem();
   SessionManager.instance.initialize();
+  
+  // Initialize party system
+  const partySystem = PartySystem.instance;
 
   lightingAlpha.initialize();
   lightingOmega.useNightPreset().initialize();
@@ -70,10 +74,7 @@ startServer(() => {
   CommandManager.instance.setupCommandHandlers(alphaWorld);
   CommandManager.instance.setupCommandHandlers(omegaWorld);
 
-  setTimeout(() => {
-    alphaWorld.chatManager.sendBroadcastMessage('Use /giveallweapons to get all weapons and ammo for testing', 'FF6600');
-    omegaWorld.chatManager.sendBroadcastMessage('Use /giveallweapons to get all weapons and ammo for testing', 'FF6600');
-  }, 1000);
+
 
   const onJoined = ({ player }: { player: any }) => {
     const gamePlayer = GamePlayer.getOrCreate(player);
@@ -97,10 +98,7 @@ startServer(() => {
     }
     cameraEffectsSystem.setupPlayerCamera(player);
     
-    setTimeout(() => {
-      player.world?.chatManager.sendPlayerMessage(player, `Welcome to ESCAPE, ${player.username}`, 'CC6600');
-      player.world?.chatManager.sendPlayerMessage(player, `Use /giveallweapons to get all weapons and ammo for testing`, 'FF6600');
-    }, 2000);
+
   };
   alphaWorld.on(PlayerEvent.JOINED_WORLD, onJoined);
   omegaWorld.on(PlayerEvent.JOINED_WORLD, onJoined);

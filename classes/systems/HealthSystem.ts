@@ -1,4 +1,5 @@
 import type GamePlayerEntity from '../GamePlayerEntity';
+import { DeathSystem } from './DeathSystem';
 
 const BASE_HEALTH = 100;
 const HEAL_TICK_RATE_MS = 1000;
@@ -146,10 +147,14 @@ export default class HealthSystem {
     this._isDead = true;
     this._stopAutoHealTicker();
     
-    // Import DeathSystem dynamically to avoid circular dependency
-    import('./DeathSystem').then(({ DeathSystem }) => {
+    // Handle player death
+    try {
       DeathSystem.instance.handlePlayerDeath(this._player, this._player.lastDamageSource);
-    }).catch(() => {});
+    } catch (error) {
+      console.error('Failed to handle player death:', error);
+      // Fallback: just return to menu if DeathSystem fails
+      this._player.gamePlayer.loadMenu();
+    }
   }
 
   private _updatePlayerUIHealth(): void {

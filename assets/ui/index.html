@@ -88,14 +88,18 @@
       <div class="drag-instructions">
         <span class="drag-text">Drag items to move • Press Q to drop • ESC to close</span>
       </div>
-      <div class="drag-ghost"></div>
-    </div>
+          <div class="drag-ghost"></div>
   </div>
+</div>
 
-  <!-- Screen fader (default hidden; server can toggle via 'screen-fade') -->
+<div class="kill-feed">
+  <div class="kill-feed-container">
+    <!-- Kill feed entries will be dynamically added here -->
+  </div>
+</div>
+
   <div id="screen-fader" class="screen-fader hidden"></div>
 
-  <!-- Item nameplate template for dropped items (hologram) -->
   <template id="item-nameplate">
     <div class="item-nameplate-container">
       <div class="item-nameplate ui-panel glass-elevated">
@@ -143,7 +147,6 @@
   const extractionZoneNameEl = document.getElementById('extraction-zone-name');
   const extractionProgressFillEl = document.querySelector('.extraction-progress-fill');
   const extractionRemainingEl = document.getElementById('extraction-remaining');
-  // Register scene UI template for item nameplates so server SceneUI can attach
   hytopia.registerSceneUITemplate('item-nameplate', (id, onState) => {
     const tpl = document.getElementById('item-nameplate');
     const root = tpl.content.cloneNode(true);
@@ -182,7 +185,7 @@
   let isInventoryOpen = false;
   let dropHoverSlot = null;
 
-  function openInventory() {
+  const openInventory = () => {
     inventoryOverlay.style.display = 'flex';
     isInventoryOpen = true;
     hytopia.lockPointer(false, true);
@@ -190,9 +193,9 @@
       initializeInventoryGrids();
     }
     hytopia.sendData({ type: 'inventoryOpened' });
-  }
+  };
 
-  function closeInventory() {
+  const closeInventory = () => {
     inventoryOverlay.style.display = 'none';
     isInventoryOpen = false;
     hytopia.lockPointer(true);
@@ -200,9 +203,9 @@
       cancelDragOperation();
     }
     hytopia.sendData({ type: 'inventoryClosed' });
-  }
+  };
 
-  function cancelDragOperation() {
+  const cancelDragOperation = () => {
     if (dragState) {
       document.querySelectorAll('.slot').forEach(slot => {
         slot.classList.remove('drag-source', 'drop-target');
@@ -212,7 +215,7 @@
       removeEmptySlotHighlighting();
       dragState = null;
     }
-  }
+  };
 
   document.addEventListener('keydown', (e) => {
     if (isInventoryOpen) {
@@ -222,7 +225,7 @@
     }
   });
 
-  function handleInventoryKeydown(e) {
+  const handleInventoryKeydown = e => {
     if (e.key === 'Escape') {
       closeInventory();
       return;
@@ -270,9 +273,9 @@
         });
       }
     }
-  }
+  };
 
-  function handleGameplayKeydown(e) {
+  const handleGameplayKeydown = e => {
     if (e.key === 'Q' || e.key === 'q') {
       const activeSlot = document.querySelector('.hotbar-slot.active');
       if (activeSlot && activeSlot.querySelector('img')) {
@@ -401,26 +404,31 @@
       case 'raid-timer':
         updateRaidTimer(data);
         break;
+              case 'kill-feed':
+          console.log('🎯 Received kill feed data:', data);
+          console.log('🎯 Kill feed container exists:', !!killFeedContainer);
+          addKillFeedEntry(data.killerName, data.weaponIconUri, data.victimName);
+          break;
     }
   });
 
-  function updateHealth(data) {
+  const updateHealth = data => {
     const percentage = (data.health / data.maxHealth) * 100;
     healthBar.style.width = `${percentage}%`;
     healthText.textContent = Math.ceil(data.health);
-  }
+  };
 
-  function showDamageFlash() {
+  const showDamageFlash = () => {
     damageFlash.classList.add('active');
     setTimeout(() => damageFlash.classList.remove('active'), 200);
-  }
+  };
 
-  function updateAmmoDisplay(data) {
+  const updateAmmoDisplay = data => {
     ammoText.textContent = `${data.ammo}/${data.maxAmmo}`;
     reloadPrompt.style.display = (data.ammo === 0 && data.maxAmmo > 0) ? 'block' : 'none';
-  }
+  };
 
-  function updateAmmoIndicator(data) {
+  const updateAmmoIndicator = data => {
     if (data.show === false) {
       weaponContainer.style.display = 'none';
       reloadPrompt.style.display = 'none';
@@ -433,9 +441,9 @@
         updateAmmoDisplay(data);
       }
     }
-  }
+  };
 
-  function updateWeaponDisplay(data) {
+  const updateWeaponDisplay = data => {
     weaponName.textContent = data.name.toUpperCase();
     weaponIcon.src = `${CDN_ASSETS_URL}/${data.iconImageUri}`;
     
@@ -451,180 +459,138 @@
       }
       weaponDescriptionEl.textContent = descLines.join(' ').trim() || '';
     }
-  }
+  };
 
-  function updateSprintWarning(data) {
-    if (data.show) {
-      sprintWarningEl.textContent = data.message;
-      sprintWarningEl.style.display = 'block';
-    } else {
-      sprintWarningEl.style.display = 'none';
-    }
-  }
+  const updateSprintWarning = data => {
+    sprintWarningEl.textContent = data.message;
+    sprintWarningEl.style.display = data.show ? 'block' : 'none';
+  };
 
-  function updateReloadProgress(data) {
-    if (data.show === false) {
-      reloadTextContainer.style.display = 'none';
-    } else {
-      reloadTextContainer.style.display = 'block';
-    }
-  }
+  const updateReloadProgress = data => {
+    reloadTextContainer.style.display = data.show === false ? 'none' : 'block';
+  };
 
-  function updateMedkitProgress(data) {
+  const updateMedkitProgress = data => {
     const isUsing = data.isUsing === true;
     medkitProgressContainer.style.display = isUsing ? 'block' : 'none';
     medkitProgressFill.style.width = isUsing ? `${Math.max(0, Math.min(100, data.progress || 0))}%` : '0%';
     healingEffectEl.classList.toggle('active', isUsing);
-    // Use hidden attribute to control visibility reliably
     movementSpeedIndicatorEl.hidden = !isUsing;
     medkitTextEl.textContent = isUsing ? 'HEALING - MOVEMENT SLOWED' : 'HEALING';
-  }
+  };
 
-  function updateCrosshairState(data) {
-    if (data.canFire) {
-      crosshairEl.classList.remove('cannot-fire');
-      crosshairEl.classList.add('can-fire');
-    } else {
-      crosshairEl.classList.remove('can-fire');
-      crosshairEl.classList.add('cannot-fire');
-    }
-  }
+  const updateCrosshairState = data => {
+    crosshairEl.classList.toggle('can-fire', data.canFire);
+    crosshairEl.classList.toggle('cannot-fire', !data.canFire);
+  };
 
-  function updateScopeZoom(data) {
-    if (data.zoom === 1) {
-      scopeOverlayEl.classList.remove('active');
-    } else {
-      scopeOverlayEl.classList.add('active');
-    }
-  }
+  const updateScopeZoom = data => {
+    scopeOverlayEl.classList.toggle('active', data.zoom !== 1);
+  };
 
-  function updateRecoil(data) {
+  const updateRecoil = data => {
     const expansionRatio = data.recoil / data.maxRecoil;
-    const baseExpansion = 8;
-    const maxExpansion = 80;
-    const expansion = baseExpansion + (expansionRatio * maxExpansion);
+    const expansion = 8 + (expansionRatio * 80);
     
-    if (data.recoil > 0.01) {
-      crosshairEl.classList.add('recoiling');
-    } else {
-      crosshairEl.classList.remove('recoiling');
-    }
+    crosshairEl.classList.toggle('recoiling', data.recoil > 0.01);
     
     crosshairLinesEls.forEach(line => {
-      if (line.classList.contains('crosshair-line-top')) {
-        line.style.transform = `translate(-50%, calc(-50% - ${expansion}px))`;
-      } else if (line.classList.contains('crosshair-line-bottom')) {
-        line.style.transform = `translate(-50%, calc(-50% + ${expansion}px))`;
-      } else if (line.classList.contains('crosshair-line-left')) {
-        line.style.transform = `translate(calc(-50% - ${expansion}px), -50%)`;
-      } else if (line.classList.contains('crosshair-line-right')) {
-        line.style.transform = `translate(calc(-50% + ${expansion}px), -50%)`;
-      }
+      const isTop = line.classList.contains('crosshair-line-top');
+      const isBottom = line.classList.contains('crosshair-line-bottom');
+      const isLeft = line.classList.contains('crosshair-line-left');
+      const isRight = line.classList.contains('crosshair-line-right');
+      
+      if (isTop) line.style.transform = `translate(-50%, calc(-50% - ${expansion}px))`;
+      else if (isBottom) line.style.transform = `translate(-50%, calc(-50% + ${expansion}px))`;
+      else if (isLeft) line.style.transform = `translate(calc(-50% - ${expansion}px), -50%)`;
+      else if (isRight) line.style.transform = `translate(calc(-50% + ${expansion}px), -50%)`;
     });
     crosshairEl.style.transform = `translate(-50%, -50%)`;
-  }
+  };
 
-  function showHitmarker(data) {
+  const showHitmarker = data => {
     if (data.hit) {
-      if (data.kill) {
-        crosshairEl.classList.add('hitmarker-kill');
-        setTimeout(() => crosshairEl.classList.remove('hitmarker-kill'), 300);
-      } else {
-        crosshairEl.classList.add('hitmarker-hit');
-        setTimeout(() => crosshairEl.classList.remove('hitmarker-hit'), 200);
-      }
+      const className = data.kill ? 'hitmarker-kill' : 'hitmarker-hit';
+      const duration = data.kill ? 300 : 200;
+      crosshairEl.classList.add(className);
+      setTimeout(() => crosshairEl.classList.remove(className), duration);
     }
-  }
+  };
 
-  function showExtraction(data) {
+  const showExtraction = data => {
     extractionContainerEl.style.display = 'block';
     extractionZoneNameEl.textContent = data.zoneName || 'EXFIL';
     extractionProgressFillEl.style.width = '0%';
     extractionRemainingEl.textContent = data.holdSeconds ?? 20;
-  }
+  };
 
-  function updateExtraction(data) {
-    if (data.zoneName) {
-      extractionZoneNameEl.textContent = data.zoneName;
-    }
+  const updateExtraction = data => {
+    if (data.zoneName) extractionZoneNameEl.textContent = data.zoneName;
     if (typeof data.progress === 'number') {
       extractionProgressFillEl.style.width = `${Math.max(0, Math.min(100, data.progress))}%`;
     }
     if (typeof data.remainingSeconds === 'number') {
       extractionRemainingEl.textContent = data.remainingSeconds;
     }
-  }
+  };
 
-  function hideExtraction() {
-    extractionContainerEl.style.display = 'none';
-  }
+  const hideExtraction = () => extractionContainerEl.style.display = 'none';
 
-  function updateRaidTimer(data) {
+  const updateRaidTimer = data => {
     const el = document.getElementById('raid-timer');
     const lbl = document.getElementById('raid-session-label');
     const timeEl = document.getElementById('raid-time-left');
     const worldTimeEl = document.getElementById('raid-world-time');
     if (!el || !lbl || !timeEl) return;
-    const total = Math.max(1, parseInt(data.totalSeconds || 1));
+    
     const left = Math.max(0, parseInt(data.secondsLeft || 0));
     const m = Math.floor(left / 60);
     const s = left % 60;
     timeEl.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
     lbl.textContent = String(data.sessionId || '').toUpperCase();
-    if (worldTimeEl) {
-      worldTimeEl.textContent = data.worldTimeFormatted || '12:00 AM';
-    }
+    if (worldTimeEl) worldTimeEl.textContent = data.worldTimeFormatted || '12:00 AM';
+    
     el.style.display = 'inline-block';
-    // Enhanced color shift when low - more urgent visual warnings
+    
     if (left <= 10) {
-      // Critical - flashing red
       el.style.borderColor = 'rgba(255,0,0,0.8)';
       el.style.boxShadow = '0 0 20px rgba(255,0,0,0.6)';
       el.style.animation = 'pulse-critical 0.5s ease-in-out infinite alternate';
     } else if (left <= 30) {
-      // Very urgent - solid red
       el.style.borderColor = 'rgba(255,0,0,0.7)';
       el.style.boxShadow = '0 0 15px rgba(255,0,0,0.5)';
       el.style.animation = 'pulse-urgent 1s ease-in-out infinite alternate';
     } else if (left <= 60) {
-      // Urgent - orange-red
       el.style.borderColor = 'rgba(255,100,0,0.6)';
       el.style.boxShadow = '0 0 12px rgba(255,100,0,0.4)';
       el.style.animation = '';
     } else if (left <= 120) {
-      // Warning - orange
       el.style.borderColor = 'rgba(255,160,0,0.5)';
       el.style.boxShadow = '0 0 12px rgba(255,160,0,0.35)';
       el.style.animation = '';
     } else {
-      // Normal
       el.style.borderColor = '';
       el.style.boxShadow = '';
       el.style.animation = '';
     }
-  }
+  };
 
 
 
-  function getMessageType(type) {
-    const types = {
-      'reload-error': 'error',
-      'shoot-error': 'error',
-      'reload-success': 'success',
-      'weapon-message': 'warning'
-    };
-    return types[type] || 'info';
-  }
+  const getMessageType = type => ({
+    'reload-error': 'error',
+    'shoot-error': 'error',
+    'reload-success': 'success',
+    'weapon-message': 'warning'
+  }[type] || 'info');
 
-  function getNotificationType(color) {
-    return color === 'FF0000' ? 'error' : color === '00FF00' ? 'success' : 'info';
-  }
+  const getNotificationType = color => color === 'FF0000' ? 'error' : color === '00FF00' ? 'success' : 'info';
 
-  function showHealingComplete(data) {
+  const showHealingComplete = () => {
     healingEffectEl.classList.remove('active');
     movementSpeedIndicatorEl.hidden = true;
-  }
-  function showHealingBonusActivated(data) {
+  };
+  const showHealingBonusActivated = data => {
     const bonusIndicator = document.createElement('div');
     bonusIndicator.className = 'healing-bonus-indicator';
     bonusIndicator.innerHTML = `
@@ -662,17 +628,14 @@
     }, data.duration);
 
     showMessage(`💚 Enhanced regeneration activated! (${data.multiplier}x healing)`, 'success');
-  }
+  };
 
-  function showHealingBonusEnded() {
-    showMessage('Enhanced regeneration ended', 'info');
-  }
+  const showHealingBonusEnded = () => showMessage('Enhanced regeneration ended', 'info');
 
-  function showMessage(message, type = 'info') {
+  const showMessage = (message, type = 'info') => {
     const messageContainer = document.getElementById('message-container');
-    if (!messageContainer) {
-      return;
-    }
+    if (!messageContainer) return;
+    
     const messageElement = document.createElement('div');
     messageElement.className = `message ui-panel message-${type}`;
     messageElement.textContent = message;
@@ -682,9 +645,9 @@
         messageElement.parentNode.removeChild(messageElement);
       }
     }, 3000);
-  }
+  };
 
-  function updateHotbarSlot(position, itemData) {
+  const updateHotbarSlot = (position, itemData) => {
     const slot = hotbarGrid.children[position];
     if (!slot) return;
     
@@ -696,21 +659,19 @@
         itemData.name.includes('7.62×39mm') || 
         itemData.name.includes('12.7×108mm')
       );
-      let quantityDisplay = '';
-      if (isAmmo && itemData.quantity && itemData.quantity > 1) {
-        quantityDisplay = `<span class="ammo-label">${itemData.quantity}</span>`;
-      } else if (itemData.quantity && itemData.quantity > 1) {
-        quantityDisplay = `<span class="item-quantity">${itemData.quantity}</span>`;
-      }
+      const quantityDisplay = isAmmo && itemData.quantity > 1 ? 
+        `<span class="ammo-label">${itemData.quantity}</span>` :
+        itemData.quantity > 1 ? `<span class="item-quantity">${itemData.quantity}</span>` : '';
+      
       slot.innerHTML = `
         <span class="slot-number">${position + 1}</span>
         <img src="${CDN_ASSETS_URL}/${itemData.iconImageUri}" title="${itemData.name}">
         ${quantityDisplay}
       `;
     }
-  }
+  };
 
-  function updateInventorySlot(grid, position, itemData) {
+  const updateInventorySlot = (grid, position, itemData) => {
     const slot = grid.children[position];
     if (!slot) return;
     
@@ -732,9 +693,7 @@
       if (dragState && dragState.isDragging) {
         slot.classList.remove('drop-target');
       }
-      const quantityDisplay = itemData.quantity && itemData.quantity > 1 
-        ? `<span class="item-quantity">${itemData.quantity}</span>` 
-        : '';
+      const quantityDisplay = itemData.quantity > 1 ? `<span class="item-quantity">${itemData.quantity}</span>` : '';
       slot.innerHTML = `
         <img src="${CDN_ASSETS_URL}/${itemData.iconImageUri}" alt="${itemData.name}">
         ${quantityDisplay}
@@ -749,9 +708,9 @@
     if (grid === inventoryHotbarGrid && itemData.selected !== undefined) {
       slot.classList.toggle('active', itemData.selected);
     }
-  }
+  };
 
-  function setActiveSlot(index) {
+  const setActiveSlot = index => {
     document.querySelectorAll('.hotbar-slot').forEach((slot, i) => {
       slot.classList.toggle('active', i === index);
     });
@@ -760,9 +719,9 @@
         slot.classList.toggle('active', i === index);
       });
     }
-  }
+  };
 
-  function initializeHotbar() {
+  const initializeHotbar = () => {
     for (let i = 0; i < HOTBAR_SLOTS; i++) {
       const slot = document.createElement('div');
       slot.className = 'hotbar-slot';
@@ -773,9 +732,9 @@
       });
       hotbarGrid.appendChild(slot);
     }
-  }
+  };
 
-  function initializeInventoryGrids() {
+  const initializeInventoryGrids = () => {
     for (let i = 0; i < BACKPACK_SLOTS; i++) {
       backpackGrid.appendChild(createInventorySlot());
     }
@@ -787,31 +746,26 @@
       });
       inventoryHotbarGrid.appendChild(slot);
     }
-  }
+  };
 
-  function createInventorySlot() {
+  const createInventorySlot = () => {
     const slot = document.createElement('div');
     slot.className = 'slot';
-    slot.addEventListener('mouseenter', (e) => { 
-      hoveredSlot = slot;
-    });
+    slot.addEventListener('mouseenter', () => hoveredSlot = slot);
     slot.addEventListener('mouseleave', () => { 
       hoveredSlot = null;
-      if (slot._tooltip) {
-        slot._tooltip.style.display = 'none';
-      }
+      if (slot._tooltip) slot._tooltip.style.display = 'none';
     });
     slot.addEventListener('mousedown', handleMouseDown);
     return slot;
-  }
+  };
 
-  function handleMouseDown(e) {
+  const handleMouseDown = e => {
     const slot = e.currentTarget;
     const img = slot.querySelector('img');
     if (!img || e.button !== 0) return;
     e.preventDefault();
 
-    // Shift+Click quick move between containers
     if (e.shiftKey) {
       const container = slot.parentElement.dataset.container;
       const index = Array.from(slot.parentElement.children).indexOf(slot);
@@ -831,12 +785,11 @@
       startY: e.clientY,
       isDragging: false
     };
-  // Use capture and passive false to prioritize drag updates
-  document.addEventListener('mousemove', handleMouseMove, { capture: true });
+    document.addEventListener('mousemove', handleMouseMove, { capture: true });
     document.addEventListener('mouseup', handleMouseUp);
-  }
+  };
 
-  function handleMouseMove(e) {
+  const handleMouseMove = e => {
     if (!dragState) return;
     const dx = e.clientX - dragState.startX;
     const dy = e.clientY - dragState.startY;
@@ -844,15 +797,14 @@
       startDrag(e);
     }
     if (dragState.isDragging) {
-      // inline for performance: avoid extra function call and layout thrash
       dragGhost.style.left = `${e.clientX + 15}px`;
       dragGhost.style.top = `${e.clientY - 15}px`;
       dragGhost.style.transform = 'translate(-50%, -50%)';
       updateDropHover(e);
     }
-  }
+  };
 
-  function handleMouseUp(e) {
+  const handleMouseUp = e => {
     if (dragState && dragState.isDragging) {
       handleDragEnd(e);
     }
@@ -868,28 +820,20 @@
     
     setTimeout(() => {
       document.querySelectorAll('.slot').forEach(slot => {
-        if (slot._itemData) {
-          slot._tooltipEnabled = true;
-        }
+        if (slot._itemData) slot._tooltipEnabled = true;
       });
     }, 100);
-  }
+  };
 
-  function startDrag(e) {
+  const startDrag = e => {
     dragState.isDragging = true;
     const img = dragState.slot.querySelector('img');
     const quantity = dragState.slot.querySelector('.item-quantity');
     dragState.slot.classList.add('drag-source');
     dragGhost.innerHTML = '';
     
-    if (img) {
-      const ghostImg = img.cloneNode(true);
-      dragGhost.appendChild(ghostImg);
-    }
-    if (quantity) {
-      const ghostQuantity = quantity.cloneNode(true);
-      dragGhost.appendChild(ghostQuantity);
-    }
+    if (img) dragGhost.appendChild(img.cloneNode(true));
+    if (quantity) dragGhost.appendChild(quantity.cloneNode(true));
     
     dragGhost.classList.add('active');
     updateGhostPosition(e);
@@ -900,14 +844,12 @@
     });
     
     highlightEmptySlots();
-  }
+  };
 
-  function handleDragEnd(e) {
+  const handleDragEnd = e => {
     if (!dragState) return;
     const dropSlot = document.elementFromPoint(e.clientX, e.clientY)?.closest('.slot');
-    if (dragState.slot) {
-      dragState.slot.classList.remove('drag-source');
-    }
+    if (dragState.slot) dragState.slot.classList.remove('drag-source');
     if (dropSlot && dropSlot !== dragState.slot && dropSlot.parentElement.dataset.container) {
       hytopia.sendData({
         type: 'moveItem',
@@ -920,37 +862,31 @@
     dragGhost.classList.remove('active');
     dragGhost.innerHTML = '';
     removeEmptySlotHighlighting();
-  }
+  };
 
-  function updateGhostPosition(e) {
+  const updateGhostPosition = e => {
     dragGhost.style.left = `${e.clientX + 15}px`;
     dragGhost.style.top = `${e.clientY - 15}px`;
-    // Remove rotation and any tilt for a clean ghost
     dragGhost.style.transform = 'translate(-50%, -50%)';
-  }
+  };
 
-  
+  const highlightEmptySlots = () => setEmptySlotHighlighting(true);
+  const removeEmptySlotHighlighting = () => setEmptySlotHighlighting(false);
 
-  function highlightEmptySlots() { setEmptySlotHighlighting(true); }
-
-  function removeEmptySlotHighlighting() { setEmptySlotHighlighting(false); }
-
-  function updateDropHover(e) {
+  const updateDropHover = e => {
     const candidate = document.elementFromPoint(e.clientX, e.clientY)?.closest('.slot');
     const isDroppable = candidate && candidate !== dragState.slot && !candidate.querySelector('img') && candidate.parentElement?.dataset?.container;
     if (dropHoverSlot && dropHoverSlot !== candidate) {
       dropHoverSlot.classList.remove('drop-hover');
       dropHoverSlot = null;
     }
-    if (isDroppable) {
-      if (dropHoverSlot !== candidate) {
-        candidate.classList.add('drop-hover');
-        dropHoverSlot = candidate;
-      }
+    if (isDroppable && dropHoverSlot !== candidate) {
+      candidate.classList.add('drop-hover');
+      dropHoverSlot = candidate;
     }
-  }
+  };
 
-  function setEmptySlotHighlighting(enable) {
+  const setEmptySlotHighlighting = enable => {
     document.querySelectorAll('.slot').forEach(slot => {
       if (enable) {
         if (!slot.querySelector('img') && slot !== (dragState && dragState.slot)) {
@@ -963,9 +899,9 @@
       }
     });
     if (!enable) dropHoverSlot = null;
-  }
+  };
 
-  function createTooltip(slot, itemData) {
+  const createTooltip = (slot, itemData) => {
     const tooltip = document.createElement('div');
     tooltip.className = 'item-tooltip';
     const isWeapon = itemData.stats && itemData.ammoType;
@@ -978,18 +914,14 @@
     
     if (isWeapon && itemData.stats) {
       const { description, bulletType, statsHTML } = createWeaponStatsHTML(itemData.stats, itemData.description || '');
-      if (description) {
-        tooltipHTML += `<div class="tooltip-description">${description}</div>`;
-      }
-      if (bulletType) {
-        tooltipHTML += `<div class="bullet-type">${bulletType}</div>`;
-      }
+      if (description) tooltipHTML += `<div class="tooltip-description">${description}</div>`;
+      if (bulletType) tooltipHTML += `<div class="bullet-type">${bulletType}</div>`;
       tooltipHTML += statsHTML;
     } else if (itemData.description) {
       tooltipHTML += `<div class="tooltip-description">${itemData.description}</div>`;
     }
     
-    if (itemData.quantity && itemData.quantity > 1) {
+    if (itemData.quantity > 1) {
       tooltipHTML += `<div class="tooltip-quantity">Quantity: ${itemData.quantity}</div>`;
     }
     
@@ -998,35 +930,33 @@
     slot._tooltip = tooltip;
     slot.addEventListener('mouseenter', handleTooltipShow);
     slot.addEventListener('mouseleave', handleTooltipHide);
-  }
+  };
 
-  function removeTooltip(slot) {
+  const removeTooltip = slot => {
     if (slot._tooltip) {
       slot._tooltip.remove();
       slot._tooltip = null;
     }
     slot.removeEventListener('mouseenter', handleTooltipShow);
     slot.removeEventListener('mouseleave', handleTooltipHide);
-  }
+  };
 
-  function handleTooltipShow(e) {
+  const handleTooltipShow = e => {
     const slot = e.currentTarget;
     const tooltip = slot._tooltip;
     if (tooltip) {
       tooltip.style.display = 'block';
       positionTooltip(slot, tooltip);
     }
-  }
+  };
 
-  function handleTooltipHide(e) {
+  const handleTooltipHide = e => {
     const slot = e.currentTarget;
     const tooltip = slot._tooltip;
-    if (tooltip) {
-      tooltip.style.display = 'none';
-    }
-  }
+    if (tooltip) tooltip.style.display = 'none';
+  };
 
-  function createLazyTooltip(e) {
+  const createLazyTooltip = e => {
     const slot = e.currentTarget;
     if (slot._itemData && !slot._tooltip) {
       if (dragState && dragState.isDragging || slot._tooltipEnabled === false) return;
@@ -1035,9 +965,9 @@
       slot.removeEventListener('mouseenter', createLazyTooltip);
       handleTooltipShow(e);
     }
-  }
+  };
 
-  function positionTooltip(slot, tooltip) {
+  const positionTooltip = (slot, tooltip) => {
     const slotRect = slot.getBoundingClientRect();
     let left = slotRect.right + 8;
     let top = slotRect.top;
@@ -1055,15 +985,15 @@
     top = Math.max(8, top);
     tooltip.style.left = `${left}px`;
     tooltip.style.top = `${top}px`;
-  }
+  };
 
-  function createWeaponStatsHTML(stats, description) {
-    const getBulletType = (description) => {
+  const createWeaponStatsHTML = (stats, description) => {
+    const getBulletType = description => {
       const ammoMatch = description.match(/Ammo:\s*([^\n]+)/);
       return ammoMatch ? ammoMatch[1].trim() : null;
     };
     
-    const getRealisticDescription = (description) => {
+    const getRealisticDescription = description => {
       const lines = description.split('\n');
       const descriptionLines = [];
       for (const line of lines) {
@@ -1072,9 +1002,7 @@
             line.startsWith('Magazine:')) {
           break;
         }
-        if (line.trim()) {
-          descriptionLines.push(line.trim());
-        }
+        if (line.trim()) descriptionLines.push(line.trim());
       }
       return descriptionLines.join(' ');
     };
@@ -1098,29 +1026,25 @@
       </div>
     `;
     
-    return {
-      description: realisticDescription,
-      bulletType: bulletType,
-      statsHTML: statsHTML
-    };
-  }
+    return { description: realisticDescription, bulletType, statsHTML };
+  };
 
-  // Rarity colors handled via CSS classes
+
+
+
 
   initializeHotbar();
   initializeInventoryGrids();
 
-  // Initial black until UI is ready
   window.addEventListener('load', () => {
     setTimeout(() => setScreenFade(false, 350), 300);
-    // Ask server to refresh HUD and weapon HUD after fresh load (e.g., after closing crate)
     setTimeout(() => {
       try { hytopia.sendData({ type: 'requestHudSync' }); } catch {}
       try { hytopia.sendData({ type: 'requestWeaponHud' }); } catch {}
     }, 80);
   });
 
-  function setScreenFade(show, durationMs) {
+  const setScreenFade = (show, durationMs) => {
     const fader = document.getElementById('screen-fader');
     if (!fader) return;
     if (typeof durationMs === 'number') {
@@ -1128,19 +1052,76 @@
     } else {
       fader.style.transition = `opacity 250ms ease-in-out`;
     }
-    if (show) {
-      fader.classList.remove('hidden');
-    } else {
-      fader.classList.add('hidden');
-    }
-  }
+    fader.classList.toggle('hidden', !show);
+  };
 
-  function updateCompass(data) {
+  const updateCompass = data => {
     const el = document.getElementById('compass-indicator');
     if (!el) return;
     const letter = (data && data.letter) ? String(data.letter).toUpperCase().charAt(0) : 'N';
     el.textContent = letter;
-  }
+  };
+
+  // Kill Feed System
+  const killFeedContainer = document.querySelector('.kill-feed-container');
+  console.log('🎯 Kill feed container found:', killFeedContainer);
+  const killFeedEntries = [];
+  const MAX_KILL_FEED_ENTRIES = 5;
+  const KILL_FEED_DURATION = 4000; // 4 seconds
+
+  const addKillFeedEntry = (killerName, weaponIconUri, victimName) => {
+    console.log('🎯 Adding kill feed entry:', { killerName, weaponIconUri, victimName });
+    console.log('🎯 Kill feed container:', killFeedContainer);
+    console.log('🎯 CDN_ASSETS_URL:', CDN_ASSETS_URL);
+    if (!killFeedContainer) {
+      console.error('🎯 Kill feed container not found!');
+      return;
+    }
+
+    const entry = document.createElement('div');
+    entry.className = 'kill-feed-entry';
+    
+    entry.innerHTML = `
+      <span class="kill-feed-killer">${killerName}</span>
+      <img class="kill-feed-weapon" src="${CDN_ASSETS_URL}/${weaponIconUri}" alt="weapon">
+      <span class="kill-feed-victim">${victimName}</span>
+    `;
+
+    console.log('🎯 Created kill feed entry element:', entry);
+    console.log('🎯 Entry HTML:', entry.innerHTML);
+    killFeedContainer.appendChild(entry);
+    console.log('🎯 Entry added to container. Container children count:', killFeedContainer.children.length);
+    killFeedEntries.push(entry);
+
+    // Remove oldest entry if we exceed max
+    if (killFeedEntries.length > MAX_KILL_FEED_ENTRIES) {
+      const oldestEntry = killFeedEntries.shift();
+      if (oldestEntry && oldestEntry.parentNode) {
+        oldestEntry.classList.add('fade-out');
+        setTimeout(() => {
+          if (oldestEntry.parentNode) {
+            oldestEntry.parentNode.removeChild(oldestEntry);
+          }
+        }, 1800);
+      }
+    }
+
+    // Remove this entry after duration
+    setTimeout(() => {
+      if (entry.parentNode) {
+        entry.classList.add('fade-out');
+        setTimeout(() => {
+          if (entry.parentNode) {
+            entry.parentNode.removeChild(entry);
+          }
+          const index = killFeedEntries.indexOf(entry);
+          if (index > -1) {
+            killFeedEntries.splice(index, 1);
+          }
+        }, 1800);
+      }
+    }, KILL_FEED_DURATION);
+  };
 
 </script>
 

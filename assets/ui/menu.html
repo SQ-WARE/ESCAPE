@@ -13,7 +13,7 @@
 </div>
 
   <div class="main-menu">
-  <div class="center-panel">
+    <!-- Top HUD - Always at top -->
     <div class="top-hud">
       <div class="hud-panel ui-panel" id="profile-hud">
         <div class="level-badge">
@@ -35,65 +35,84 @@
         </div>
       </div>
     </div>
-    <div class="game-title">
-      <h1 class="title-text" id="escape-title">ESCAPE</h1>
+
+    <!-- Center Panel - Main Menu -->
+    <div class="center-panel">
+      <div class="game-title">
+        <h1 class="title-text" id="escape-title">ESCAPE</h1>
+      </div>
+      
+      <div class="main-actions">
+        <div id="session-chooser" class="ui-panel" style="margin-top: 0; padding: 12px; display: none; gap: 12px; align-items: stretch; flex-direction: column;">
+          <div class="section-label">CHOOSE SESSION</div>
+          <div class="session-grid">
+            <div id="session-a" class="session-card" data-session="alpha" tabindex="0" style="flex:1; display:flex; flex-direction:column; gap:6px; cursor:pointer;">
+              <div class="session-meta"><span class="session-pill session-pill-alpha">DAY</span></div>
+              <div class="session-title">ALPHA</div>
+              <div class="session-subtitle">TIME LEFT</div>
+              <div class="session-timer-left" data-for-left="alpha">--:--</div>
+              <div class="session-world-subtitle">WORLD TIME</div>
+              <div class="session-timer-world" data-for-world="alpha">--:--</div>
+            </div>
+            <div id="session-b" class="session-card" data-session="omega" tabindex="0" style="flex:1; display:flex; flex-direction:column; gap:6px; cursor:pointer;">
+              <div class="session-meta"><span class="session-pill session-pill-omega">NIGHT</span></div>
+              <div class="session-title">OMEGA</div>
+              <div class="session-subtitle">TIME LEFT</div>
+              <div class="session-timer-left" data-for-left="omega">--:--</div>
+              <div class="session-world-subtitle">WORLD TIME</div>
+              <div class="session-timer-world" data-for-world="omega">--:--</div>
+            </div>
+          </div>
+        </div>
+        
+        <button class="action-button primary active" id="deploy-button" data-action="deploy">
+          <div class="button-content">
+            <div class="button-text">
+              <span class="button-title">DEPLOY</span>
+            </div>
+          </div>
+        </button>
+        
+        <button class="action-button secondary" id="stash-button" data-action="openStash">
+          <div class="button-content">
+            <div class="button-text">
+              <span class="button-title">STASH</span>
+            </div>
+          </div>
+        </button>
+        
+        <button class="action-button secondary" id="settings-button" data-action="openSettings">
+          <div class="button-content">
+            <div class="button-text">
+              <span class="button-title">SETTINGS</span>
+            </div>
+          </div>
+        </button>
+
+        <button class="action-button secondary" id="progression-button" data-action="openProgression">
+          <div class="button-content">
+            <div class="button-text">
+              <span class="button-title">PROGRESSION</span>
+            </div>
+          </div>
+        </button>
+      </div>
     </div>
-    
-    <div class="main-actions">
-      <div id="session-chooser" class="ui-panel" style="margin-top: 0; padding: 12px; display: none; gap: 12px; align-items: stretch; flex-direction: column;">
-        <div class="section-label">CHOOSE SESSION</div>
-        <div class="session-grid">
-          <div id="session-a" class="session-card" data-session="alpha" tabindex="0" style="flex:1; display:flex; flex-direction:column; gap:6px; cursor:pointer;">
-            <div class="session-meta"><span class="session-pill session-pill-alpha">DAY</span></div>
-            <div class="session-title">ALPHA</div>
-            <div class="session-subtitle">TIME LEFT</div>
-            <div class="session-timer-left" data-for-left="alpha">--:--</div>
-            <div class="session-world-subtitle">WORLD TIME</div>
-            <div class="session-timer-world" data-for-world="alpha">--:--</div>
-          </div>
-          <div id="session-b" class="session-card" data-session="omega" tabindex="0" style="flex:1; display:flex; flex-direction:column; gap:6px; cursor:pointer;">
-            <div class="session-meta"><span class="session-pill session-pill-omega">NIGHT</span></div>
-            <div class="session-title">OMEGA</div>
-            <div class="session-subtitle">TIME LEFT</div>
-            <div class="session-timer-left" data-for-left="omega">--:--</div>
-            <div class="session-world-subtitle">WORLD TIME</div>
-            <div class="session-timer-world" data-for-world="omega">--:--</div>
-          </div>
+
+    <!-- Bottom Party Bar -->
+    <div class="bottom-party-bar">
+      <div class="party-bar-content">
+        <div class="party-label">PARTY</div>
+        <div class="party-members-horizontal" id="party-members-horizontal">
+          <!-- Party members will be dynamically populated here -->
+        </div>
+        <div class="party-actions-horizontal">
+          <button class="party-action-btn" id="leave-party-button">
+            <span class="btn-text">LEAVE</span>
+          </button>
         </div>
       </div>
-      <button class="action-button primary active" id="deploy-button" data-action="deploy">
-        <div class="button-content">
-          <div class="button-text">
-            <span class="button-title">DEPLOY</span>
-          </div>
-        </div>
-      </button>
-      
-      <button class="action-button secondary" id="stash-button" data-action="openStash">
-        <div class="button-content">
-          <div class="button-text">
-            <span class="button-title">STASH</span>
-          </div>
-        </div>
-      </button>
-      
-      <button class="action-button secondary" id="settings-button" data-action="openSettings">
-        <div class="button-content">
-          <div class="button-text">
-            <span class="button-title">SETTINGS</span>
-          </div>
-        </div>
-      </button>
-
-      <button class="action-button secondary" id="progression-button" data-action="openProgression">
-        <div class="button-content">
-          <div class="button-text">
-            <span class="button-title">PROGRESSION</span>
-          </div>
-        </div>
-      </button>
     </div>
-    
   </div>
   <div id="extraction-success" class="extraction-success ui-panel" hidden>
     <div class="success-title">Successful Extraction</div>
@@ -108,6 +127,27 @@
     <div class="success-subtitle" id="mia-banner-sub">You went missing in action</div>
   </div>
 </div>
+
+<!-- Party Invite Popup -->
+<div id="party-invite-popup" class="party-invite-popup" hidden>
+  <div class="party-invite-content">
+    <div class="party-invite-header">
+      <h3>Party Invite</h3>
+    </div>
+    <div class="party-invite-body">
+      <p><span id="invite-from-username"></span> invited you to join their party!</p>
+      <div id="invite-timer" class="invite-timer">30s remaining</div>
+    </div>
+    <div class="party-invite-actions">
+      <button id="accept-invite-btn" class="party-invite-btn accept">Accept</button>
+      <button id="decline-invite-btn" class="party-invite-btn decline">Decline</button>
+    </div>
+  </div>
+</div>
+
+
+
+
 
 
 <!-- Stash overlay removed; dedicated stash.html is used -->
@@ -133,6 +173,13 @@
   let extractionSuccessTimeout = null;
 
   deployButton.addEventListener('click', () => {
+    // Check if player is in a party and is the host
+    const currentPlayer = {
+      username: document.getElementById('hud-username')?.textContent || 'Player',
+      level: document.getElementById('hud-level')?.textContent || '1'
+    };
+    
+    // For now, just deploy normally - party system will be integrated later
     hytopia.sendData({ type: 'deploy' });
   });
 
@@ -146,6 +193,263 @@
 
   progressionButton.addEventListener('click', () => {
     hytopia.sendData({ type: 'openProgression' });
+  });
+
+  // Party functionality
+  const leavePartyButton = document.getElementById('leave-party-button');
+
+  leavePartyButton.addEventListener('click', () => {
+    hytopia.sendData({ type: 'leave-party' });
+  });
+
+  // Party list management
+  const partyMembersHorizontal = document.getElementById('party-members-horizontal');
+  
+  function updatePartyList(partyData) {
+    if (!partyMembersHorizontal) return;
+    
+    // Clear existing party members
+    partyMembersHorizontal.innerHTML = '';
+    
+    const maxMembers = partyData?.maxMembers || 4;
+    const members = partyData?.members || [];
+    
+    // Get current player info to check if they're the host
+    const currentPlayerUsername = document.getElementById('hud-username')?.textContent || 'Player';
+    const currentPlayerMember = members.find(m => m.username === currentPlayerUsername);
+    const isCurrentPlayerHost = currentPlayerMember?.isHost || false;
+    
+    // Create slots for all 4 party members
+    for (let i = 0; i < maxMembers; i++) {
+      const member = members[i];
+      
+      if (member) {
+        // Real party member
+        const memberElement = document.createElement('div');
+        memberElement.className = 'party-member-horizontal';
+        
+        const firstLetter = member.username ? member.username.charAt(0).toUpperCase() : '?';
+        const statusClass = member.status || 'ready';
+        const isHost = member.isHost;
+        const isCurrentPlayer = member.username === currentPlayerUsername;
+        const canKick = isCurrentPlayerHost && !isCurrentPlayer && !isHost; // Host can kick non-host members, but not themselves
+        
+        memberElement.innerHTML = `
+          <div class="member-avatar-small">
+            <div class="avatar-placeholder-small">${firstLetter}</div>
+          </div>
+          <div class="member-info-horizontal">
+            <div class="member-name-horizontal">${member.username || 'Unknown'}</div>
+            <div class="member-level-horizontal">Level ${member.level || 1}</div>
+          </div>
+          <div class="member-status-horizontal">
+            <span class="status-dot-small ${statusClass}"></span>
+            ${isHost ? '<span class="host-badge">HOST</span>' : ''}
+          </div>
+          ${canKick ? '<div class="kick-button" title="Kick player">×</div>' : ''}
+        `;
+        
+        // Add kick functionality for hosts
+        if (canKick) {
+          const kickButton = memberElement.querySelector('.kick-button');
+          if (kickButton) {
+            kickButton.addEventListener('click', (e) => {
+              e.stopPropagation();
+              if (confirm(`Are you sure you want to kick ${member.username} from the party?`)) {
+                hytopia.sendData({
+                  type: 'kick-player',
+                  username: member.username
+                });
+              }
+            });
+          }
+        }
+        
+        partyMembersHorizontal.appendChild(memberElement);
+      } else {
+        // Empty slot
+        const emptySlot = document.createElement('div');
+        emptySlot.className = 'party-member-horizontal empty clickable';
+        emptySlot.innerHTML = `
+          <div class="member-avatar-small">
+            <div class="avatar-placeholder-small">+</div>
+          </div>
+          <div class="member-info-horizontal">
+            <div class="member-name-horizontal">Empty Slot</div>
+            <div class="member-level-horizontal">Click to invite</div>
+          </div>
+          <div class="member-status-horizontal">
+            <span class="status-dot-small offline"></span>
+          </div>
+        `;
+        
+        // Add click handler for inviting
+        emptySlot.addEventListener('click', () => {
+          const username = prompt('Enter player username to invite:');
+          if (username && username.trim()) {
+            hytopia.sendData({ 
+              type: 'send-party-invite', 
+              username: username.trim() 
+            });
+          }
+        });
+        
+        partyMembersHorizontal.appendChild(emptySlot);
+      }
+    }
+  }
+
+  // Listen for party data updates
+  hytopia.onData(data => {
+    if (data.type === 'party-update') {
+      updatePartyList(data.partyData);
+    } else if (data.type === 'party-disbanded') {
+      console.log('🎯 Party disbanded, creating new solo party');
+      // Create a new solo party for the current player
+      const currentPlayer = {
+        username: document.getElementById('hud-username')?.textContent || 'Player',
+        level: parseInt(document.getElementById('hud-level')?.textContent || '1'),
+        status: 'ready'
+      };
+      
+      updatePartyList({
+        members: [currentPlayer],
+        maxMembers: 4
+      });
+    } else if (data.type === 'party-kicked') {
+      console.log('🎯 Player was kicked from party:', data.reason);
+      
+      // Create a new solo party for the kicked player
+      const currentPlayer = {
+        username: document.getElementById('hud-username')?.textContent || 'Player',
+        level: parseInt(document.getElementById('hud-level')?.textContent || '1'),
+        status: 'ready'
+      };
+      
+      updatePartyList({
+        members: [currentPlayer],
+        maxMembers: 4
+      });
+      
+      // Show notification
+      if (data.reason) {
+        alert(`You were kicked from the party: ${data.reason}`);
+      }
+    }
+  });
+
+  // Initialize with current player data (if available)
+  function initializePartyList() {
+    // For now, show just the current player until party system is implemented
+    const currentPlayer = {
+      username: document.getElementById('hud-username')?.textContent || 'Player',
+      level: parseInt(document.getElementById('hud-level')?.textContent || '1'),
+      status: 'ready'
+    };
+    
+    updatePartyList({
+      members: [currentPlayer],
+      maxMembers: 4
+    });
+  }
+
+  // Initialize party list when page loads
+  setTimeout(initializePartyList, 100);
+
+
+
+
+
+  // Party invite popup handling
+  let currentInviteId = null;
+  let inviteTimer = null;
+  let timeRemaining = 30;
+
+  const partyInvitePopup = document.getElementById('party-invite-popup');
+  const inviteFromUsername = document.getElementById('invite-from-username');
+  const acceptInviteBtn = document.getElementById('accept-invite-btn');
+  const declineInviteBtn = document.getElementById('decline-invite-btn');
+  const inviteTimerElement = document.getElementById('invite-timer');
+
+  // Ensure popup is hidden on page load
+  if (partyInvitePopup) {
+    partyInvitePopup.hidden = true;
+    console.log('🎯 Party invite popup: Hidden on page load');
+  }
+
+  function showInvite(inviteId, fromUsername) {
+    currentInviteId = inviteId;
+    inviteFromUsername.textContent = fromUsername;
+    partyInvitePopup.hidden = false;
+    
+    // Start countdown timer
+    timeRemaining = 30;
+    updateTimer();
+    inviteTimer = setInterval(updateTimer, 1000);
+  }
+
+  function hideInvite() {
+    partyInvitePopup.hidden = true;
+    currentInviteId = null;
+    
+    if (inviteTimer) {
+      clearInterval(inviteTimer);
+      inviteTimer = null;
+    }
+  }
+
+  function updateTimer() {
+    timeRemaining--;
+    
+    if (timeRemaining <= 0) {
+      hideInvite();
+      return;
+    }
+
+    inviteTimerElement.textContent = `${timeRemaining}s remaining`;
+    
+    // Update timer color based on time remaining
+    inviteTimerElement.className = 'invite-timer';
+    if (timeRemaining <= 10) {
+      inviteTimerElement.classList.add('danger');
+    } else if (timeRemaining <= 20) {
+      inviteTimerElement.classList.add('warning');
+    }
+  }
+
+  acceptInviteBtn.addEventListener('click', () => {
+    if (currentInviteId) {
+      hytopia.sendData({ type: 'accept-party-invite', inviteId: currentInviteId });
+      hideInvite();
+    }
+  });
+
+  declineInviteBtn.addEventListener('click', () => {
+    if (currentInviteId) {
+      hytopia.sendData({ type: 'decline-party-invite', inviteId: currentInviteId });
+      hideInvite();
+    }
+  });
+
+  // Listen for party-related data
+  hytopia.onData(data => {
+    switch (data.type) {
+      case 'party-invite':
+        showInvite(data.inviteId, data.fromUsername);
+        break;
+        
+      case 'party-invite-accepted':
+        showMessage(`${data.username} accepted your party invite!`, 'success');
+        break;
+        
+      case 'party-invite-declined':
+        showMessage(`${data.username} declined your party invite.`, 'error');
+        break;
+        
+      case 'party-invite-expired':
+        showMessage(`Party invite to ${data.username} expired.`, 'error');
+        break;
+    }
   });
 
   // Keyboard navigation for menu buttons

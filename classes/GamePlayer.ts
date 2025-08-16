@@ -251,6 +251,19 @@ export default class GamePlayer {
       this._gun.updateAmmoIndicatorUI();
     }
     
+    // Create a party for the player if they don't have one
+    try {
+      const { PartySystem } = require('./systems/PartySystem');
+      const partyData = PartySystem.instance.getPartyData(this.player.id);
+      if (!partyData) {
+        PartySystem.instance.createParty(this.player);
+      }
+    } catch (error) {
+      console.error('Error creating party:', error);
+    }
+    
+
+    
     this.player.ui.sendData({ type: 'enterMenu' });
   }
 
@@ -271,6 +284,40 @@ export default class GamePlayer {
 		this._isDeploying = true;
 		this._pendingDeploy = false;
 
+    // Check if player is in a party and is the host
+    try {
+      const { PartySystem } = require('./systems/PartySystem');
+      const partyData = PartySystem.instance.getPartyData(this.player.id);
+      
+      if (partyData && partyData.members.length > 1) {
+        const playerMember = partyData.members.find(member => member.playerId === this.player.id);
+        if (playerMember && playerMember.isHost) {
+          // Player is party host, deploy entire party
+          const success = PartySystem.instance.initiateDeploy(this.player);
+          if (success) {
+            this._isDeploying = false;
+            return; // Party deployment handled by PartySystem
+          }
+        } else if (partyData) {
+          // Player is in party but not host, show message
+          this.player.ui.sendData({
+            type: 'show-message',
+            message: 'Only the party host can deploy the group.',
+            messageType: 'error'
+          });
+          this._isDeploying = false;
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error checking party status:', error);
+    }
+
+    // Solo deployment
+    this._deploySolo();
+  }
+
+  private _deploySolo(): void {
     this._isInMenu = false;
     // Ensure menu-related listeners are detached so UI events cannot bring the user back to menu while in-game
     try {
@@ -279,7 +326,7 @@ export default class GamePlayer {
       this.player.ui.off(PlayerUIEvent.DATA, this._onStashUIData);
     } catch {}
     const playerEntity = new GamePlayerEntity(this);
-    playerEntity.spawn(this.player.world, { x: 25, y: 6, z: -9 });
+    playerEntity.spawn(this.player.world, { x: 31, y: 30, z: 6 });
     
     this.player.camera.setAttachedToEntity(playerEntity);
     this.player.ui.load('ui/index.html');
@@ -769,7 +816,7 @@ export default class GamePlayer {
     this.stash.syncUI(this.player);
   }
 
-  private _onMenuUIData = (event: EventPayloads[PlayerUIEvent.DATA]) => {
+  private _onMenuUIData = async (event: EventPayloads[PlayerUIEvent.DATA]) => {
     const { data } = event;
     
     switch (data.type) {
@@ -819,6 +866,68 @@ export default class GamePlayer {
       case 'close':
         this.player.ui.off(PlayerUIEvent.DATA, this._onMenuUIData);
         break;
+      // Party system events
+      case 'send-party-invite':
+        if (typeof data.username === 'string') {
+          try {
+            const { PartySystem } = await import('./systems/PartySystem');
+            PartySystem.instance.sendInvite(this.player, data.username);
+          } catch (error) {
+            console.error('Failed to send party invite:', error);
+          }
+        }
+        break;
+      case 'accept-party-invite':
+        if (typeof data.inviteId === 'string') {
+          try {
+            const { PartySystem } = await import('./systems/PartySystem');
+            PartySystem.instance.acceptInvite(this.player, data.inviteId);
+          } catch (error) {
+            console.error('Failed to accept party invite:', error);
+          }
+        }
+        break;
+      case 'decline-party-invite':
+        if (typeof data.inviteId === 'string') {
+          try {
+            const { PartySystem } = await import('./systems/PartySystem');
+            PartySystem.instance.declineInvite(this.player, data.inviteId);
+          } catch (error) {
+            console.error('Failed to decline party invite:', error);
+          }
+        }
+        break;
+      case 'leave-party':
+        try {
+          const { PartySystem } = await import('./systems/PartySystem');
+          PartySystem.instance.leaveParty(this.player);
+        } catch (error) {
+          console.error('Failed to leave party:', error);
+        }
+        break;
+      case 'kick-player':
+        if (typeof data.username === 'string') {
+          try {
+            const { PartySystem } = await import('./systems/PartySystem');
+            const success = PartySystem.instance.kickPlayer(this.player, data.username);
+            if (!success) {
+              this.player.ui.sendData({
+                type: 'show-message',
+                message: 'Failed to kick player. Make sure you are the party host.',
+                messageType: 'error'
+              });
+            }
+          } catch (error) {
+            console.error('Failed to kick player:', error);
+            this.player.ui.sendData({
+              type: 'show-message',
+              message: 'Failed to kick player.',
+              messageType: 'error'
+            });
+          }
+        }
+        break;
+
     }
   }
 

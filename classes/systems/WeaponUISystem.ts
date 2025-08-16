@@ -115,13 +115,22 @@ export default class WeaponUISystem {
         const UnifiedAudioSystem = require('./UnifiedAudioSystem').default;
         const world = parent.world!;
         const sys = ((world as any).audioSystem ?? ((world as any).audioSystem = new UnifiedAudioSystem(world)));
-        sys.playSfx('audio/sfx/sfx/hitmarker.wav', { volume: 0.6, x: parent.position.x, y: parent.position.y, z: parent.position.z });
-      } catch {}
+        sys.playSfx('audio/sfx/sfx/hitmarker.wav', { 
+          volume: 0.7,
+          x: parent.position.x, 
+          y: parent.position.y, 
+          z: parent.position.z 
+        });
+      } catch (error) {
+        console.warn('Failed to play hitmarker sound:', error);
+      }
       
       parent.player.ui.sendData({
         type: 'hitmarker',
         hit: true,
-        kill: kill
+        kill: kill,
+        duration: kill ? 500 : 200,
+        intensity: kill ? 1.0 : 0.8
       });
     }
   }

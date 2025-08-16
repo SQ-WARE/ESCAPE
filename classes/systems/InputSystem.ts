@@ -14,38 +14,31 @@ export default class InputSystem {
       return;
     }
 
-    // Cancel reload based on weapon configuration
     const gun = this._player.gamePlayer.getCurrentWeapon();
     if (gun && gun.isReloading) {
       const reloadConfig = gun.weaponData.behavior.reload;
       
-      // Default behavior: cancel on sprint only
       const cancelOnMovement = reloadConfig?.cancelOnMovement ?? false;
       const cancelOnSprint = reloadConfig?.cancelOnSprint ?? true;
       
-      // Cancel on movement if configured
       if (cancelOnMovement && (input.w || input.a || input.s || input.d)) {
         gun.cancelReload();
       }
-      // Cancel on sprint if configured
       else if (cancelOnSprint && this._player.movementSystem.isSprinting()) {
         gun.cancelReload();
       }
     }
 
-    // Handle interaction
     if (input.f) {
       this._handleInteraction();
       input.f = false;
     }
 
-    // Handle inventory
     if (input.e) {
       this._handleInventoryToggle();
       input.e = false;
     }
 
-    // Handle weapon actions
     if (input.ml) {
       this._handleMouseLeftClick();
     }
@@ -61,13 +54,11 @@ export default class InputSystem {
       input.mr = false;
     }
 
-    // Handle item dropping
     if (input.q) {
       this._handleDropItem();
       input.q = false;
     }
 
-    // Handle hotbar selection
     this._handleHotbarSelection(input);
   }
 
@@ -101,13 +92,11 @@ export default class InputSystem {
   private _handleMouseLeftClick(): void {
     const gun = this._player.gamePlayer.getCurrentWeapon();
     
-    // Don't allow actions if inventory is open or player is in menu
     if (this._player.gamePlayer.isBackpackOpen || this._player.gamePlayer.isInMenu) {
       return;
     }
     
     if (gun) {
-      // Handle weapon shooting
       if (this._player.movementSystem.isSprinting() && !this._player.movementSystem.canFireWhileSprinting(gun.weaponData.category)) {
         return;
       }

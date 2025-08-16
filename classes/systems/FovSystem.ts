@@ -1,9 +1,8 @@
 import type GamePlayerEntity from '../GamePlayerEntity';
 
-// FOV constants for sprint effect
 const BASE_FOV = 90;
-const SPRINT_FOV = 100;
-const FOV_TRANSITION_SPEED = 0.1; // How fast FOV changes (0-1, higher = faster)
+const SPRINT_FOV = 95;
+const FOV_TRANSITION_SPEED = 0.1;
 
 export default class FOVSystem {
   private _player: GamePlayerEntity;
@@ -16,10 +15,8 @@ export default class FOVSystem {
   }
 
   public update(isSprinting: boolean): void {
-    // Update target FOV based on sprint state
     this._targetFov = isSprinting ? SPRINT_FOV : BASE_FOV;
 
-    // Smoothly transition FOV
     const fovDifference = this._targetFov - this._currentFov;
     if (Math.abs(fovDifference) > 0.1) {
       this._currentFov += fovDifference * FOV_TRANSITION_SPEED;
@@ -27,7 +24,6 @@ export default class FOVSystem {
       this._currentFov = this._targetFov;
     }
 
-    // Apply FOV to player camera
     if (this._player.playerController) {
       this._player.player.camera.setFov(this._currentFov);
     }

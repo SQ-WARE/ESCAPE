@@ -32,6 +32,8 @@ export class DeathSystem {
     damageAmount: number = 0
   ): void {
     if (!player.world) return;
+    
+    console.log(`💀 Player death: ${player.player.username} killed by ${killer?.player.username || 'unknown'}`);
 
     const deathEvent: DeathEvent = {
       player,
@@ -48,7 +50,9 @@ export class DeathSystem {
     player.gamePlayer.hotbar.clearAllItems();
     player.gamePlayer.backpack.clearAllItems();
 
+    console.log(`💀 About to broadcast death message for ${player.player.username}`);
     this._broadcastDeathMessage(player, killer);
+    console.log(`💀 Death message broadcast completed`);
 
     // Award XP and update stats
     try {
@@ -187,11 +191,96 @@ export class DeathSystem {
   }
 
   private _broadcastDeathMessage(player: GamePlayerEntity, killer?: GamePlayerEntity): void {
+    console.log(`🎯 _broadcastDeathMessage called for ${player.player.username}, killer: ${killer?.player.username || 'none'}`);
     if (!player.world) return;
 
     let message: string;
     if (killer) {
       message = `${player.player.username} was eliminated by ${killer.player.username}!`;
+      
+      // Send kill feed data to all players
+      const killerWeapon = killer.gamePlayer.getCurrentWeapon();
+      const weaponIconUri = killerWeapon ? killerWeapon.weaponData.assets.ui.icon : 'icons/target.png';
+      
+      console.log(`🎯 Kill feed: ${killer.player.username} -> ${weaponIconUri} -> ${player.player.username}`);
+      
+      // Send kill feed data to killer and victim directly
+      try {
+        console.log(`🎯 Debug weapon data:`, {
+          killerWeapon: killerWeapon,
+          weaponData: killerWeapon?.weaponData,
+          iconPath: killerWeapon?.weaponData?.assets?.ui?.icon,
+          fallbackIcon: weaponIconUri
+        });
+        
+        // Ensure we have a valid icon path
+        const finalIconPath = weaponIconUri || 'icons/target.png';
+        console.log(`🎯 Using icon path: ${finalIconPath}`);
+        
+        // Send to killer
+        killer.player.ui.sendData({
+          type: 'kill-feed',
+          killerName: killer.player.username,
+          weaponIconUri: finalIconPath,
+          victimName: player.player.username
+        });
+        console.log(`🎯 Sent kill feed to killer: ${killer.player.username} with icon: ${finalIconPath}`);
+        
+        // Send to victim
+        player.player.ui.sendData({
+          type: 'kill-feed',
+          killerName: killer.player.username,
+          weaponIconUri: finalIconPath,
+          victimName: player.player.username
+        });
+        console.log(`🎯 Sent kill feed to victim: ${player.player.username} with icon: ${finalIconPath}`);
+        
+        // Try to send to all other players in the world
+        try {
+          // Try multiple methods to get all players
+          let allPlayers: any[] = [];
+          
+          // Method 1: Try getAllPlayers method
+          if ((player.world as any).getAllPlayers) {
+            allPlayers = (player.world as any).getAllPlayers();
+            console.log(`🎯 Method 1 - getAllPlayers: Found ${allPlayers.length} players`);
+          }
+          // Method 2: Try players property
+          else if ((player.world as any).players) {
+            allPlayers = (player.world as any).players;
+            console.log(`🎯 Method 2 - players property: Found ${allPlayers.length} players`);
+          }
+          // Method 3: Try getPlayers method
+          else if ((player.world as any).getPlayers) {
+            allPlayers = (player.world as any).getPlayers();
+            console.log(`🎯 Method 3 - getPlayers: Found ${allPlayers.length} players`);
+          }
+          
+          console.log(`🎯 Total players found: ${allPlayers.length}`);
+          
+          allPlayers.forEach((worldPlayer: any, index: number) => {
+            if (worldPlayer && worldPlayer !== killer.player && worldPlayer !== player.player) {
+              try {
+                console.log(`🎯 Sending kill feed to player ${index}: ${worldPlayer?.player?.username || 'unknown'}`);
+                worldPlayer.ui?.sendData({
+                  type: 'kill-feed',
+                  killerName: killer.player.username,
+                  weaponIconUri: finalIconPath,
+                  victimName: player.player.username
+                });
+              } catch (error) {
+                console.error(`Failed to send kill feed to world player ${index}:`, error);
+              }
+            } else {
+              console.log(`🎯 Skipping player ${index}: ${worldPlayer?.player?.username || 'unknown'} (killer or victim)`);
+            }
+          });
+        } catch (error) {
+          console.error('Failed to send kill feed to world players:', error);
+        }
+      } catch (error) {
+        console.error('Failed to send kill feed:', error);
+      }
     } else {
       message = `${player.player.username} has been eliminated!`;
     }

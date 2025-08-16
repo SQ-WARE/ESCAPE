@@ -45,7 +45,6 @@ export class DamageSystem {
     }
 
     const previousHealth = target.health;
-    // Track last source to attribute kills/xp
     if (source) {
       try { target.lastDamageSource = source; } catch {}
     }

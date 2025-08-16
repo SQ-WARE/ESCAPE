@@ -286,11 +286,9 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     // Force UI sync to ensure client and server are in sync
     this._healthSystem.forceUISync();
     
-    // Setup movement system with controller to apply walk/sprint speeds
-    this._movementSystem.setupController(this.playerController);
-    
-    // Reduce jump height
-    this.playerController.jumpVelocity = 7.0;
+    // Movement system is already set up in _setupController()
+    // Configure physics for bounce movement system
+    this._configureBouncePhysics();
 
     // Start playtime XP ticker
     this._startPlaytimeXPTicker();
@@ -298,6 +296,13 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
 
   public override despawn(): void {
     this._stopPlaytimeXPTicker();
+    
+    // Clear flash timeout
+    if (this._flashTimeout) {
+      clearTimeout(this._flashTimeout);
+      this._flashTimeout = null;
+    }
+    
     this._healthSystem.cleanup();
     this._medkitSystem.cleanup();
     this._extractionSystem.cleanup();
@@ -309,9 +314,9 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     this._healthSystem.takeDamage(damage);
     
     if (this._healthSystem.isDead) {
-      // Death is handled by HealthSystem
     } else {
       this._soundSystem.play('audio/sfx/damage/fall-small.mp3', { volume: 0.8, x: this.position.x, y: this.position.y, z: this.position.z, ref: 1, cut: 10 });
+      this._flashRed();
     }
   }
 
@@ -322,38 +327,28 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
       return;
     }
 
-    // Update compass HUD regardless of inventory state
     this._compassSystem.update(this);
-
-    // Update extraction regardless of inventory state
     this._extractionSystem.update();
-    // Extraction may despawn this entity during update; bail out if no longer spawned
+    
     if (!this.world) {
       return;
     }
 
-    // Handle input through InputSystem
     this._inputSystem.handleInput(input);
 
-    // Only process movement if not in inventory
     if (!this._inputSystem.shouldProcessMovement()) {
       return;
     }
     
     const movementState = this._movementSystem.updateMovement(input);
     
-    // Update FOV based on sprint state
     this._fovSystem.update(this._movementSystem.isSprinting());
-    
-    // Update weapon state with correct input type
     this._weaponSystem.updateWeapon(input);
     
-    // Update systems
     this._recoilSystem.updateRecovery();
     this._cameraSystem.updateRecoil();
     this._medkitSystem.update();
     
-    // Validate health synchronization periodically
     this._healthSystem.validateAndCorrectHealth();
   }
 
@@ -363,15 +358,22 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     this.playerController.applyDirectionalMovementRotations = false;
     this.playerController.on(BaseEntityControllerEvent.TICK_WITH_PLAYER_INPUT, this._onTickWithPlayerInput);
     
-    // Setup movement system with controller to apply walk/sprint speeds
-    this._movementSystem.setupController(this.playerController);
-    
-    // Reduce jump height
-    this.playerController.jumpVelocity = 7.0; // Reduced from default 10.0
+    this._movementSystem.setupController(this.playerController, this);
+    this._configureBouncePhysics();
+  }
+
+  private _configureBouncePhysics(): void {
+    this.setCcdEnabled(true);
+    this.setLinearDamping(0.0);
+    this.setAngularDamping(0.5);
+    this.setGravityScale(1.0);
+    this.setEnabledRotations({ x: true, y: true, z: true });
+    this.setEnabledPositions({ x: true, y: true, z: true });
   }
 
   private _playtimeInterval: NodeJS.Timeout | null = null;
   private _lastPlaytimeTick: number = Date.now();
+  private _flashTimeout: NodeJS.Timeout | null = null;
   private _startPlaytimeXPTicker(): void {
     this._stopPlaytimeXPTicker();
     this._lastPlaytimeTick = Date.now();
@@ -388,6 +390,27 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
       clearInterval(this._playtimeInterval);
       this._playtimeInterval = null;
     }
+  }
+
+  private _flashRed(): void {
+    if (this._flashTimeout) {
+      clearTimeout(this._flashTimeout);
+    }
+
+    this.player.ui.sendData({
+      type: 'damage-flash',
+      duration: 200,
+      intensity: 0.8
+    });
+
+    this._flashTimeout = setTimeout(() => {
+      this.player.ui.sendData({
+        type: 'damage-flash',
+        duration: 0,
+        intensity: 0
+      });
+      this._flashTimeout = null;
+    }, 200);
   }
 
   private _setupCamera(): void {
