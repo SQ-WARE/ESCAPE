@@ -290,7 +290,7 @@ export default class GamePlayer {
       const partyData = PartySystem.instance.getPartyData(this.player.id);
       
       if (partyData && partyData.members.length > 1) {
-        const playerMember = partyData.members.find(member => member.playerId === this.player.id);
+        const playerMember = partyData.members.find((member: any) => member.playerId === this.player.id);
         if (playerMember && playerMember.isHost) {
           // Player is party host, deploy entire party
           const success = PartySystem.instance.initiateDeploy(this.player);
@@ -337,6 +337,11 @@ export default class GamePlayer {
       this.player.ui.off(PlayerUIEvent.DATA, this._onStashUIData);
     } catch {}
     const playerEntity = new GamePlayerEntity(this);
+    if (!this.player.world) {
+      console.error('Player world is undefined, cannot spawn entity');
+      this._isDeploying = false;
+      return;
+    }
     playerEntity.spawn(this.player.world, { x: 31, y: 30, z: 6 });
     
     this.player.camera.setAttachedToEntity(playerEntity);

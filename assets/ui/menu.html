@@ -560,6 +560,9 @@
     try {
       // Cache sessions for live countdown
       if (Array.isArray(data.sessions)) {
+        // Store session data for timer updates
+        window.__sessions = data.sessions;
+        window.__assignedSessionId = data.assignedSessionId || null;
         ensureSessionTicker();
       }
       if (typeof data.username === 'string') {
@@ -619,14 +622,8 @@
   }
   function renderSessionTimers() {
     try {
-      // Get session data from DOM elements instead of debug variables
-      const sessionElements = document.querySelectorAll('.session-card');
-      const sessions = Array.from(sessionElements).map(el => ({
-        id: el.getAttribute('data-session'),
-        endsAt: parseInt(el.getAttribute('data-ends-at') || '0'),
-        worldTimeFormatted: el.getAttribute('data-world-time') || '12:00 AM'
-      }));
-      const assigned = document.querySelector('.session-card.active')?.getAttribute('data-session') || null;
+      const sessions = (window.__sessions || []);
+      const assigned = window.__assignedSessionId || null;
       const now = Date.now();
       function fmt(left) {
         const sec = Math.max(0, Math.ceil(left / 1000));
