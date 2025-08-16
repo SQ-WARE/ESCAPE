@@ -41,12 +41,28 @@ export default class WeaponEffectsSystem {
         direction: { x: 0, y: 0, z: 1 } 
       };
 
-      // Simple raycast for impact detection
+      // Perform raycast for bullet tracer and impact detection
       const maxDistance = 1000;
       const rc = parent.world?.simulation.raycast(origin, direction, maxDistance, { filterExcludeRigidBody: parent.rawRigidBody });
       
+      // Determine end point for bullet tracer
+      const endPoint = rc?.hitPoint || {
+        x: origin.x + direction.x * maxDistance,
+        y: origin.y + direction.y * maxDistance,
+        z: origin.z + direction.z * maxDistance,
+      };
+
+      // Create bullet tracer
+      const tracer = new BulletTracerEntity(origin, direction, {
+        modelUri: 'models/projectiles/bullet.glb',
+        modelScale: 1,
+        speed: 360,
+        endPoint,
+      });
+      tracer.spawn(parent.world, origin);
+      
+      // Create impact spark if we hit something
       if (rc?.hitPoint) {
-        // Create impact spark at hit point
         const sparkPos = {
           x: rc.hitPoint.x - direction.x * 0.02,
           y: rc.hitPoint.y - direction.y * 0.02,
