@@ -284,7 +284,7 @@ export default class GamePlayer {
 		this._isDeploying = true;
 		this._pendingDeploy = false;
 
-    // Check if player is in a party and is the host
+    // Check if player is in a party and handle deployment accordingly
     try {
       const { PartySystem } = require('./systems/PartySystem');
       const partyData = PartySystem.instance.getPartyData(this.player.id);
@@ -293,13 +293,17 @@ export default class GamePlayer {
         const playerMember = partyData.members.find(member => member.playerId === this.player.id);
         if (playerMember && playerMember.isHost) {
           // Player is party host, deploy entire party
+          console.log(`🎯 Party host ${this.player.username} initiating party deployment`);
           const success = PartySystem.instance.initiateDeploy(this.player);
           if (success) {
             this._isDeploying = false;
             return; // Party deployment handled by PartySystem
+          } else {
+            console.log(`🎯 Party deployment failed for ${this.player.username}`);
           }
         } else if (partyData) {
           // Player is in party but not host, show message
+          console.log(`🎯 Non-host player ${this.player.username} tried to deploy party`);
           this.player.ui.sendData({
             type: 'show-message',
             message: 'Only the party host can deploy the group.',
@@ -308,12 +312,23 @@ export default class GamePlayer {
           this._isDeploying = false;
           return;
         }
+      } else if (partyData && partyData.members.length === 1) {
+        // Solo player, allow deployment
+        console.log(`🎯 Solo player ${this.player.username} deploying`);
       }
     } catch (error) {
       console.error('Error checking party status:', error);
     }
 
     // Solo deployment
+    this._deploySolo();
+  }
+
+  /**
+   * Deploys a party member (bypasses party checks)
+   */
+  public deployPartyMember(): void {
+    console.log(`🎯 Deploying party member: ${this.player.username}`);
     this._deploySolo();
   }
 

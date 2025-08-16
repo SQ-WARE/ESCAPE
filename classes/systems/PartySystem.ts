@@ -44,7 +44,6 @@ export class PartySystem {
    * Creates a new party with the given player as host
    */
   public createParty(player: Player): string {
-    console.log(`🎯 Creating party for player: ${player.username} (ID: ${player.id})`);
     const partyId = this._generatePartyId();
     
     const party: PartyMember[] = [{
@@ -58,7 +57,6 @@ export class PartySystem {
     this._parties.set(partyId, party);
     this._playerPartyMap.set(player.id, partyId);
     
-    console.log(`🎯 Party created with ID: ${partyId}`);
     this._updatePartyUI(player, party);
     return partyId;
   }
@@ -67,21 +65,15 @@ export class PartySystem {
    * Sends an invite to a player by username
    */
   public sendInvite(fromPlayer: Player, targetUsername: string): boolean {
-    console.log(`🎯 sendInvite called - from: ${fromPlayer.username} (ID: ${fromPlayer.id}), to: "${targetUsername}"`);
-    console.log(`🎯 From player object:`, { username: fromPlayer.username, id: fromPlayer.id });
-    
     // Validate input
     if (!targetUsername || targetUsername.trim().length === 0) {
-      console.log('Invalid username provided');
       return false;
     }
 
     const cleanUsername = targetUsername.trim();
-    console.log(`🎯 Cleaned username: "${cleanUsername}"`);
     
     // Don't allow self-invites
     if (fromPlayer.username === cleanUsername) {
-      console.log('Cannot invite yourself');
       return false;
     }
 
@@ -97,28 +89,24 @@ export class PartySystem {
 
     // Check if party is full
     if (party.length >= 4) {
-      console.log('Party is full');
       return false;
     }
 
     // Check if player is already in this party
     const existingMember = party.find(member => member.username === cleanUsername);
     if (existingMember) {
-      console.log(`Player ${cleanUsername} is already in this party`);
       return false;
     }
 
     // Find target player by username
     const targetPlayer = this._findPlayerByUsername(cleanUsername);
     if (!targetPlayer) {
-      console.log(`Player ${cleanUsername} not found or not online`);
       return false;
     }
 
     // Check if target player is already in this specific party
     const targetPartyId = this._playerPartyMap.get(targetPlayer.id);
     if (targetPartyId === fromPartyId) {
-      console.log(`Player ${cleanUsername} is already in this party`);
       return false;
     }
     
@@ -128,7 +116,6 @@ export class PartySystem {
       if (targetParty) {
         const targetMember = targetParty.find(member => member.playerId === targetPlayer.id);
         if (targetMember && targetMember.isHost && targetParty.length > 1) {
-          console.log(`Cannot invite ${cleanUsername} - they are the host of a party with ${targetParty.length - 1} other members`);
           return false;
         }
       }
@@ -139,14 +126,8 @@ export class PartySystem {
       const targetParty = this._parties.get(targetPartyId);
       const combinedSize = party.length + (targetParty ? targetParty.length : 1);
       if (combinedSize > 4) {
-        console.log(`Cannot invite ${cleanUsername} - combined party size would be ${combinedSize} (max 4)`);
         return false;
       }
-    }
-    
-    // If target player is in a different party, log for merging
-    if (targetPartyId) {
-      console.log(`Player ${cleanUsername} is in a different party (${targetPartyId}), will merge on accept`);
     }
 
     // Check if there's already a pending invite to this player
@@ -154,7 +135,6 @@ export class PartySystem {
       invite => invite.toPlayerId === targetPlayer.id && invite.fromPlayerId === fromPlayer.id
     );
     if (existingInvite) {
-      console.log(`Already sent an invite to ${cleanUsername}`);
       return false;
     }
 
@@ -163,7 +143,6 @@ export class PartySystem {
       invite => invite.toPlayerId === fromPlayer.id && invite.fromPlayerId === targetPlayer.id
     );
     if (reverseInvite) {
-      console.log(`Cannot invite ${cleanUsername} - they have a pending invite to you`);
       return false;
     }
 
@@ -188,7 +167,6 @@ export class PartySystem {
         fromUsername: invite.fromUsername,
         partyId: fromPartyId
       };
-      console.log(`🎯 Sending party invite to ${targetPlayer.username}:`, inviteData);
       targetPlayer.ui.sendData(inviteData);
     } catch (error) {
       console.error('Failed to send invite UI:', error);
@@ -201,7 +179,6 @@ export class PartySystem {
       this._expireInvite(invite.id);
     }, this._inviteTimeout);
 
-    console.log(`Invite sent from ${fromPlayer.username} to ${targetUsername}`);
     return true;
   }
 
@@ -211,29 +188,24 @@ export class PartySystem {
   public acceptInvite(player: Player, inviteId: string): boolean {
     const invite = this._pendingInvites.get(inviteId);
     if (!invite) {
-      console.log('Invite not found or expired');
       return false;
     }
 
     if (invite.toPlayerId !== player.id) {
-      console.log('Invite not for this player');
       return false;
     }
 
     if (Date.now() > invite.expiresAt) {
-      console.log('Invite expired');
       this._expireInvite(inviteId);
       return false;
     }
 
     const party = this._parties.get(invite.partyId);
     if (!party) {
-      console.log('Party not found');
       return false;
     }
 
     if (party.length >= 4) {
-      console.log('Party is full');
       return false;
     }
 
@@ -245,19 +217,15 @@ export class PartySystem {
         // Check if player is host of a party with other members
         const currentMember = existingParty.find(member => member.playerId === player.id);
         if (currentMember && currentMember.isHost && existingParty.length > 1) {
-          console.log(`Cannot accept invite - ${player.username} is host of a party with ${existingParty.length - 1} other members`);
           return false;
         }
         
         // Check if combined party size would exceed maximum
         const combinedSize = party.length + existingParty.length;
         if (combinedSize > 4) {
-          console.log(`Cannot accept invite - combined party size would be ${combinedSize} (max 4)`);
           return false;
         }
       }
-      
-      console.log(`🎯 Player ${player.username} is leaving party ${currentPartyId} to join party ${invite.partyId}`);
       
       // Remove player from their current party
       const currentParty = this._parties.get(currentPartyId);
@@ -272,14 +240,12 @@ export class PartySystem {
               // If party is now empty, delete it
               if (currentParty.length === 0) {
                 this._parties.delete(currentPartyId);
-                console.log(`🎯 Deleted empty party ${currentPartyId}`);
               } else if (wasHost && currentParty.length > 0) {
                 // Transfer host to next player
                 const nextHost = currentParty[0];
                 if (nextHost) {
                   nextHost.isHost = true;
                   this._updatePartyUIForAll(currentParty);
-                  console.log(`🎯 Transferred host in party ${currentPartyId} to ${nextHost.username}`);
                 }
               } else {
                 // Update UI for remaining members
@@ -317,7 +283,6 @@ export class PartySystem {
       });
     }
 
-    console.log(`${player.username} joined party`);
     return true;
   }
 
@@ -344,11 +309,8 @@ export class PartySystem {
    * Kicks a player from the party (host only)
    */
   public kickPlayer(hostPlayer: Player, targetUsername: string): boolean {
-    console.log(`🎯 kickPlayer called - host: ${hostPlayer.username}, target: "${targetUsername}"`);
-    
     // Validate input
     if (!targetUsername || targetUsername.trim().length === 0) {
-      console.log('Invalid username provided');
       return false;
     }
 
@@ -356,48 +318,41 @@ export class PartySystem {
     
     // Don't allow self-kicks
     if (hostPlayer.username === cleanUsername) {
-      console.log('Cannot kick yourself');
       return false;
     }
 
     // Get host's party
     const hostPartyId = this._playerPartyMap.get(hostPlayer.id);
     if (!hostPartyId) {
-      console.log('Host is not in a party');
       return false;
     }
 
     const party = this._parties.get(hostPartyId);
     if (!party) {
-      console.log('Party not found');
       return false;
     }
 
     // Check if player is actually the host
     const hostMember = party.find(member => member.playerId === hostPlayer.id);
     if (!hostMember || !hostMember.isHost) {
-      console.log('Only party host can kick players');
       return false;
     }
 
     // Find target player in party
     const targetMember = party.find(member => member.username === cleanUsername);
     if (!targetMember) {
-      console.log(`Player ${cleanUsername} is not in this party`);
       return false;
     }
 
     // Find target player object
     const targetPlayer = this._findPlayerById(targetMember.playerId);
     if (!targetPlayer) {
-      console.log(`Target player ${cleanUsername} not found or offline`);
       return false;
     }
 
     // Remove player from party
     const playerIndex = party.findIndex(member => member.playerId === targetMember.playerId);
     if (playerIndex === -1) {
-      console.log(`Player ${cleanUsername} not found in party`);
       return false;
     }
 
@@ -413,7 +368,6 @@ export class PartySystem {
     // Notify kicked player
     this._notifyPlayerKicked(targetPlayer, `Kicked by ${hostPlayer.username}`);
 
-    console.log(`${hostPlayer.username} kicked ${cleanUsername} from party`);
     return true;
   }
 
@@ -423,32 +377,27 @@ export class PartySystem {
   public leaveParty(player: Player): void {
     const partyId = this._playerPartyMap.get(player.id);
     if (!partyId) {
-      console.log(`${player.username} is not in a party`);
       return;
     }
 
     const party = this._parties.get(partyId);
     if (!party) {
-      console.log(`Party ${partyId} not found`);
       return;
     }
 
     // Find player in party
     const playerIndex = party.findIndex(member => member.playerId === player.id);
     if (playerIndex === -1) {
-      console.log(`${player.username} not found in party ${partyId}`);
       return;
     }
 
     const playerMember = party[playerIndex];
     if (!playerMember) {
-      console.log(`Player member data not found for ${player.username}`);
       return;
     }
 
     // Check if player is host and party has other members
     if (playerMember.isHost && party.length > 1) {
-      console.log(`${player.username} cannot leave party - they are the host with ${party.length - 1} other members`);
       return;
     }
 
@@ -459,7 +408,6 @@ export class PartySystem {
     if (party.length === 0) {
       // Party is empty, delete it
       this._parties.delete(partyId);
-      console.log(`🎯 Deleted empty party ${partyId}`);
       
       // Notify the leaving player that their party was disbanded
       this._notifyPartyDisbanded(player);
@@ -469,7 +417,6 @@ export class PartySystem {
       if (nextHost) {
         nextHost.isHost = true;
         this._updatePartyUIForAll(party);
-        console.log(`🎯 Transferred host to ${nextHost.username}`);
       }
     } else {
       // Update UI for remaining members
@@ -478,46 +425,35 @@ export class PartySystem {
 
     // Update UI for the player who left (create new solo party)
     this._updatePlayerLeftPartyUI(player);
-
-    console.log(`${player.username} left party`);
   }
 
   /**
    * Initiates party deployment (host only)
    */
   public initiateDeploy(player: Player): boolean {
-    console.log(`PartySystem.initiateDeploy called for player ${player.username}`);
-    
     const partyId = this._playerPartyMap.get(player.id);
     if (!partyId) {
-      console.log('No party ID found for player');
       return false;
     }
 
     const party = this._parties.get(partyId);
     if (!party) {
-      console.log('No party found for party ID');
       return false;
     }
 
-    console.log(`Party members: ${party.length}`, party.map(m => `${m.username} (${m.isHost ? 'host' : 'member'})`));
-
     // Don't initiate party deployment for solo players
     if (party.length <= 1) {
-      console.log('Party deployment not needed for solo player');
       return false;
     }
 
     const playerMember = party.find(member => member.playerId === player.id);
     if (!playerMember || !playerMember.isHost) {
-      console.log('Only party host can initiate deployment');
       return false;
     }
 
     // Check if all members are ready
     const notReadyMembers = party.filter(member => member.status !== 'ready');
     if (notReadyMembers.length > 0) {
-      console.log('Not all party members are ready');
       return false;
     }
 
@@ -555,7 +491,6 @@ export class PartySystem {
         maxMembers: 4
       }
     };
-    console.log(`🎯 Sending party update to ${player.username}:`, data);
     player.ui.sendData(data);
   }
 
@@ -592,14 +527,12 @@ export class PartySystem {
     const party = this._parties.get(partyId);
     if (!party) return;
 
-    console.log(`Deploying party with ${party.length} members`);
-
-    // Deploy each party member
+    // Deploy each party member using direct deployment (bypass party checks)
     party.forEach(member => {
       const player = this._findPlayerById(member.playerId);
       if (player) {
         const gamePlayer = GamePlayer.getOrCreate(player);
-        gamePlayer.deploy();
+        gamePlayer.deployPartyMember(); // Use special method for party deployment
       }
     });
 
@@ -655,7 +588,6 @@ export class PartySystem {
       const data = (player.getPersistedData?.() as any) || {};
       const prog = (data as any)?.progression || {};
       const level = Math.max(1, Math.floor(prog.level ?? 1));
-      console.log(`🎯 Got level ${level} for player ${player.username} (raw: ${prog.level})`);
       return level;
     } catch (error) {
       console.error(`Failed to get level for player ${player.username}:`, error);
@@ -667,19 +599,14 @@ export class PartySystem {
    * Finds a player by ID
    */
   private _findPlayerById(playerId: string): Player | null {
-    console.log(`🎯 Finding player by ID: ${playerId}`);
-    
     // Use PlayerManager to get all connected players
     const allPlayers = PlayerManager.instance.getConnectedPlayers();
-    console.log(`🎯 Found ${allPlayers.length} total connected players`);
     
     const player = allPlayers.find(p => p.id === playerId);
     if (player) {
-      console.log(`🎯 Found player: ${player.username} (ID: ${player.id})`);
       return player;
     }
     
-    console.log(`🎯 Player not found for ID: ${playerId}`);
     return null;
   }
 
@@ -697,7 +624,6 @@ export class PartySystem {
     
     for (const inviteId of invitesToRemove) {
       this._pendingInvites.delete(inviteId);
-      console.log(`🎯 Cleared invite ${inviteId} for player ${playerId}`);
     }
   }
 
@@ -705,8 +631,6 @@ export class PartySystem {
    * Updates UI for a player who left a party (creates new solo party)
    */
   private _updatePlayerLeftPartyUI(player: Player): void {
-    console.log(`🎯 Updating UI for ${player.username} who left party`);
-    
     // Create a new solo party for the player
     const newPartyId = this.createParty(player);
     
@@ -718,7 +642,6 @@ export class PartySystem {
           type: 'party-update',
           partyData: partyData
         });
-        console.log(`🎯 Sent party update to ${player.username} for new solo party`);
       } catch (error) {
         console.error(`🎯 Failed to send party update to ${player.username}:`, error);
       }
@@ -729,13 +652,10 @@ export class PartySystem {
    * Notifies a player that their party was disbanded
    */
   private _notifyPartyDisbanded(player: Player): void {
-    console.log(`🎯 Notifying ${player.username} that their party was disbanded`);
-    
     try {
       player.ui.sendData({
         type: 'party-disbanded'
       });
-      console.log(`🎯 Sent party disbanded notification to ${player.username}`);
     } catch (error) {
       console.error(`🎯 Failed to send party disbanded notification to ${player.username}:`, error);
     }
@@ -745,14 +665,11 @@ export class PartySystem {
    * Notifies a player that they were kicked from a party
    */
   private _notifyPlayerKicked(player: Player, reason?: string): void {
-    console.log(`🎯 Notifying ${player.username} that they were kicked from party`);
-    
     try {
       player.ui.sendData({
         type: 'party-kicked',
         reason: reason || 'Kicked from party'
       });
-      console.log(`🎯 Sent party kicked notification to ${player.username}`);
     } catch (error) {
       console.error(`🎯 Failed to send party kicked notification to ${player.username}:`, error);
     }
@@ -762,21 +679,15 @@ export class PartySystem {
    * Finds a player by username
    */
   private _findPlayerByUsername(username: string): Player | null {
-    console.log(`🎯 Finding player by username: "${username}"`);
-    
     // Use PlayerManager to get all connected players
     const allPlayers = PlayerManager.instance.getConnectedPlayers();
-    console.log(`🎯 Found ${allPlayers.length} total connected players`);
-    console.log(`🎯 Available usernames:`, allPlayers.map(p => ({ username: p.username, id: p.id })));
     
     // Find player by username (case insensitive)
     const player = allPlayers.find(p => p.username.toLowerCase() === username.toLowerCase());
     if (player) {
-      console.log(`🎯 Found player: ${player.username} (ID: ${player.id})`);
       return player;
     }
     
-    console.log(`🎯 Player not found for username: "${username}"`);
     return null;
   }
 }

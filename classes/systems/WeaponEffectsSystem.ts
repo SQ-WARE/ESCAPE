@@ -194,12 +194,52 @@ export default class WeaponEffectsSystem {
       y: parent.position.y + (parent.player.camera.offset?.y ?? 0),
       z: parent.position.z,
     };
+    
+    // Use actual camera direction vectors for proper vertical alignment
     const f = parent.player.camera.facingDirection;
-    // Normalize forward projected onto XZ plane
-    const fLen = Math.hypot(f.x, f.z) || 1;
-    const forward = { x: f.x / fLen, y: 0, z: f.z / fLen };
-    const right = { x: forward.z, y: 0, z: -forward.x };
-    const up = { x: 0, y: 1, z: 0 };
+    const fLen = Math.hypot(f.x, f.y, f.z) || 1;
+    const forward = { x: f.x / fLen, y: f.y / fLen, z: f.z / fLen };
+    
+    // Handle edge case when looking straight up or down
+    const upThreshold = 0.99; // Threshold for "straight up/down"
+    const absY = Math.abs(forward.y);
+    
+    let right: Vector3Like;
+    let up: Vector3Like;
+    
+    if (absY > upThreshold) {
+      // Looking nearly straight up or down - use a fallback coordinate system
+      if (forward.y > 0) {
+        // Looking up - use world forward as right, world right as up
+        right = { x: 0, y: 0, z: 1 };
+        up = { x: 1, y: 0, z: 0 };
+      } else {
+        // Looking down - use world forward as right, world left as up
+        right = { x: 0, y: 0, z: 1 };
+        up = { x: -1, y: 0, z: 0 };
+      }
+    } else {
+      // Normal case - calculate coordinate system
+      const worldUp = { x: 0, y: 1, z: 0 };
+      right = {
+        x: forward.y * worldUp.z - forward.z * worldUp.y,
+        y: forward.z * worldUp.x - forward.x * worldUp.z,
+        z: forward.x * worldUp.y - forward.y * worldUp.x
+      };
+      
+      // Normalize right vector
+      const rightLen = Math.hypot(right.x, right.y, right.z) || 1;
+      right.x /= rightLen;
+      right.y /= rightLen;
+      right.z /= rightLen;
+      
+      // Calculate up vector as cross product of right and forward
+      up = {
+        x: right.y * forward.z - right.z * forward.y,
+        y: right.z * forward.x - right.x * forward.z,
+        z: right.x * forward.y - right.y * forward.x
+      };
+    }
 
     // Transform local -> world (weapon local axes aligned to camera basis)
     let world = {
@@ -216,10 +256,36 @@ export default class WeaponEffectsSystem {
   // Removed light occlusion/raycast helpers and jitter
 
   private _offsetRight(parent: GamePlayerEntity, pos: Vector3Like, amount: number): Vector3Like {
-    // Compute right vector from camera facing; project to XZ plane
+    // Compute right vector from camera facing; use proper 3D direction
     const f = parent.player.camera.facingDirection;
-    const len = Math.hypot(f.x, f.z) || 1;
-    const right = { x: f.z / len, y: 0, z: -f.x / len };
+    const len = Math.hypot(f.x, f.y, f.z) || 1;
+    const forward = { x: f.x / len, y: f.y / len, z: f.z / len };
+    
+    // Handle edge case when looking straight up or down
+    const upThreshold = 0.99;
+    const absY = Math.abs(forward.y);
+    
+    let right: Vector3Like;
+    
+    if (absY > upThreshold) {
+      // Looking nearly straight up or down - use fallback right vector
+      right = { x: 0, y: 0, z: 1 };
+    } else {
+      // Normal case - calculate right vector
+      const worldUp = { x: 0, y: 1, z: 0 };
+      right = {
+        x: forward.y * worldUp.z - forward.z * worldUp.y,
+        y: forward.z * worldUp.x - forward.x * worldUp.z,
+        z: forward.x * worldUp.y - forward.y * worldUp.x
+      };
+      
+      // Normalize right vector
+      const rightLen = Math.hypot(right.x, right.y, right.z) || 1;
+      right.x /= rightLen;
+      right.y /= rightLen;
+      right.z /= rightLen;
+    }
+    
     return {
       x: pos.x + right.x * amount,
       y: pos.y + right.y * amount,
