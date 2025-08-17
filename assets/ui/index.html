@@ -98,6 +98,10 @@
   </div>
 </div>
 
+<div class="achievement-notifications">
+  <!-- Achievement notifications will be dynamically added here -->
+</div>
+
   <div id="screen-fader" class="screen-fader hidden"></div>
 
   <template id="item-nameplate">
@@ -407,6 +411,9 @@
         break;
               case 'kill-feed':
           addKillFeedEntry(data.killerName, data.weaponIconUri, data.victimName);
+          break;
+      case 'achievement-unlocked':
+          showAchievementNotification(data);
           break;
     }
   });
@@ -1132,6 +1139,60 @@
         }, 1800);
       }
     }, KILL_FEED_DURATION);
+  };
+
+  // Achievement Notification System
+  const showAchievementNotification = (data) => {
+    const notificationsContainer = document.querySelector('.achievement-notifications');
+    if (!notificationsContainer) return;
+    
+    // Add rarity class
+    const rarityClass = data.rarity ? `rarity-${data.rarity}` : '';
+    const secretClass = data.secret ? 'secret-achievement' : '';
+    const repeatableClass = data.repeatable ? 'repeatable-achievement' : '';
+    
+    const notification = document.createElement('div');
+    notification.className = `achievement-notification ${rarityClass} ${secretClass} ${repeatableClass}`;
+    
+    // Handle repeatable achievements
+    let completionText = '';
+    if (data.repeatable && data.completions) {
+      const maxCompletions = data.maxCompletions || 1;
+      completionText = `<div class="achievement-completion-count">${data.completions}/${maxCompletions}</div>`;
+    }
+    
+    // Add rarity badge
+    const rarityBadge = data.rarity ? `<div class="achievement-rarity-badge rarity-${data.rarity}">${data.rarity.toUpperCase()}</div>` : '';
+    
+    notification.innerHTML = `
+      <div class="achievement-notification-content">
+        <div class="achievement-notification-icon">${data.icon}</div>
+        <div class="achievement-notification-text">
+          <div class="achievement-notification-title">${data.title}</div>
+          <div class="achievement-notification-desc">${data.description}</div>
+          <div class="achievement-notification-reward">+${data.xpReward} XP</div>
+          ${completionText}
+        </div>
+        ${rarityBadge}
+      </div>
+    `;
+    
+    notificationsContainer.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+      notification.classList.add('show');
+    }, 100);
+    
+    // Remove after 4 seconds
+    setTimeout(() => {
+      notification.classList.remove('show');
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification);
+        }
+      }, 300);
+    }, 4000);
   };
 
 </script>

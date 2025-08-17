@@ -15,6 +15,8 @@ export default class WeaponShootingSystem {
   private readonly _fireRate: number;
   private _lastFireTime: number = 0;
   private _uiSystem: WeaponUISystem;
+  private _shotsFired: number = 0;
+  private _hitsLanded: number = 0;
 
   constructor(weaponData: WeaponData, uiSystem: WeaponUISystem) {
     this._weaponData = weaponData;
@@ -43,8 +45,26 @@ export default class WeaponShootingSystem {
     }
 
     this._lastFireTime = now;
+    this._shotsFired++;
     this._performRaycast(parent);
     return true;
+  }
+
+  // Public getters for weapon stats
+  public get damage(): number {
+    return this._damage;
+  }
+
+  public get range(): number {
+    return this._range;
+  }
+
+  public get fireRate(): number {
+    return this._fireRate;
+  }
+
+  public get lastFireTime(): number {
+    return this._lastFireTime;
   }
 
   public getShootOriginDirection(parent: GamePlayerEntity): { origin: Vector3Like, direction: Vector3Like } {
@@ -83,6 +103,9 @@ export default class WeaponShootingSystem {
 
   private _handleHitEntity(hitEntity: Entity, hitDirection: Vector3Like, parent: GamePlayerEntity): void {
     if (hitEntity instanceof GamePlayerEntity) {
+      this._hitsLanded++;
+      this._updateAccuracyStats(parent);
+      
       const damageResult = DamageSystem.instance.applyDamage(
         hitEntity,
         this._damage,
@@ -91,6 +114,21 @@ export default class WeaponShootingSystem {
       );
       
       this._uiSystem.playHitmarker(parent, damageResult.damageDealt > 0, damageResult.targetKilled);
+      
+      // Track weapon kill and headshot if target was killed
+      if (damageResult.targetKilled) {
+        try {
+          const currentWeapon = parent.gamePlayer.getCurrentWeapon();
+          const weaponCategory = currentWeapon?.weaponData.category || 'unknown';
+          
+          // Simple headshot detection based on hit direction (if shooting upward, likely headshot)
+          const isHeadshot = hitDirection.y > 0.3; // Rough approximation
+          
+          // Update player stats with weapon category and headshot info
+          const PlayerStatsSystem = require('./PlayerStatsSystem').default;
+          PlayerStatsSystem.addKill(parent.player, weaponCategory, isHeadshot);
+        } catch {}
+      }
     }
   }
 
@@ -173,6 +211,24 @@ export default class WeaponShootingSystem {
       console.warn('Failed to apply spread to direction:', error);
       return baseDirection;
     }
+  }
+
+  private _updateAccuracyStats(parent: GamePlayerEntity): void {
+    try {
+      const accuracy = this._shotsFired > 0 ? Math.floor((this._hitsLanded / this._shotsFired) * 100) : 0;
+      const data = (parent.player.getPersistedData?.() as any) || {};
+      
+      parent.player.setPersistedData({
+        ...data,
+        accuracy: accuracy
+      });
+      
+      // Check accuracy achievements
+      try {
+        const AchievementSystem = require('./AchievementSystem').default;
+        AchievementSystem.checkAccuracyAchievements(parent.player, accuracy);
+      } catch {}
+    } catch {}
   }
 
   private _getMaxSpreadAngle(): number {

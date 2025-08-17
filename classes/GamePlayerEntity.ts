@@ -381,7 +381,30 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
       const now = Date.now();
       const elapsed = now - this._lastPlaytimeTick;
       this._lastPlaytimeTick = now;
+      
+      // Add XP from playtime
       ProgressionSystem.addPlaytimeXP(this.player, elapsed);
+      
+      // Track total playtime (in minutes)
+      try {
+        const data = (this.player.getPersistedData?.() as any) || {};
+        const currentPlaytime = Math.floor((data as any)?.playtime ?? 0);
+        const minutesToAdd = Math.floor(elapsed / (1000 * 60)); // Convert ms to minutes
+        
+        if (minutesToAdd > 0) {
+          this.player.setPersistedData({
+            ...data,
+            playtime: currentPlaytime + minutesToAdd
+          });
+          
+          // Check exploration achievements for playtime
+          try {
+            const AchievementSystem = require('./systems/AchievementSystem').default;
+            const raids = Math.floor((data as any)?.raids ?? 0);
+            AchievementSystem.checkExplorationAchievements(this.player, raids, currentPlaytime + minutesToAdd);
+          } catch {}
+        }
+      } catch {}
     }, 5000);
   }
 

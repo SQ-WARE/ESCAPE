@@ -215,66 +215,8 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
 
 /* removed unused legacy weapon-progress styles */
 
-/* Progression overlay */
-.progression-overlay { position: fixed; inset: 0; display: none; justify-content: center; align-items: center; background: rgba(0,0,0,0.35); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); z-index: 10001; }
-.progression-panel { width: min(980px, 92vw); max-height: 82vh; overflow: hidden; padding: 20px 24px; display: flex; flex-direction: column; }
-.progression-content { display: grid; row-gap: 12px; overflow: auto; padding-right: 8px; flex: 1; min-height: 0; -ms-overflow-style: none; scrollbar-width: none; }
-.progression-content::-webkit-scrollbar { width: 0; height: 0; }
-.progression-panel.ui-panel { background: rgba(20, 20, 26, 0.28); border-color: rgba(255, 255, 255, 0.18); box-shadow: 0 16px 56px rgba(0, 0, 0, 0.45); backdrop-filter: blur(28px) saturate(1.3); -webkit-backdrop-filter: blur(28px) saturate(1.3); }
-.progression-header { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 12px; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.12); }
-.progression-title { font-weight: 900; font-size: 18px; letter-spacing: 3px; color: #e8eef5; text-transform: uppercase; }
-.progression-tabs { display: flex; gap: 8px; margin-left: auto; margin-right: 12px; }
-.tab-btn { background: rgba(40,40,48,0.45); border: 1px solid rgba(255,255,255,0.12); color: #cfe8ff; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 11px; letter-spacing: 0.6px; text-transform: uppercase; }
-.tab-btn:hover { background: rgba(55,55,64,0.55); }
-.tab-btn.active { background: rgba(70,70,80,0.6); border-color: rgba(255,255,255,0.22); color: #ffffff; box-shadow: inset 0 -2px 0 #ffa726; }
-.progression-content { display: grid; row-gap: 12px; }
-.pg-category { margin: 8px 0 4px; padding: 4px 8px; font-weight: 800; letter-spacing: 1.2px; color: #cfe8ff; text-transform: uppercase; opacity: 0.9; }
-.ov-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-.ov-card { padding: 14px 16px; display: grid; row-gap: 6px; position: relative; }
-.ov-card::before { content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; background: linear-gradient(180deg, #64b5f6, transparent); border-radius: 2px; }
-.ov-label { font-size: 11px; letter-spacing: 1.2px; color: #b5c0cc; text-transform: uppercase; }
-.ov-value { font-size: 26px; font-weight: 900; color: #e8eef5; text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
-.ov-section-title { font-size: 12px; color: #b5c0cc; letter-spacing: 1px; margin: 8px 2px; }
-.pg-row { position: relative; display: grid; grid-template-columns: 76px 1fr 280px; align-items: center; gap: 18px; padding: 14px 14px; }
-.pg-row::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; background: linear-gradient(180deg, #ffa726, transparent); border-radius: 2px; }
-.pg-left { display: flex; align-items: center; justify-content: center; }
-.pg-icon-wrap { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 8px; padding: 6px; border: 1px solid rgba(255,255,255,0.18); background:
-  radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,0.06), transparent 70%),
-  repeating-linear-gradient(0deg, rgba(255,255,255,0.06), rgba(255,255,255,0.06) 2px, transparent 2px, transparent 6px),
-  linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06));
-  backdrop-filter: blur(6px) saturate(1.2); -webkit-backdrop-filter: blur(6px) saturate(1.2);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 0 10px var(--icon-accent, transparent);
-}
-.pg-icon-wrap.theme-dark { background:
-  radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,0.03), transparent 70%),
-  repeating-linear-gradient(0deg, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 2px, transparent 2px, transparent 6px),
-  linear-gradient(180deg, rgba(20,20,24,0.70), rgba(20,20,24,0.50));
-  border-color: rgba(255,255,255,0.12);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 0 10px var(--icon-accent, transparent);
-}
-.pg-icon-wrap.theme-light { background:
-  radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,0.10), transparent 70%),
-  repeating-linear-gradient(0deg, rgba(255,255,255,0.08), rgba(255,255,255,0.08) 2px, transparent 2px, transparent 6px),
-  linear-gradient(180deg, rgba(255,255,255,0.28), rgba(255,255,255,0.18));
-  border-color: rgba(255,255,255,0.24);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 0 10px var(--icon-accent, transparent);
-}
-.pg-icon { width: 100%; height: 100%; object-fit: contain; filter: brightness(1.08) contrast(1.05) drop-shadow(0 1px 2px rgba(0,0,0,0.6)); background: none; border: 0; padding: 0; }
-.pg-center { display: grid; row-gap: 6px; }
-.pg-name { font-size: 14px; font-weight: 900; color: #e8eef5; letter-spacing: 0.4px; }
-.pg-bar { position: relative; width: 100%; height: 12px; background:
-  radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,0.03), transparent 70%),
-  repeating-linear-gradient(0deg, rgba(255,255,255,0.05), rgba(255,255,255,0.05) 2px, transparent 2px, transparent 6px),
-  linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.05));
-  border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; overflow: hidden; }
-.pg-bar::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.06), transparent 60%); pointer-events: none; }
-.pg-fill { height: 100%; background: linear-gradient(90deg, #ffa726, #ef6c00); box-shadow: 0 0 10px rgba(255,167,38,0.35); }
-.pg-count { font-size: 12px; color: #cfe8ff; }
-.pg-right { display: grid; row-gap: 8px; justify-items: start; background: rgba(20,20,24,0.45); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 10px 12px; }
-.pg-reward { display: flex; align-items: center; gap: 8px; }
-.pg-reward-badge { padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 900; letter-spacing: 0.4px; color: #2c2100; background: linear-gradient(90deg, #ffd166, #f4c15d); box-shadow: 0 0 14px rgba(255, 209, 102, 0.35), inset 0 1px 0 rgba(255,255,255,0.25); border: 1px solid rgba(255, 209, 102, 0.6); text-shadow: 0 1px 0 rgba(255,255,255,0.4); }
-.pg-next-kills { font-size: 11px; color: #b5c0cc; }
-.pg-sub { font-size: 11px; color: #bcd3e6; }
+
+
 
 /* Stash overlay, slot grids, drag ghost, and drop-targets included in stash/menu css above */
 
@@ -1260,6 +1202,137 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
   }
 }
 
+/* === Achievement Notifications === */
+.achievement-notifications {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1001;
+  pointer-events: none;
+}
+
+.achievement-notification {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, rgba(76,175,80,0.9), rgba(56,142,60,0.8));
+  border: 2px solid rgba(76,175,80,0.6);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transform: translateX(-100vw);
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.achievement-notification.show {
+  transform: translateX(0);
+}
+
+.achievement-notification-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.achievement-notification-icon {
+  font-size: 32px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.achievement-notification-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.achievement-notification-title {
+  font-size: 16px;
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.achievement-notification-desc {
+  font-size: 12px;
+  color: rgba(255,255,255,0.9);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.achievement-notification-reward { 
+  font-size: 11px; 
+  font-weight: 800; 
+  color: #ffd700; 
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5); 
+  letter-spacing: 1px; 
+  text-transform: uppercase; 
+}
+
+.achievement-completion-count { 
+  font-size: 10px; 
+  font-weight: 700; 
+  color: #64b5f6; 
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5); 
+  letter-spacing: 1px; 
+  text-transform: uppercase; 
+  margin-top: 2px; 
+}
+
+.achievement-rarity-badge { 
+  position: absolute; 
+  top: 8px; 
+  right: 8px; 
+  font-size: 8px; 
+  font-weight: 900; 
+  letter-spacing: 1px; 
+  text-transform: uppercase; 
+  padding: 2px 6px; 
+  border-radius: 4px; 
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8); 
+}
+
+.achievement-rarity-badge.rarity-common { 
+  background: rgba(181, 192, 204, 0.9); 
+  color: #2c3e50; 
+}
+
+.achievement-rarity-badge.rarity-rare { 
+  background: rgba(100, 181, 246, 0.9); 
+  color: #ffffff; 
+}
+
+.achievement-rarity-badge.rarity-epic { 
+  background: rgba(171, 71, 188, 0.9); 
+  color: #ffffff; 
+}
+
+.achievement-rarity-badge.rarity-legendary { 
+  background: rgba(255, 215, 0, 0.9); 
+  color: #2c3e50; 
+}
+
+/* Secret achievement notification */
+.achievement-notification.secret-achievement { 
+  background: linear-gradient(135deg, rgba(255,215,0,0.9), rgba(255,193,7,0.8)); 
+  border-color: rgba(255,215,0,0.8); 
+  animation: secret-glow 2s ease-in-out infinite alternate; 
+}
+
+@keyframes secret-glow { 
+  0% { box-shadow: 0 8px 32px rgba(255,215,0,0.4); } 
+  100% { box-shadow: 0 8px 32px rgba(255,215,0,0.8); } 
+}
+
+/* Repeatable achievement notification */
+.achievement-notification.repeatable-achievement { 
+  border-width: 3px; 
+  border-style: double; 
+}
+
 /* === Bottom Party Bar === */
 .bottom-party-bar {
   position: fixed;
@@ -1579,6 +1652,8 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
 .invite-timer.danger {
   color: #ef4444;
 }
+
+
 
 
 

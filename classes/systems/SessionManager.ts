@@ -39,6 +39,8 @@ export default class SessionManager {
   private _lobbyWorld: World | null = null;
   private readonly _clockConfig: Record<string, { baseHour: number; minutesPerRealSecond: number }> = {};
   private readonly _transfersInProgress: Set<string> = new Set();
+  private readonly _lastWarnings: Map<string, number> = new Map();
+  private readonly _menuPlayers: Set<GamePlayer> = new Set();
 
   // Default: 45 minutes per session; staggered by half so one is always mid-cycle
   private readonly _defaultDurationSeconds = 45 * 60;
@@ -152,10 +154,16 @@ export default class SessionManager {
    * Returns session-related fields to merge into the menu-hud payload.
    */
   public getMenuHudExtras(gamePlayer: GamePlayer): { sessions: SessionSummary[]; assignedSessionId?: string } {
+    // Track this player as being in the menu
+    this._menuPlayers.add(gamePlayer);
     return {
       sessions: this.getMenuSessionSummaries(),
       assignedSessionId: this.getPlayerSessionId(gamePlayer),
     };
+  }
+
+  public removeMenuPlayer(gamePlayer: GamePlayer): void {
+    this._menuPlayers.delete(gamePlayer);
   }
 
   /**
@@ -179,11 +187,17 @@ export default class SessionManager {
     const playerId = gamePlayer?.player?.id || gamePlayer?.player?.username;
     if (!playerId) return;
     this._playerAssignments.delete(playerId);
+    // Clear warning tracking for this player
+    this._lastWarnings.delete(`lastWarning_${playerId}`);
+    // Remove from menu players tracking
+    this._menuPlayers.delete(gamePlayer);
   }
 
   public clearPlayerById(playerId: string | undefined): void {
     if (!playerId) return;
     this._playerAssignments.delete(playerId);
+    // Clear warning tracking for this player
+    this._lastWarnings.delete(`lastWarning_${playerId}`);
   }
 
   public getPlayerSessionId(gamePlayer: GamePlayer): string | undefined {
@@ -197,12 +211,19 @@ export default class SessionManager {
     this._tickHandle = setInterval(() => {
       const now = Date.now();
       // Rotate sessions that have ended
+      let sessionsRestarted = false;
       for (const s of this._sessions) {
         const endMs = s.startTimeMs + s.durationSeconds * 1000;
         if (now >= endMs) {
           // Restart session immediately back-to-back
           s.startTimeMs = endMs;
+          sessionsRestarted = true;
         }
+      }
+
+      // Notify menu players when sessions restart
+      if (sessionsRestarted) {
+        this._notifyMenuPlayersOfSessionUpdate();
       }
 
       // Per-player HUD updates and MIA enforcement
@@ -229,26 +250,37 @@ export default class SessionManager {
             gp.player.ui.sendData({ type: 'raid-timer', secondsLeft, totalSeconds: session.durationSeconds, sessionId: session.id, worldHour: hour, worldMinute: minute, worldTimeFormatted: formatted });
           } catch {}
 
-          // Enhanced raid ending warnings - more frequent and urgent
+          // Enhanced raid ending warnings - prevent duplicates by tracking last warning
+          const lastWarningKey = `lastWarning_${playerId}`;
+          const lastWarning = this._lastWarnings.get(lastWarningKey) || 0;
+          
           if (secondsLeft === 900 || secondsLeft === 600 || secondsLeft === 300 || secondsLeft === 180 || secondsLeft === 120 || secondsLeft === 90 || secondsLeft === 60 || secondsLeft === 45 || secondsLeft === 30 || secondsLeft === 20 || secondsLeft === 15 || secondsLeft === 10 || secondsLeft === 5) {
-            try {
-              let message: string;
-              if (secondsLeft >= 60) {
-                const minutes = Math.floor(secondsLeft / 60);
-                message = `⚠️ WARNING! Raid ends in ${minutes}m ${secondsLeft % 60}s - Find an extraction zone or you will be MIA!`;
-              } else {
-                message = `🚨 CRITICAL! Raid ends in ${secondsLeft}s - EXTRACT NOW or lose everything!`;
-              }
-              gp.player.ui.sendData({ type: 'notification', message, color: 'FF0000' });
-            } catch {}
+            // Only send warning if we haven't sent one for this exact time recently
+            if (lastWarning !== secondsLeft) {
+              try {
+                let message: string;
+                if (secondsLeft >= 60) {
+                  const minutes = Math.floor(secondsLeft / 60);
+                  message = `⚠️ WARNING! Raid ends in ${minutes}m ${secondsLeft % 60}s - Find an extraction zone or you will be MIA!`;
+                } else {
+                  message = `🚨 CRITICAL! Raid ends in ${secondsLeft}s - EXTRACT NOW or lose everything!`;
+                }
+                gp.player.ui.sendData({ type: 'notification', message, color: 'FF0000' });
+                this._lastWarnings.set(lastWarningKey, secondsLeft);
+              } catch {}
+            }
           }
 
-          // Continuous warning for last 30 seconds
-          if (secondsLeft <= 30 && secondsLeft > 0 && secondsLeft % 5 === 0) {
-            try {
-              const message = `🚨 FINAL WARNING! ${secondsLeft}s remaining - EXTRACT IMMEDIATELY!`;
-              gp.player.ui.sendData({ type: 'notification', message, color: 'FF0000' });
-            } catch {}
+          // Continuous warning for last 30 seconds - prevent spam
+          if (secondsLeft <= 30 && secondsLeft > 0 && secondsLeft % 10 === 0) {
+            // Only send every 10 seconds instead of every 5 to reduce spam
+            if (lastWarning !== secondsLeft) {
+              try {
+                const message = `🚨 FINAL WARNING! ${secondsLeft}s remaining - EXTRACT IMMEDIATELY!`;
+                gp.player.ui.sendData({ type: 'notification', message, color: 'FF0000' });
+                this._lastWarnings.set(lastWarningKey, secondsLeft);
+              } catch {}
+            }
           }
 
           // Time over → MIA
@@ -266,6 +298,8 @@ export default class SessionManager {
             }
             // Remove player assignment after MIA handling
             this._playerAssignments.delete(playerId);
+            // Clear warning tracking for this player
+            this._lastWarnings.delete(lastWarningKey);
           }
         } catch (error) {
           
@@ -298,6 +332,24 @@ export default class SessionManager {
 
     
     return secondsLeft;
+  }
+
+  private _notifyMenuPlayersOfSessionUpdate(): void {
+    // Send updated session data to all menu players
+    for (const gamePlayer of this._menuPlayers) {
+      try {
+        if (gamePlayer && gamePlayer.player && gamePlayer.player.ui) {
+          const sessionExtras = this.getMenuHudExtras(gamePlayer);
+          gamePlayer.player.ui.sendData({
+            type: 'menu-hud',
+            ...sessionExtras,
+          });
+        }
+      } catch (error) {
+        // Remove invalid menu players
+        this._menuPlayers.delete(gamePlayer);
+      }
+    }
   }
 
   private _computeWorldClock(sessionId: string): { hour: number; minute: number; formatted: string } {

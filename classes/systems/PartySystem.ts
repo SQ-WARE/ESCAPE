@@ -527,6 +527,14 @@ export class PartySystem {
     const party = this._parties.get(partyId);
     if (!party) return;
 
+    // Track party raid for all members
+    party.forEach(member => {
+      const player = this._findPlayerById(member.playerId);
+      if (player) {
+        this._trackPartyRaid(player);
+      }
+    });
+
     // Deploy each party member using direct deployment (bypass party checks)
     party.forEach(member => {
       const player = this._findPlayerById(member.playerId);
@@ -576,6 +584,26 @@ export class PartySystem {
    */
   private _generateInviteId(): string {
     return `invite_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * Tracks a party raid for social achievements
+   */
+  private _trackPartyRaid(player: Player): void {
+    try {
+      const data = (player.getPersistedData?.() as any) || {};
+      const currentPartyRaids = Math.floor((data as any)?.partyRaids ?? 0);
+      
+      // Update party raid count
+      player.setPersistedData({
+        ...data,
+        partyRaids: currentPartyRaids + 1
+      });
+      
+      // Check social achievements
+      const AchievementSystem = require('./AchievementSystem').default;
+      AchievementSystem.checkSocialAchievements(player, currentPartyRaids + 1, 0); // 0 revives for now
+    } catch {}
   }
 
 

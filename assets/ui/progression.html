@@ -1,4 +1,5 @@
 <link rel="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/app.css">
+<link rel="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/progression.css">
 <link rel="preload" as="image" href="{{CDN_ASSETS_URL}}/ui/background2.png">
 <div class="menu-background" style="background: url('{{CDN_ASSETS_URL}}/ui/background2.png') center center / cover no-repeat;">
   <div class="background-overlay"></div>
@@ -13,10 +14,14 @@
   <button class="close-btn" id="progression-close">↩</button>
   <div class="progression-panel glass-elevated ui-panel">
     <div class="progression-header">
-      <span class="progression-title">PROGRESSION</span>
+      <div class="progression-title-section">
+        <span class="progression-title">COMBAT RECORD</span>
+        <span class="progression-subtitle">ESCAPE</span>
+      </div>
       <div class="progression-tabs">
-        <button class="tab-btn active" data-tab="overview">OVERVIEW</button>
+        <button class="tab-btn active" data-tab="stats">STATISTICS</button>
         <button class="tab-btn" data-tab="weapons">WEAPONS</button>
+        <button class="tab-btn" data-tab="achievements">ACHIEVEMENTS</button>
       </div>
     </div>
     <div class="progression-content" id="progression-content"></div>
@@ -27,7 +32,8 @@
   const CDN_ASSETS_URL = '{{CDN_ASSETS_URL}}';
   const progressionClose = document.getElementById('progression-close');
   const progressionTabs = document.querySelectorAll('.tab-btn');
-  let activeTab = 'overview';
+  let activeTab = 'stats';
+  let cachedData = {};
 
   progressionClose.addEventListener('click', () => {
     hytopia.sendData({ type: 'backToMenu' });
@@ -37,29 +43,37 @@
     btn.addEventListener('click', () => setActiveTab(btn.getAttribute('data-tab')));
   });
 
+  // Initialize the page by loading the default tab (stats)
+  setTimeout(() => {
+    setActiveTab('stats');
+  }, 50);
+
   function setActiveTab(tab) {
     activeTab = tab;
     progressionTabs.forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === tab));
     const content = document.getElementById('progression-content');
     content.innerHTML = '';
-    if (tab === 'overview') {
-      // slight defer to ensure server listener is ready
+    
+    if (tab === 'stats') {
       setTimeout(() => { try { hytopia.sendData({ type: 'requestProgressOverview' }); } catch {} }, 10);
-    } else {
+    } else if (tab === 'weapons') {
       setTimeout(() => { try { hytopia.sendData({ type: 'openProgression' }); } catch {} }, 10);
+    } else if (tab === 'achievements') {
+      renderAchievementsTab();
     }
   }
 
   hytopia.onData(data => {
     switch (data.type) {
       case 'progress-overview':
-        if (activeTab === 'overview') renderOverview(data);
+        cachedData.overview = data;
+        if (activeTab === 'stats') renderStatsTab();
         break;
       case 'weapon-progress':
+        cachedData.weapons = data.rows || [];
         if (activeTab === 'weapons') renderWeaponProgress(data.rows || []);
         break;
       case 'openProgression':
-        // server might accidentally echo; request rows explicitly
         if (activeTab === 'weapons') {
           setTimeout(() => { try { hytopia.sendData({ type: 'openProgression' }); } catch {} }, 10);
         }
@@ -67,27 +81,19 @@
     }
   });
 
-  function renderOverview(data) {
-    const content = document.getElementById('progression-content');
-    if (!content) return;
-    // Ensure we don't duplicate when re-opening or receiving multiple updates
-    content.innerHTML = '';
-    const stats = document.createElement('div');
-    stats.className = 'ov-stats';
-    const kdr = (data.kills || 0) / Math.max(1, (data.deaths || 0));
-    stats.innerHTML = `
-      <div class="ov-card ui-panel"><div class="ov-label">KILLS</div><div class="ov-value">${data.kills || 0}</div></div>
-      <div class="ov-card ui-panel"><div class="ov-label">DEATHS</div><div class="ov-value">${data.deaths || 0}</div></div>
-      <div class="ov-card ui-panel"><div class="ov-label">KDR</div><div class="ov-value">${kdr.toFixed(2)}</div></div>
-      <div class="ov-card ui-panel"><div class="ov-label">CREDITS</div><div class="ov-value">${data.currency || 0}</div></div>
-    `;
-    content.appendChild(stats);
-  }
+  // Fallback: Request data if stats tab is active but no data after 200ms
+  setTimeout(() => {
+    if (activeTab === 'stats' && (!cachedData.overview || !cachedData.overview.kills)) {
+      try { hytopia.sendData({ type: 'requestProgressOverview' }); } catch {}
+    }
+  }, 200);
+
+
 
   function renderWeaponProgress(rows) {
     const container = document.getElementById('progression-content');
     if (!container) return;
-    container.innerHTML = '';
+    
     // Group rows by category and render headings
     const groups = new Map();
     rows.forEach(r => {
@@ -95,42 +101,277 @@
       if (!groups.has(cat)) groups.set(cat, []);
       groups.get(cat).push(r);
     });
+    
     const order = ['pistol','smg','rifle','shotgun','sniper','lmg',''];
-    const titleMap = { pistol: 'Pistols', smg: 'SMGs', rifle: 'Rifles', shotgun: 'Shotguns', sniper: 'Snipers', lmg: 'LMGs', '': 'Other' };
+    const titleMap = { 
+      pistol: 'PISTOLS', 
+      smg: 'SMGs', 
+      rifle: 'RIFLES', 
+      shotgun: 'SHOTGUNS', 
+      sniper: 'SNIPERS', 
+      lmg: 'LMGs', 
+      '': 'OTHER' 
+    };
+
+    container.innerHTML = `
+      <div class="weapons-header">
+        <div class="weapons-title">
+          <h2>WEAPON MASTERY</h2>
+          <p>Track your progress across all weapon categories</p>
+        </div>
+        <div class="weapons-summary">
+          <div class="summary-stat">
+            <span class="summary-number">${rows.length}</span>
+            <span class="summary-label">WEAPONS</span>
+          </div>
+          <div class="summary-stat">
+            <span class="summary-number">${rows.reduce((sum, r) => sum + r.kills, 0)}</span>
+            <span class="summary-label">TOTAL KILLS</span>
+          </div>
+        </div>
+      </div>
+    `;
+
     order.forEach(cat => {
       const list = groups.get(cat);
       if (!list || list.length === 0) return;
+      
+      const categorySection = document.createElement('div');
+      categorySection.className = 'weapon-category-section';
+      
       const heading = document.createElement('div');
-      heading.className = 'pg-category';
-      heading.textContent = titleMap[cat] || (cat ? cat.charAt(0).toUpperCase()+cat.slice(1) : 'Other');
-      container.appendChild(heading);
+      heading.className = 'weapon-category-header';
+      heading.innerHTML = `
+        <div class="category-title">${titleMap[cat] || (cat ? cat.charAt(0).toUpperCase()+cat.slice(1) : 'OTHER')}</div>
+        <div class="category-stats">
+          <span>${list.length} weapons</span>
+          <span>•</span>
+          <span>${list.reduce((sum, r) => sum + r.kills, 0)} kills</span>
+        </div>
+      `;
+      categorySection.appendChild(heading);
+      
+      const weaponsGrid = document.createElement('div');
+      weaponsGrid.className = 'weapons-grid';
+      
       list.forEach(function(row) {
         const pct = Math.min(100, Math.floor((row.kills/row.nextKills)*100));
         const item = document.createElement('div');
-        item.className = 'pg-row ui-panel';
+        item.className = 'weapon-card ui-panel';
         item.innerHTML = `
-          <div class="pg-left">
-            <div class="pg-icon-wrap"><img class="pg-icon" src="${CDN_ASSETS_URL}/${row.iconImageUri}"/></div>
+          <div class="weapon-card-header">
+            <div class="weapon-icon-container">
+              <img class="weapon-icon" src="${CDN_ASSETS_URL}/${row.iconImageUri}"/>
+            </div>
+            <div class="weapon-info">
+              <div class="weapon-name">${row.name}</div>
+              <div class="weapon-category">${row.category.toUpperCase()}</div>
+            </div>
+            <div class="weapon-kills">
+              <span class="kills-number">${row.kills}</span>
+              <span class="kills-label">KILLS</span>
+            </div>
           </div>
-          <div class="pg-center">
-            <div class="pg-name">${row.name}</div>
-            <div class="pg-bar"><div class="pg-fill" style="width:${pct}%"></div></div>
-            <div class="pg-count">${row.kills} KILLS</div>
+          <div class="weapon-progress">
+            <div class="progress-bar">
+              <div class="progress-fill" style="width:${pct}%"></div>
           </div>
-          <div class="pg-right">
-            <div class="pg-sub">NEXT MILESTONE</div>
-            <div class="pg-reward">
-              <span class="pg-reward-badge">+${row.nextXP} XP</span>
-              <span class="pg-next-kills">at ${row.nextKills} kills</span>
+            <div class="progress-text">
+              <span>${row.kills}/${row.nextKills} kills</span>
+              <span class="next-reward">+${row.nextXP} XP</span>
             </div>
           </div>
         `;
-        container.appendChild(item);
-        const img = item.querySelector('.pg-icon');
-        const wrap = item.querySelector('.pg-icon-wrap');
-        if (img && wrap) applyDynamicIconTheme(img, wrap);
+        weaponsGrid.appendChild(item);
+        
+        const img = item.querySelector('.weapon-icon');
+        const container = item.querySelector('.weapon-icon-container');
+        if (img && container) applyDynamicIconTheme(img, container);
       });
+      
+      categorySection.appendChild(weaponsGrid);
+      container.appendChild(categorySection);
     });
+  }
+
+  function renderStatsTab() {
+    const content = document.getElementById('progression-content');
+    const data = cachedData.overview || {};
+    
+    // Show loading state if no data yet
+    if (!data.kills && !data.deaths && !data.currency) {
+      content.innerHTML = `
+        <div class="stats-tab-content">
+          <div class="stats-overview ui-panel">
+            <h3>DETAILED STATISTICS</h3>
+            <div style="text-align: center; padding: 40px; color: #ccc;">
+              <div style="font-size: 24px; margin-bottom: 10px;">📊</div>
+              <div>Loading statistics...</div>
+            </div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+    
+    content.innerHTML = `
+      <div class="stats-tab-content">
+        <div class="stats-overview ui-panel">
+          <h3>DETAILED STATISTICS</h3>
+          <div class="stats-grid-detailed">
+            <div class="stat-detail-card">
+              <div class="stat-detail-icon">🎯</div>
+              <div class="stat-detail-content">
+                <div class="stat-detail-value">${data.kills || 0}</div>
+                <div class="stat-detail-label">TOTAL KILLS</div>
+                <div class="stat-detail-desc">Enemies eliminated</div>
+              </div>
+            </div>
+            <div class="stat-detail-card">
+              <div class="stat-detail-icon">💀</div>
+              <div class="stat-detail-content">
+                <div class="stat-detail-value">${data.deaths || 0}</div>
+                <div class="stat-detail-label">TOTAL DEATHS</div>
+                <div class="stat-detail-desc">Times eliminated</div>
+              </div>
+            </div>
+            <div class="stat-detail-card">
+              <div class="stat-detail-icon">⚖️</div>
+              <div class="stat-detail-content">
+                <div class="stat-detail-value">${((data.kills || 0) / Math.max(1, (data.deaths || 0))).toFixed(2)}</div>
+                <div class="stat-detail-label">K/D RATIO</div>
+                <div class="stat-detail-desc">Kill to death ratio</div>
+              </div>
+            </div>
+            <div class="stat-detail-card">
+              <div class="stat-detail-icon">💰</div>
+              <div class="stat-detail-content">
+                <div class="stat-detail-value">${data.currency || 0}</div>
+                <div class="stat-detail-label">CREDITS EARNED</div>
+                <div class="stat-detail-desc">Total currency</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="performance-chart ui-panel">
+          <h3>PERFORMANCE TRENDS</h3>
+          <div class="chart-placeholder">
+            <div class="chart-icon">📈</div>
+            <div class="chart-text">Performance tracking coming soon</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderAchievementsTab() {
+    const content = document.getElementById('progression-content');
+    const achievements = cachedData.overview?.achievements?.achievements || {};
+    const totalCompleted = cachedData.overview?.achievements?.totalCompleted || 0;
+    const totalXP = cachedData.overview?.achievements?.totalXP || 0;
+    const totalSecretFound = cachedData.overview?.achievements?.totalSecretFound || 0;
+    const totalLegendary = cachedData.overview?.achievements?.totalLegendary || 0;
+    
+    // Group achievements by category
+    const categories = {
+      combat: [],
+      progression: [],
+      exploration: [],
+      collection: [],
+      mastery: [],
+      challenge: [],
+      social: [],
+      seasonal: []
+    };
+    
+    for (const [id, achievement] of Object.entries(achievements)) {
+      if (categories[achievement.category]) {
+        categories[achievement.category].push(achievement);
+      }
+    }
+    
+    let achievementsHTML = '';
+    
+    // Render each category
+    for (const [category, categoryAchievements] of Object.entries(categories)) {
+      if (categoryAchievements.length === 0) continue;
+      
+      const categoryTitle = category.charAt(0).toUpperCase() + category.slice(1);
+      achievementsHTML += `
+        <div class="achievement-category">
+          <h3 class="category-title">${categoryTitle}</h3>
+          <div class="achievements-grid">
+      `;
+      
+      for (const achievement of categoryAchievements) {
+        const progressPercent = Math.min(100, (achievement.progress / achievement.requirement) * 100);
+        let statusText = achievement.completed ? 'COMPLETED' : `${achievement.progress}/${achievement.requirement}`;
+        const statusClass = achievement.completed ? 'achievement-completed' : 'achievement-in-progress';
+        
+        // Handle repeatable achievements
+        if (achievement.repeatable && achievement.completions) {
+          const maxCompletions = achievement.maxCompletions || 1;
+          statusText = `${achievement.completions}/${maxCompletions} COMPLETED`;
+        }
+        
+        // Add rarity class
+        const rarityClass = achievement.rarity ? `rarity-${achievement.rarity}` : '';
+        const secretClass = achievement.secret ? 'secret-achievement' : '';
+        
+        achievementsHTML += `
+          <div class="achievement-card ui-panel ${achievement.completed ? 'completed' : ''} ${rarityClass} ${secretClass}">
+            <div class="achievement-icon">${achievement.icon}</div>
+            <div class="achievement-content">
+              <div class="achievement-title">${achievement.title}</div>
+              <div class="achievement-desc">${achievement.description}</div>
+              <div class="achievement-progress">
+                <div class="achievement-bar">
+                  <div class="achievement-fill" style="width: ${progressPercent}%"></div>
+                </div>
+                <span class="achievement-status ${statusClass}">${statusText}</span>
+              </div>
+              ${achievement.completed ? `<div class="achievement-reward">+${achievement.xpReward} XP</div>` : ''}
+              ${achievement.rarity ? `<div class="achievement-rarity rarity-${achievement.rarity}">${achievement.rarity.toUpperCase()}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }
+      
+      achievementsHTML += `
+          </div>
+        </div>
+      `;
+    }
+    
+    content.innerHTML = `
+      <div class="achievements-content">
+        <div class="achievements-header">
+          <h2>ACHIEVEMENTS</h2>
+          <p>Complete objectives to earn achievements and rewards</p>
+          <div class="achievements-summary">
+            <div class="summary-stat">
+              <span class="summary-number">${totalCompleted}</span>
+              <span class="summary-label">COMPLETED</span>
+            </div>
+            <div class="summary-stat">
+              <span class="summary-number">${totalXP}</span>
+              <span class="summary-label">XP EARNED</span>
+            </div>
+            <div class="summary-stat">
+              <span class="summary-number">${totalSecretFound}</span>
+              <span class="summary-label">SECRETS FOUND</span>
+            </div>
+            <div class="summary-stat">
+              <span class="summary-number">${totalLegendary}</span>
+              <span class="summary-label">LEGENDARY</span>
+            </div>
+          </div>
+        </div>
+        
+        ${achievementsHTML}
+      </div>
+    `;
   }
 
   function applyDynamicIconTheme(img, wrap) {

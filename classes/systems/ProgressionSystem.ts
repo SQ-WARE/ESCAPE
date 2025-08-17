@@ -36,6 +36,23 @@ export default class ProgressionSystem {
     const newXP = Math.max(0, xp + Math.floor(amount));
     const { newLevel, remainingXP } = this._applyLevelUps(level, newXP);
     this.set(player, { level: newLevel, xp: remainingXP });
+    
+    // Check progression achievements if level increased
+    if (newLevel > level) {
+      try {
+        const AchievementSystem = require('./AchievementSystem').default;
+        const data = (player.getPersistedData?.() as any) || {};
+        const currency = Math.floor((data as any)?.currency ?? 0);
+        AchievementSystem.checkProgressionAchievements(player, newLevel, currency);
+        
+        // Track level up timestamp
+        player.setPersistedData({
+          ...data,
+          lastLevelUpTime: Date.now()
+        });
+      } catch {}
+    }
+    
     if (notify) {
       if (amount > 0) this._notify(player, `+${amount} XP`);
       if (newLevel > level) this._notify(player, `Level Up! ${level} → ${newLevel}`);

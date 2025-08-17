@@ -25,7 +25,9 @@ import WeaponEntity from './weapons/entities/WeaponEntity';
 import { WeaponFactory } from './weapons/WeaponFactory';
 import PlayerStatsSystem from './systems/PlayerStatsSystem';
 import WeaponProgressionSystem from './systems/WeaponProgressionSystem';
+import ProgressionSystem from './systems/ProgressionSystem';
 import SessionManager from './systems/SessionManager';
+import AchievementSystem from './systems/AchievementSystem';
 
 // Register ammo items
 ItemRegistry.registerItem(PistolAmmoItem);
@@ -330,6 +332,28 @@ export default class GamePlayer {
 
   private _deploySolo(): void {
     this._isInMenu = false;
+    
+    // Track raid statistics
+    try {
+      const data = (this.player.getPersistedData?.() as any) || {};
+      const currentRaids = Math.floor((data as any)?.raids ?? 0);
+      
+      // Update raid count and start time
+      this.player.setPersistedData({
+        ...data,
+        raids: currentRaids + 1,
+        raidStartTime: Date.now()
+      });
+      
+      // Check exploration achievements
+      const playtime = Math.floor((data as any)?.playtime ?? 0);
+      AchievementSystem.checkExplorationAchievements(this.player, currentRaids + 1, playtime);
+    } catch {}
+    
+    // Remove from menu players tracking
+    try {
+      SessionManager.instance.removeMenuPlayer(this);
+    } catch {}
     // Ensure menu-related listeners are detached so UI events cannot bring the user back to menu while in-game
     try {
       this.player.ui.off(PlayerUIEvent.DATA, this._onMenuUIData);
@@ -400,6 +424,29 @@ export default class GamePlayer {
    * Moves raid inventory (hotbar + backpack) into stash, saves, and returns to menu.
    */
   public completeExtraction(zoneName: string): void {
+    // Track extraction statistics
+    try {
+      const data = (this.player.getPersistedData?.() as any) || {};
+      const currentExtractions = Math.floor((data as any)?.extractions ?? 0);
+      const currentRaids = Math.floor((data as any)?.raids ?? 0);
+      const raidStartTime = (data as any)?.raidStartTime ?? Date.now();
+      
+      // Calculate raid time in seconds
+      const raidTime = Math.floor((Date.now() - raidStartTime) / 1000);
+      
+      // Update extraction count and timestamp
+      this.player.setPersistedData({
+        ...data,
+        extractions: currentExtractions + 1,
+        lastExtractionTime: Date.now()
+      });
+      
+      // Check extraction achievements
+      AchievementSystem.checkExtractionAchievements(this.player, currentExtractions + 1);
+      
+      // Check speed run achievements
+      AchievementSystem.checkSpeedRunAchievements(this.player, raidTime);
+    } catch {}
     // Persist current weapon ammo to the corresponding inventory item, if any
     try {
       const currentGun = this._gun;
@@ -848,8 +895,7 @@ export default class GamePlayer {
       case 'openProgression':
         // Prevent opening other menus unless currently in menu
         if (!this._isInMenu) return;
-        if (data.type === 'openStash') this.openStash();
-        else this._loadProgressionUI();
+        this._loadProgressionUI();
         break;
       case 'rejoin':
         this.rejoin();
@@ -1034,13 +1080,140 @@ export default class GamePlayer {
     } catch {}
   }
 
+  private _generateActivityFeed(data: any): Array<{icon: string, text: string, time: string}> {
+    const activities = [];
+    const now = Date.now();
+    
+    // Add recent achievements
+    const recentAchievements = (data as any)?.recentAchievements || [];
+    recentAchievements.slice(0, 2).forEach((achievement: any) => {
+      activities.push({
+        icon: '🏆',
+        text: `Achievement: ${achievement.title}`,
+        time: this._formatTimeAgo(achievement.unlockedAt)
+      });
+    });
+    
+    // Add recent extractions
+    const lastExtraction = (data as any)?.lastExtractionTime;
+    if (lastExtraction && (now - lastExtraction) < 24 * 60 * 60 * 1000) { // Within 24 hours
+      activities.push({
+        icon: '✅',
+        text: 'Successful Extraction',
+        time: this._formatTimeAgo(lastExtraction)
+      });
+    }
+    
+    // Add recent level ups
+    const lastLevelUp = (data as any)?.lastLevelUpTime;
+    if (lastLevelUp && (now - lastLevelUp) < 7 * 24 * 60 * 60 * 1000) { // Within 7 days
+      activities.push({
+        icon: '⭐',
+        text: 'Level Up Achieved',
+        time: this._formatTimeAgo(lastLevelUp)
+      });
+    }
+    
+    // Add recent kills
+    const lastKill = (data as any)?.lastKillTime;
+    if (lastKill && (now - lastKill) < 60 * 60 * 1000) { // Within 1 hour
+      activities.push({
+        icon: '🎯',
+        text: 'Enemy Eliminated',
+        time: this._formatTimeAgo(lastKill)
+      });
+    }
+    
+    // Add weapon mastery progress
+    const recentWeaponProgress = (data as any)?.recentWeaponProgress || [];
+    recentWeaponProgress.slice(0, 1).forEach((progress: any) => {
+      activities.push({
+        icon: '🔫',
+        text: `${progress.weaponName} Mastery Progress`,
+        time: this._formatTimeAgo(progress.timestamp)
+      });
+    });
+    
+    // Sort by time (most recent first) and limit to 4 items
+    return activities
+      .sort((a, b) => this._parseTimeAgo(b.time) - this._parseTimeAgo(a.time))
+      .slice(0, 4);
+  }
+
+  private _formatTimeAgo(timestamp: number): string {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    return `${days}d ago`;
+  }
+
+  private _parseTimeAgo(timeStr: string): number {
+    if (timeStr === 'Just now') return 0;
+    if (timeStr.includes('m ago')) return parseInt(timeStr) * 60 * 1000;
+    if (timeStr.includes('h ago')) return parseInt(timeStr) * 60 * 60 * 1000;
+    if (timeStr.includes('d ago')) return parseInt(timeStr) * 24 * 60 * 60 * 1000;
+    return 0;
+  }
+
   private _sendProgressOverview(): void {
     try {
       const data = (this.player.getPersistedData?.() as any) || {};
       const currency = Math.max(0, Math.floor((data as any)?.currency ?? 0));
       const stats = PlayerStatsSystem.get(this.player);
       const weapons = WeaponProgressionSystem.buildMenuRows(this.player);
-      this.player.ui.sendData({ type: 'progress-overview', kills: stats.kills, deaths: stats.deaths, currency, weapons });
+      const progression = ProgressionSystem.get(this.player);
+      const achievements = AchievementSystem.get(this.player);
+      
+      // Calculate additional stats for Combat Record
+      const totalKills = weapons.reduce((sum, w) => sum + w.kills, 0);
+      const playtime = Math.floor((data as any)?.playtime ?? 0); // in minutes
+      const extractions = Math.floor((data as any)?.extractions ?? 0);
+      const raids = Math.floor((data as any)?.raids ?? 0);
+      const accuracy = Math.floor((data as any)?.accuracy ?? 0);
+      
+      // Calculate real activity data
+      const lastSessionTime = Math.floor((data as any)?.lastSessionTime ?? 0);
+      const totalSessions = Math.floor((data as any)?.totalSessions ?? 0);
+      const bestKillStreak = Math.floor((data as any)?.bestKillStreak ?? 0);
+      const totalDamageDealt = Math.floor((data as any)?.totalDamageDealt ?? 0);
+      const totalDamageTaken = Math.floor((data as any)?.totalDamageTaken ?? 0);
+      const headshots = Math.floor((data as any)?.headshots ?? 0);
+      const longestSurvival = Math.floor((data as any)?.longestSurvival ?? 0); // in minutes
+      
+      // Generate real activity feed
+      const activities = this._generateActivityFeed(data);
+      
+      this.player.ui.sendData({ 
+        type: 'progress-overview', 
+        kills: stats.kills, 
+        deaths: stats.deaths, 
+        currency, 
+        weapons,
+        level: progression.level,
+        xp: progression.xp,
+        xpNext: ProgressionSystem.getXpForNextLevel(progression.level),
+        totalKills,
+        playtime,
+        extractions,
+        raids,
+        accuracy,
+        achievements,
+        // Additional real data
+        lastSessionTime,
+        totalSessions,
+        bestKillStreak,
+        totalDamageDealt,
+        totalDamageTaken,
+        headshots,
+        longestSurvival,
+        activities
+      });
     } catch {}
   }
 

@@ -1,0 +1,856 @@
+/* Combat Record - Progression overlay */
+.progression-overlay { 
+  position: fixed; 
+  inset: 0; 
+  display: none; 
+  justify-content: center; 
+  align-items: center; 
+  background: rgba(0,0,0,0.35); 
+  backdrop-filter: blur(24px); 
+  -webkit-backdrop-filter: blur(24px); 
+  z-index: 10001; 
+}
+
+.progression-panel { 
+  width: min(1200px, 95vw); 
+  max-height: 90vh; 
+  overflow: hidden; 
+  padding: 28px 32px; 
+  display: flex; 
+  flex-direction: column; 
+}
+
+.progression-content { 
+  display: grid; 
+  row-gap: 16px; 
+  overflow: auto; 
+  padding: 0 8px 0 0; 
+  flex: 1; 
+  min-height: 0; 
+  -ms-overflow-style: none; 
+  scrollbar-width: none; 
+}
+
+.progression-content::-webkit-scrollbar { 
+  width: 0; 
+  height: 0; 
+}
+
+.progression-panel.ui-panel { 
+  background: rgba(15, 15, 20, 0.85); 
+  border-color: rgba(255, 255, 255, 0.15); 
+  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.6); 
+  backdrop-filter: blur(32px) saturate(1.4); 
+  -webkit-backdrop-filter: blur(32px) saturate(1.4); 
+}
+
+.progression-header { 
+  display: grid; 
+  grid-template-columns: 1fr auto; 
+  align-items: center; 
+  gap: 16px; 
+  margin-bottom: 24px; 
+  padding-bottom: 16px; 
+  border-bottom: 2px solid rgba(255,255,255,0.1); 
+}
+
+.progression-title-section { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 4px; 
+}
+
+.progression-title { 
+  font-weight: 900; 
+  font-size: 24px; 
+  letter-spacing: 4px; 
+  color: #ffffff; 
+  text-transform: uppercase; 
+  text-shadow: 0 2px 8px rgba(0,0,0,0.8); 
+}
+
+.progression-subtitle { 
+  font-weight: 600; 
+  font-size: 12px; 
+  letter-spacing: 2px; 
+  color: #64b5f6; 
+  text-transform: uppercase; 
+  opacity: 0.8; 
+}
+
+.progression-tabs { 
+  display: flex; 
+  gap: 4px; 
+  margin-left: auto; 
+}
+
+.tab-btn { 
+  background: rgba(40,40,48,0.45); 
+  border: 1px solid rgba(255,255,255,0.12); 
+  color: #cfe8ff; 
+  padding: 8px 16px; 
+  border-radius: 8px; 
+  cursor: pointer; 
+  font-size: 11px; 
+  letter-spacing: 0.6px; 
+  text-transform: uppercase; 
+  font-weight: 600; 
+}
+
+.tab-btn:hover { 
+  background: rgba(55,55,64,0.55); 
+}
+
+.tab-btn.active { 
+  background: linear-gradient(135deg, #64b5f6, #1976d2); 
+  border-color: #64b5f6; 
+  color: #ffffff; 
+  box-shadow: 0 0 12px rgba(100,181,246,0.4); 
+}
+
+/* Combat Record Grid Layout */
+.combat-record-grid { 
+  display: grid; 
+  grid-template-columns: 1fr 1fr; 
+  grid-template-rows: auto auto; 
+  gap: 16px; 
+}
+
+/* Player Banner */
+.player-banner { 
+  background: rgba(20,20,24,0.6); 
+  padding: 24px; 
+}
+
+.banner-content { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  gap: 32px; 
+}
+
+.player-info { 
+  display: flex; 
+  align-items: center; 
+  gap: 32px; 
+}
+
+.player-rank { 
+  display: flex; 
+  align-items: center; 
+  gap: 12px; 
+}
+
+.rank-icon { 
+  font-size: 20px; 
+}
+
+.rank-text { 
+  font-weight: 800; 
+  font-size: 11px; 
+  letter-spacing: 1.5px; 
+  color: #ffd700; 
+  text-transform: uppercase; 
+}
+
+.player-level { 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+}
+
+.level-number { 
+  font-size: 28px; 
+  font-weight: 900; 
+  color: #ffffff; 
+  text-shadow: 0 2px 8px rgba(0,0,0,0.8); 
+  line-height: 1; 
+}
+
+.level-label { 
+  font-size: 9px; 
+  letter-spacing: 1px; 
+  color: #b5c0cc; 
+  text-transform: uppercase; 
+  margin-top: 2px; 
+}
+
+.player-stats-summary { 
+  display: flex; 
+  gap: 32px; 
+}
+
+.stat-item { 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  min-width: 80px; 
+}
+
+.stat-value { 
+  font-size: 18px; 
+  font-weight: 900; 
+  color: #ffffff; 
+  line-height: 1; 
+}
+
+.stat-label { 
+  font-size: 9px; 
+  letter-spacing: 1px; 
+  color: #b5c0cc; 
+  text-transform: uppercase; 
+  margin-top: 4px; 
+  text-align: center; 
+}
+
+/* Combat Stats */
+.combat-stats { 
+  background: rgba(20,20,24,0.6); 
+  padding: 24px; 
+}
+
+.stats-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 20px; 
+}
+
+.stats-header h3 { 
+  font-size: 16px; 
+  font-weight: 800; 
+  color: #ffffff; 
+  letter-spacing: 1px; 
+  margin: 0; 
+}
+
+.stats-icon { 
+  font-size: 20px; 
+}
+
+.stats-grid { 
+  display: grid; 
+  grid-template-columns: repeat(2, 1fr); 
+  gap: 12px; 
+}
+
+.stat-card { 
+  padding: 16px; 
+  background: rgba(30,30,35,0.8); 
+  border: 1px solid rgba(255,255,255,0.1); 
+  border-radius: 8px; 
+}
+
+.stat-number { 
+  font-size: 24px; 
+  font-weight: 900; 
+  color: #ffffff; 
+  margin-bottom: 4px; 
+}
+
+.stat-name { 
+  font-size: 11px; 
+  letter-spacing: 1px; 
+  color: #b5c0cc; 
+  text-transform: uppercase; 
+  margin-bottom: 8px; 
+}
+
+.stat-bar { 
+  height: 6px; 
+  background: rgba(255,255,255,0.1); 
+  border-radius: 3px; 
+  overflow: hidden; 
+}
+
+.stat-fill { 
+  height: 100%; 
+  background: linear-gradient(90deg, #64b5f6, #1976d2); 
+  border-radius: 3px; 
+}
+
+/* Performance Metrics */
+.performance-metrics { 
+  background: rgba(20,20,24,0.6); 
+  padding: 24px; 
+}
+
+.metrics-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 20px; 
+}
+
+.metrics-header h3 { 
+  font-size: 16px; 
+  font-weight: 800; 
+  color: #ffffff; 
+  letter-spacing: 1px; 
+  margin: 0; 
+}
+
+.metrics-icon { 
+  font-size: 20px; 
+}
+
+.metrics-content { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 16px; 
+}
+
+.metric-row { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  padding: 12px 0; 
+  border-bottom: 1px solid rgba(255,255,255,0.05); 
+}
+
+.metric-label { 
+  font-size: 12px; 
+  color: #b5c0cc; 
+}
+
+.metric-value { 
+  font-size: 14px; 
+  font-weight: 700; 
+  color: #ffffff; 
+}
+
+/* Recent Activity */
+.recent-activity { 
+  background: rgba(20,20,24,0.6); 
+  padding: 24px; 
+}
+
+.activity-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 20px; 
+}
+
+.activity-header h3 { 
+  font-size: 16px; 
+  font-weight: 800; 
+  color: #ffffff; 
+  letter-spacing: 1px; 
+  margin: 0; 
+}
+
+.activity-icon { 
+  font-size: 20px; 
+}
+
+.activity-feed { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 12px; 
+}
+
+.activity-item { 
+  display: flex; 
+  align-items: center; 
+  gap: 12px; 
+  padding: 12px 0; 
+}
+
+.activity-icon-small { 
+  font-size: 16px; 
+}
+
+.activity-text { 
+  font-size: 12px; 
+  color: #ffffff; 
+  flex: 1; 
+}
+
+.activity-time { 
+  font-size: 10px; 
+  color: #b5c0cc; 
+}
+
+/* Weapons Tab */
+.weapons-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 24px; 
+  padding: 0 0 20px 0; 
+  border-bottom: 1px solid rgba(255,255,255,0.1); 
+}
+
+.weapons-title h2 { 
+  font-size: 20px; 
+  font-weight: 900; 
+  color: #ffffff; 
+  margin: 0 0 4px 0; 
+  letter-spacing: 1px; 
+}
+
+.weapons-title p { 
+  font-size: 12px; 
+  color: #b5c0cc; 
+  margin: 0; 
+}
+
+.weapons-summary { 
+  display: flex; 
+  gap: 24px; 
+}
+
+.summary-stat { 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+}
+
+.summary-number { 
+  font-size: 24px; 
+  font-weight: 900; 
+  color: #64b5f6; 
+}
+
+.summary-label { 
+  font-size: 10px; 
+  letter-spacing: 1px; 
+  color: #b5c0cc; 
+  text-transform: uppercase; 
+}
+
+.weapon-category-section { 
+  margin-bottom: 24px; 
+}
+
+.weapon-category-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 16px; 
+  padding: 12px 16px; 
+  background: rgba(100,181,246,0.1); 
+  border: 1px solid rgba(100,181,246,0.2); 
+  border-radius: 8px; 
+}
+
+.category-title { 
+  font-size: 14px; 
+  font-weight: 800; 
+  color: #64b5f6; 
+  letter-spacing: 1px; 
+  text-transform: uppercase; 
+}
+
+.category-stats { 
+  font-size: 11px; 
+  color: #b5c0cc; 
+}
+
+.weapons-grid { 
+  display: grid; 
+  gap: 8px; 
+}
+
+.weapon-card { 
+  background: rgba(30,30,35,0.8); 
+  border: 1px solid rgba(255,255,255,0.1); 
+  border-radius: 8px; 
+  padding: 20px; 
+}
+
+.weapon-card-header { 
+  display: flex; 
+  align-items: center; 
+  gap: 16px; 
+  margin-bottom: 12px; 
+}
+
+.weapon-icon-container { 
+  width: 48px; 
+  height: 48px; 
+  display: grid; 
+  place-items: center; 
+  border-radius: 8px; 
+  padding: 8px; 
+  border: 1px solid rgba(255,255,255,0.2); 
+  background: rgba(40,40,45,0.8); 
+}
+
+.weapon-icon { 
+  width: 100%; 
+  height: 100%; 
+  object-fit: contain; 
+  filter: brightness(1.1) contrast(1.05) drop-shadow(0 1px 2px rgba(0,0,0,0.6)); 
+}
+
+.weapon-info { 
+  flex: 1; 
+}
+
+.weapon-name { 
+  font-size: 14px; 
+  font-weight: 800; 
+  color: #ffffff; 
+  margin-bottom: 2px; 
+}
+
+.weapon-category { 
+  font-size: 10px; 
+  letter-spacing: 1px; 
+  color: #64b5f6; 
+  text-transform: uppercase; 
+}
+
+.weapon-kills { 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+}
+
+.kills-number { 
+  font-size: 20px; 
+  font-weight: 900; 
+  color: #ffffff; 
+}
+
+.kills-label { 
+  font-size: 9px; 
+  letter-spacing: 1px; 
+  color: #b5c0cc; 
+  text-transform: uppercase; 
+}
+
+.weapon-progress { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 6px; 
+}
+
+.progress-bar { 
+  height: 8px; 
+  background: rgba(255,255,255,0.1); 
+  border-radius: 4px; 
+  overflow: hidden; 
+}
+
+.progress-fill { 
+  height: 100%; 
+  background: linear-gradient(90deg, #ffa726, #ef6c00); 
+  border-radius: 4px; 
+}
+
+.progress-text { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  font-size: 11px; 
+}
+
+.progress-text span:first-child { 
+  color: #b5c0cc; 
+}
+
+.next-reward { 
+  color: #ffa726; 
+  font-weight: 700; 
+}
+
+/* Stats Tab */
+.stats-tab-content { 
+  display: grid; 
+  gap: 20px; 
+}
+
+.stats-overview { 
+  padding: 24px; 
+}
+
+.stats-overview h3 { 
+  font-size: 18px; 
+  font-weight: 800; 
+  color: #ffffff; 
+  margin: 0 0 20px 0; 
+  letter-spacing: 1px; 
+}
+
+.stats-grid-detailed { 
+  display: grid; 
+  grid-template-columns: repeat(2, 1fr); 
+  gap: 16px; 
+}
+
+.stat-detail-card { 
+  display: flex; 
+  align-items: center; 
+  gap: 16px; 
+  padding: 20px; 
+  background: rgba(30,30,35,0.8); 
+  border: 1px solid rgba(255,255,255,0.1); 
+  border-radius: 8px; 
+}
+
+.stat-detail-icon { 
+  font-size: 32px; 
+}
+
+.stat-detail-content { 
+  flex: 1; 
+}
+
+.stat-detail-value { 
+  font-size: 28px; 
+  font-weight: 900; 
+  color: #ffffff; 
+  margin-bottom: 4px; 
+}
+
+.stat-detail-label { 
+  font-size: 12px; 
+  font-weight: 700; 
+  color: #64b5f6; 
+  letter-spacing: 1px; 
+  text-transform: uppercase; 
+  margin-bottom: 2px; 
+}
+
+.stat-detail-desc { 
+  font-size: 11px; 
+  color: #b5c0cc; 
+}
+
+.performance-chart { 
+  background: rgba(30,30,35,0.8); 
+  padding: 24px; 
+}
+
+.performance-chart h3 { 
+  font-size: 18px; 
+  font-weight: 800; 
+  color: #ffffff; 
+  margin: 0 0 20px 0; 
+  letter-spacing: 1px; 
+}
+
+.chart-placeholder { 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  justify-content: center; 
+  padding: 40px; 
+  color: #b5c0cc; 
+}
+
+.chart-icon { 
+  font-size: 48px; 
+  margin-bottom: 16px; 
+  opacity: 0.5; 
+}
+
+.chart-text { 
+  font-size: 14px; 
+}
+
+/* Achievements Tab */
+.achievements-content { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 20px; 
+}
+
+.achievements-header { 
+  padding: 0 0 20px 0; 
+}
+
+.achievements-header h2 { 
+  font-size: 20px; 
+  font-weight: 900; 
+  color: #ffffff; 
+  margin: 0 0 8px 0; 
+  letter-spacing: 1px; 
+}
+
+.achievements-header p { 
+  font-size: 12px; 
+  color: #b5c0cc; 
+  margin: 0 0 16px 0; 
+}
+
+.achievements-summary { 
+  display: flex; 
+  gap: 24px; 
+  margin-top: 16px; 
+}
+
+.achievement-category { 
+  margin-bottom: 32px; 
+}
+
+.achievement-category .category-title { 
+  font-size: 16px; 
+  font-weight: 800; 
+  color: #64b5f6; 
+  letter-spacing: 1px; 
+  text-transform: uppercase; 
+  margin-bottom: 16px; 
+  padding-bottom: 8px; 
+  border-bottom: 1px solid rgba(100,181,246,0.3); 
+}
+
+.achievements-grid { 
+  display: grid; 
+  grid-template-columns: repeat(2, 1fr); 
+  gap: 16px; 
+}
+
+.achievement-card { 
+  display: flex; 
+  align-items: center; 
+  gap: 16px; 
+  padding: 24px; 
+  background: rgba(30,30,35,0.8); 
+  border: 1px solid rgba(255,255,255,0.1); 
+  border-radius: 8px; 
+}
+
+.achievement-icon { 
+  font-size: 32px; 
+}
+
+.achievement-content { 
+  flex: 1; 
+}
+
+.achievement-title { 
+  font-size: 14px; 
+  font-weight: 800; 
+  color: #ffffff; 
+  margin-bottom: 4px; 
+}
+
+.achievement-desc { 
+  font-size: 11px; 
+  color: #b5c0cc; 
+  margin-bottom: 12px; 
+}
+
+.achievement-progress { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 6px; 
+}
+
+.achievement-bar { 
+  height: 6px; 
+  background: rgba(255,255,255,0.1); 
+  border-radius: 3px; 
+  overflow: hidden; 
+}
+
+.achievement-fill { 
+  height: 100%; 
+  background: linear-gradient(90deg, #4caf50, #2e7d32); 
+  border-radius: 3px; 
+}
+
+.achievement-status { 
+  font-size: 10px; 
+  font-weight: 700; 
+  letter-spacing: 1px; 
+  text-transform: uppercase; 
+}
+
+.achievement-status.achievement-completed { 
+  color: #4caf50; 
+}
+
+.achievement-status.achievement-in-progress { 
+  color: #ffa726; 
+}
+
+.achievement-reward { 
+  font-size: 10px; 
+  font-weight: 700; 
+  color: #4caf50; 
+  letter-spacing: 1px; 
+  text-transform: uppercase; 
+  margin-top: 4px; 
+}
+
+.achievement-card.completed { 
+  border-color: rgba(76, 175, 80, 0.3); 
+  background: rgba(30,30,35,0.9); 
+}
+
+.achievement-card.completed .achievement-icon { 
+  filter: brightness(1.2); 
+}
+
+/* Achievement Rarity Styles */
+.achievement-rarity {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-top: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.rarity-common {
+  color: #b5c0cc;
+  background: rgba(181, 192, 204, 0.1);
+  border: 1px solid rgba(181, 192, 204, 0.3);
+}
+
+.rarity-rare {
+  color: #64b5f6;
+  background: rgba(100, 181, 246, 0.1);
+  border: 1px solid rgba(100, 181, 246, 0.3);
+}
+
+.rarity-epic {
+  color: #ab47bc;
+  background: rgba(171, 71, 188, 0.1);
+  border: 1px solid rgba(171, 71, 188, 0.3);
+}
+
+.rarity-legendary {
+  color: #ffd700;
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+/* Secret Achievement Styles */
+.secret-achievement {
+  border-color: rgba(255, 215, 0, 0.5) !important;
+  background: rgba(255, 215, 0, 0.05) !important;
+}
+
+.secret-achievement .achievement-icon {
+  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.6));
+}
+
+/* Repeatable Achievement Styles */
+.achievement-card[class*="rarity-"] {
+  position: relative;
+}
+
+.achievement-card[class*="rarity-"]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, currentColor, transparent);
+  opacity: 0.6;
+}
+
+/* Category-specific colors */
+.achievement-card.rarity-common::before { background: linear-gradient(90deg, transparent, #b5c0cc, transparent); }
+.achievement-card.rarity-rare::before { background: linear-gradient(90deg, transparent, #64b5f6, transparent); }
+.achievement-card.rarity-epic::before { background: linear-gradient(90deg, transparent, #ab47bc, transparent); }
+.achievement-card.rarity-legendary::before { background: linear-gradient(90deg, transparent, #ffd700, transparent); }

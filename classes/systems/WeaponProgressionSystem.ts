@@ -32,6 +32,28 @@ export default class WeaponProgressionSystem {
     data[weaponId] = rec;
     this._set(player, data);
 
+    // Track weapon progress for activity feed
+    try {
+      const persistedData = (player.getPersistedData?.() as any) || {};
+      const recentProgress = (persistedData as any)?.recentWeaponProgress || [];
+      const weaponName = WeaponFactory.getWeaponData(weaponId)?.name || weaponId;
+      
+      recentProgress.unshift({
+        weaponName,
+        timestamp: Date.now()
+      });
+      
+      // Keep only last 5 entries
+      if (recentProgress.length > 5) {
+        recentProgress.splice(5);
+      }
+      
+      player.setPersistedData({
+        ...persistedData,
+        recentWeaponProgress: recentProgress
+      });
+    } catch {}
+
     // Reward XP on reaching any milestone
     const tierIndex = this._milestones.findIndex(m => m === rec.kills);
     if (tierIndex >= 0) {

@@ -60,7 +60,8 @@ export class DeathSystem {
           const weaponId = killerWeapon.weaponData.id;
           WeaponProgressionSystem.incrementKill(killer.player, weaponId);
         }
-        PlayerStatsSystem.addKill(killer.player);
+        // Kill stats are now tracked in WeaponShootingSystem when damage is applied
+        // This ensures weapon category and headshot information is captured
       }
       ProgressionSystem.addDeathXP(player);
       PlayerStatsSystem.addDeath(player.player);
@@ -90,6 +91,9 @@ export class DeathSystem {
       player.world.chatManager.sendBroadcastMessage(`${player.player.username} went MIA - failed to extract!`, 'FF0000');
     } catch {}
 
+    // Properly kill the player entity and remove from world
+    this._killPlayerEntity(player);
+    
     // Return to main menu with MIA banner
     this._returnToMainMenuMIA(player);
   }
@@ -267,6 +271,20 @@ export class DeathSystem {
         });
       } catch {}
     }, 150);
+  }
+
+  private _killPlayerEntity(player: GamePlayerEntity): void {
+    if (!player.world) return;
+    
+    // Clear any attached UI elements
+    try {
+      player.gamePlayer.player.ui.sendData({ type: 'screen-fade', show: true, durationMs: 1000 });
+    } catch {}
+    
+    // Ensure player is completely despawned
+    try {
+      player.despawn();
+    } catch {}
   }
 
   private _returnToMainMenuMIA(player: GamePlayerEntity): void {

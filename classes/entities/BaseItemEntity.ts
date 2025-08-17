@@ -1,5 +1,6 @@
 import { Entity, SceneUI, type EntityOptions, Collider, ColliderShape, RigidBodyType } from 'hytopia';
-import type BaseItem, { RARITY_RGB_COLORS, type ItemRarity } from '../items/BaseItem';
+import type BaseItem from '../items/BaseItem';
+import { RARITY_RGB_COLORS, type ItemRarity } from '../items/BaseItem';
 import type GamePlayerEntity from '../GamePlayerEntity';
 
 export type BaseItemEntityOptions = {
