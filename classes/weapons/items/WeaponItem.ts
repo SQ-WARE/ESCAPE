@@ -3,6 +3,7 @@ import type { BaseWeaponItemAttack } from '../../items/BaseWeaponItem';
 import BaseWeaponItem from '../../items/BaseWeaponItem';
 import { WeaponRegistry } from '../data/WeaponRegistry';
 import type { ItemRarity } from '../../items/BaseItem';
+import { RARITY_RGB_COLORS } from '../../items/BaseItem';
 
 export interface WeaponItemOverrides {
   ammo?: number;
@@ -39,9 +40,9 @@ export default class WeaponItem extends BaseWeaponItem {
   static readonly iconImageUri: string = 'icons/pistol.png';
   static readonly description: string = 'A weapon item';
   static readonly dropModelScale: number = 0.5;
-  static readonly dropModelTintColor: any = undefined;
+  static readonly dropModelTintColor: { r: number; g: number; b: number } | undefined = undefined;
   static readonly heldModelScale: number = 0.5;
-  static readonly heldModelTintColor: any = undefined;
+  static readonly heldModelTintColor: { r: number; g: number; b: number } | undefined = undefined;
   static readonly defaultRelativePositionAsChild: any = { x: -0.025, y: 0, z: -0.15 };
   static readonly defaultRelativeRotationAsChild: any = undefined;
 
@@ -104,8 +105,8 @@ export default class WeaponItem extends BaseWeaponItem {
     return this._weaponData?.assets?.models?.dropScale ?? this._weaponData?.assets?.models?.scale ?? 0.5;
   }
 
-  public get dropModelTintColor(): any {
-    return undefined; // Use rarity color instead
+  public get dropModelTintColor(): { r: number; g: number; b: number } | undefined {
+    return RARITY_RGB_COLORS[this.rarity];
   }
 
   public get defaultRelativeRotationAsChild(): any {
