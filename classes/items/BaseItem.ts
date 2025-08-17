@@ -18,12 +18,12 @@ const DEFAULT_MODEL_URI = 'models/items/pistol_m9.glb';
 const DEFAULT_MODEL_SCALE = 0.5;
 
 export const RARITY_RGB_COLORS: Record<ItemRarity, RgbColor> = {
-  common: { r: 225, g: 225, b: 225 },
-  unusual: { r: 115, g: 215, b: 115 },
-  rare: { r: 140, g: 190, b: 255 },
-  epic: { r: 200, g: 120, b: 255 },
-  legendary: { r: 255, g: 180, b: 50 },
-  utopian: { r: 255, g: 70, b: 70 },
+  common: { r: 180, g: 180, b: 180 },
+  unusual: { r: 100, g: 200, b: 100 },
+  rare: { r: 64, g: 156, b: 255 },
+  epic: { r: 147, g: 51, b: 234 },
+  legendary: { r: 245, g: 158, b: 11 },
+  utopian: { r: 239, g: 68, b: 68 },
 };
 
 export type ItemClass = typeof BaseItem;

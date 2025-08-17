@@ -19,6 +19,7 @@ import LootSystem from './classes/systems/LootSystem';
 import { CameraEffectsSystem } from './classes/systems/CameraEffectsSystem';
 import SessionManager from './classes/systems/SessionManager';
 import { PartySystem } from './classes/systems/PartySystem';
+import { ItemRegistry } from './classes/items/ItemRegistry';
 
 startServer(() => {
   // Create separate instances for ALPHA (day) and OMEGA (night)
@@ -38,6 +39,9 @@ startServer(() => {
   
   // Initialize party system
   const partySystem = PartySystem.instance;
+
+  // Register all items
+  ItemRegistry.registerAllItems();
 
   lightingAlpha.initialize();
   lightingOmega.useNightPreset().initialize();

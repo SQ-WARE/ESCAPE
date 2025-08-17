@@ -1,5 +1,5 @@
 import { Entity, SceneUI, type EntityOptions, Collider, ColliderShape, RigidBodyType } from 'hytopia';
-import type BaseItem from '../items/BaseItem';
+import type BaseItem, { RARITY_RGB_COLORS, type ItemRarity } from '../items/BaseItem';
 import type GamePlayerEntity from '../GamePlayerEntity';
 
 export type BaseItemEntityOptions = {
@@ -9,17 +9,6 @@ export type BaseItemEntityOptions = {
 const GENERIC_ITEM_MODEL_URI = 'models/items/cube.glb';
 const GENERIC_ITEM_MODEL_SCALE = 0.03;
 const PICKUP_COLLIDER_SCALE_MULTIPLIER = 4;
-
-type RarityKey = 'common' | 'unusual' | 'rare' | 'epic' | 'legendary';
-type RgbColor = { r: number; g: number; b: number };
-
-const RARITY_COLORS: Record<RarityKey, RgbColor> = {
-  common: { r: 156, g: 163, b: 175 },
-  unusual: { r: 34, g: 197, b: 94 },
-  rare: { r: 59, g: 130, b: 246 },
-  epic: { r: 168, g: 85, b: 247 },
-  legendary: { r: 245, g: 158, b: 11 },
-};
 
 export default class BaseItemEntity extends Entity {
   private readonly _item: BaseItem;
@@ -83,8 +72,8 @@ export default class BaseItemEntity extends Entity {
     this._interactSceneUI.load(this.world);
   }
 
-  private getRarityColor(rarity: string): RgbColor {
-    const key = (rarity || 'common').toLowerCase() as RarityKey;
-    return RARITY_COLORS[key] ?? RARITY_COLORS.common;
+  private getRarityColor(rarity: string): { r: number; g: number; b: number } {
+    const key = (rarity || 'common').toLowerCase() as ItemRarity;
+    return RARITY_RGB_COLORS[key] ?? RARITY_RGB_COLORS.common;
   }
 } 

@@ -319,6 +319,80 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
   transform: scale(1.02);
 }
 
+/* === Item Rarity Stained Glass Effects === */
+.stash-overlay .stash-slot.rarity-common, .stash-overlay .backpack-slot.rarity-common, .stash-overlay .hotbar-slot.rarity-common {
+  border-color: rgba(180, 180, 180, 0.15);
+  background: linear-gradient(135deg, rgba(180, 180, 180, 0.06) 0%, rgba(150, 150, 150, 0.04) 50%, rgba(200, 200, 200, 0.05) 100%);
+  box-shadow: 0 0 4px rgba(180, 180, 180, 0.10), inset 0 0 2px rgba(180, 180, 180, 0.05);
+}
+
+.stash-overlay .stash-slot.rarity-unusual, .stash-overlay .backpack-slot.rarity-unusual, .stash-overlay .hotbar-slot.rarity-unusual {
+  border-color: rgba(100, 200, 100, 0.20);
+  background: linear-gradient(135deg, rgba(100, 200, 100, 0.08) 0%, rgba(80, 180, 80, 0.06) 50%, rgba(120, 220, 120, 0.07) 100%);
+  box-shadow: 0 0 6px rgba(100, 200, 100, 0.15), inset 0 0 3px rgba(100, 200, 100, 0.08);
+}
+
+.stash-overlay .stash-slot.rarity-rare, .stash-overlay .backpack-slot.rarity-rare, .stash-overlay .hotbar-slot.rarity-rare {
+  border-color: rgba(64, 156, 255, 0.25);
+  background: linear-gradient(135deg, rgba(64, 156, 255, 0.10) 0%, rgba(48, 140, 240, 0.07) 50%, rgba(80, 172, 255, 0.09) 100%);
+  box-shadow: 0 0 8px rgba(64, 156, 255, 0.20), inset 0 0 4px rgba(64, 156, 255, 0.10);
+}
+
+.stash-overlay .stash-slot.rarity-epic, .stash-overlay .backpack-slot.rarity-epic, .stash-overlay .hotbar-slot.rarity-epic {
+  border-color: rgba(147, 51, 234, 0.30);
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.12) 0%, rgba(126, 34, 206, 0.08) 50%, rgba(168, 85, 247, 0.10) 100%);
+  box-shadow: 0 0 10px rgba(147, 51, 234, 0.25), inset 0 0 5px rgba(147, 51, 234, 0.12);
+}
+
+.stash-overlay .stash-slot.rarity-legendary, .stash-overlay .backpack-slot.rarity-legendary, .stash-overlay .hotbar-slot.rarity-legendary {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.14) 0%, rgba(217, 119, 6, 0.10) 50%, rgba(251, 191, 36, 0.12) 100%);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.30), inset 0 0 6px rgba(245, 158, 11, 0.15);
+}
+
+.stash-overlay .stash-slot.rarity-utopian, .stash-overlay .backpack-slot.rarity-utopian, .stash-overlay .hotbar-slot.rarity-utopian {
+  border-color: rgba(239, 68, 68, 0.40);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.16) 0%, rgba(220, 38, 38, 0.12) 50%, rgba(248, 113, 113, 0.14) 100%);
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.35), inset 0 0 7px rgba(239, 68, 68, 0.18);
+}
+
+/* Hover effects for rarity slots */
+.stash-overlay .stash-slot.rarity-common:hover, .stash-overlay .backpack-slot.rarity-common:hover, .stash-overlay .hotbar-slot.rarity-common:hover {
+  border-color: rgba(180, 180, 180, 0.25);
+  background: linear-gradient(135deg, rgba(180, 180, 180, 0.12) 0%, rgba(150, 150, 150, 0.08) 50%, rgba(200, 200, 200, 0.10) 100%);
+  box-shadow: 0 0 6px rgba(180, 180, 180, 0.18), inset 0 0 3px rgba(180, 180, 180, 0.08);
+}
+
+.stash-overlay .stash-slot.rarity-unusual:hover, .stash-overlay .backpack-slot.rarity-unusual:hover, .stash-overlay .hotbar-slot.rarity-unusual:hover {
+  border-color: rgba(100, 200, 100, 0.30);
+  background: linear-gradient(135deg, rgba(100, 200, 100, 0.12) 0%, rgba(80, 180, 80, 0.08) 50%, rgba(120, 220, 120, 0.10) 100%);
+  box-shadow: 0 0 8px rgba(100, 200, 100, 0.20), inset 0 0 4px rgba(100, 200, 100, 0.10);
+}
+
+.stash-overlay .stash-slot.rarity-rare:hover, .stash-overlay .backpack-slot.rarity-rare:hover, .stash-overlay .hotbar-slot.rarity-rare:hover {
+  border-color: rgba(64, 156, 255, 0.35);
+  background: linear-gradient(135deg, rgba(64, 156, 255, 0.14) 0%, rgba(48, 140, 240, 0.10) 50%, rgba(80, 172, 255, 0.12) 100%);
+  box-shadow: 0 0 10px rgba(64, 156, 255, 0.25), inset 0 0 5px rgba(64, 156, 255, 0.12);
+}
+
+.stash-overlay .stash-slot.rarity-epic:hover, .stash-overlay .backpack-slot.rarity-epic:hover, .stash-overlay .hotbar-slot.rarity-epic:hover {
+  border-color: rgba(147, 51, 234, 0.40);
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.16) 0%, rgba(126, 34, 206, 0.12) 50%, rgba(168, 85, 247, 0.14) 100%);
+  box-shadow: 0 0 12px rgba(147, 51, 234, 0.30), inset 0 0 6px rgba(147, 51, 234, 0.15);
+}
+
+.stash-overlay .stash-slot.rarity-legendary:hover, .stash-overlay .backpack-slot.rarity-legendary:hover, .stash-overlay .hotbar-slot.rarity-legendary:hover {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(217, 119, 6, 0.13) 50%, rgba(251, 191, 36, 0.15) 100%);
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.35), inset 0 0 7px rgba(245, 158, 11, 0.18);
+}
+
+.stash-overlay .stash-slot.rarity-utopian:hover, .stash-overlay .backpack-slot.rarity-utopian:hover, .stash-overlay .hotbar-slot.rarity-utopian:hover {
+  border-color: rgba(239, 68, 68, 0.50);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.20) 0%, rgba(220, 38, 38, 0.15) 50%, rgba(248, 113, 113, 0.17) 100%);
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.40), inset 0 0 8px rgba(239, 68, 68, 0.20);
+}
+
 /* === Game UI (HUD, effects, overlays) === */
 /* Crosshair */
 .crosshair { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 1000; transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); width: 16px; height: 16px; }
@@ -477,11 +551,12 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
 .tooltip-header { margin-bottom: 8px; }
 .tooltip-name { font-weight: 700; font-size: 14px; color: #ffffff; text-shadow: 0 0 8px rgba(255, 255, 255, 0.3); letter-spacing: 0.5px; }
 /* Rarity color helpers to avoid JS color logic duplication */
-.tooltip-name.rarity-common { color: #ffffff; }
-.tooltip-name.rarity-unusual { color: #00ff00; }
-.tooltip-name.rarity-rare { color: #0099ff; }
-.tooltip-name.rarity-epic { color: #cc00ff; }
-.tooltip-name.rarity-legendary { color: #ff8000; }
+.tooltip-name.rarity-common { color: #b4b4b4; }
+.tooltip-name.rarity-unusual { color: #64c864; }
+.tooltip-name.rarity-rare { color: #409cff; }
+.tooltip-name.rarity-epic { color: #9333ea; }
+.tooltip-name.rarity-legendary { color: #f59e0b; }
+.tooltip-name.rarity-utopian { color: #ef4444; }
 /* attr() for color is not widely supported; stash uses inline style for reliability */
 .tooltip-description { font-size: 11px; color: #cccccc; line-height: 1.4; margin-bottom: 6px; word-wrap: break-word; }
 .tooltip-quantity { font-size: 11px; color: #64b5f6; font-weight: 600; text-shadow: 0 0 4px rgba(100, 181, 246, 0.3); }
@@ -702,6 +777,80 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
 .hotbar-slot { background: rgba(35, 35, 42, 0.28); border: 1px solid rgba(255, 255, 255, 0.12); backdrop-filter: blur(6px); }
 .hotbar-slot:hover { background: rgba(45, 45, 52, 0.34); border-color: rgba(255, 255, 255, 0.2); }
 .hotbar-slot.active { background: rgba(52, 52, 60, 0.42); border-color: rgba(255, 255, 255, 0.28); }
+
+/* === Main Game Hotbar Rarity Effects === */
+.hotbar-slot.rarity-common {
+  border-color: rgba(180, 180, 180, 0.12);
+  background: linear-gradient(135deg, rgba(180, 180, 180, 0.05) 0%, rgba(150, 150, 150, 0.03) 50%, rgba(200, 200, 200, 0.04) 100%);
+  box-shadow: 0 0 3px rgba(180, 180, 180, 0.08), inset 0 0 1px rgba(180, 180, 180, 0.04);
+}
+
+.hotbar-slot.rarity-unusual {
+  border-color: rgba(100, 200, 100, 0.18);
+  background: linear-gradient(135deg, rgba(100, 200, 100, 0.07) 0%, rgba(80, 180, 80, 0.05) 50%, rgba(120, 220, 120, 0.06) 100%);
+  box-shadow: 0 0 5px rgba(100, 200, 100, 0.12), inset 0 0 2px rgba(100, 200, 100, 0.06);
+}
+
+.hotbar-slot.rarity-rare {
+  border-color: rgba(64, 156, 255, 0.22);
+  background: linear-gradient(135deg, rgba(64, 156, 255, 0.08) 0%, rgba(48, 140, 240, 0.06) 50%, rgba(80, 172, 255, 0.07) 100%);
+  box-shadow: 0 0 7px rgba(64, 156, 255, 0.18), inset 0 0 3px rgba(64, 156, 255, 0.09);
+}
+
+.hotbar-slot.rarity-epic {
+  border-color: rgba(147, 51, 234, 0.26);
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.10) 0%, rgba(126, 34, 206, 0.07) 50%, rgba(168, 85, 247, 0.08) 100%);
+  box-shadow: 0 0 9px rgba(147, 51, 234, 0.22), inset 0 0 4px rgba(147, 51, 234, 0.11);
+}
+
+.hotbar-slot.rarity-legendary {
+  border-color: rgba(245, 158, 11, 0.30);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.09) 50%, rgba(251, 191, 36, 0.10) 100%);
+  box-shadow: 0 0 11px rgba(245, 158, 11, 0.25), inset 0 0 5px rgba(245, 158, 11, 0.13);
+}
+
+.hotbar-slot.rarity-utopian {
+  border-color: rgba(239, 68, 68, 0.34);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.14) 0%, rgba(220, 38, 38, 0.10) 50%, rgba(248, 113, 113, 0.12) 100%);
+  box-shadow: 0 0 13px rgba(239, 68, 68, 0.28), inset 0 0 6px rgba(239, 68, 68, 0.14);
+}
+
+/* Hover effects for main game hotbar rarity slots */
+.hotbar-slot.rarity-common:hover {
+  border-color: rgba(180, 180, 180, 0.20);
+  background: linear-gradient(135deg, rgba(180, 180, 180, 0.08) 0%, rgba(150, 150, 150, 0.06) 50%, rgba(200, 200, 200, 0.07) 100%);
+  box-shadow: 0 0 5px rgba(180, 180, 180, 0.15), inset 0 0 2px rgba(180, 180, 180, 0.07);
+}
+
+.hotbar-slot.rarity-unusual:hover {
+  border-color: rgba(100, 200, 100, 0.25);
+  background: linear-gradient(135deg, rgba(100, 200, 100, 0.10) 0%, rgba(80, 180, 80, 0.07) 50%, rgba(120, 220, 120, 0.08) 100%);
+  box-shadow: 0 0 7px rgba(100, 200, 100, 0.18), inset 0 0 3px rgba(100, 200, 100, 0.09);
+}
+
+.hotbar-slot.rarity-rare:hover {
+  border-color: rgba(64, 156, 255, 0.30);
+  background: linear-gradient(135deg, rgba(64, 156, 255, 0.12) 0%, rgba(48, 140, 240, 0.09) 50%, rgba(80, 172, 255, 0.10) 100%);
+  box-shadow: 0 0 9px rgba(64, 156, 255, 0.22), inset 0 0 4px rgba(64, 156, 255, 0.11);
+}
+
+.hotbar-slot.rarity-epic:hover {
+  border-color: rgba(147, 51, 234, 0.35);
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.14) 0%, rgba(126, 34, 206, 0.10) 50%, rgba(168, 85, 247, 0.12) 100%);
+  box-shadow: 0 0 11px rgba(147, 51, 234, 0.25), inset 0 0 5px rgba(147, 51, 234, 0.13);
+}
+
+.hotbar-slot.rarity-legendary:hover {
+  border-color: rgba(245, 158, 11, 0.40);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.16) 0%, rgba(217, 119, 6, 0.12) 50%, rgba(251, 191, 36, 0.14) 100%);
+  box-shadow: 0 0 13px rgba(245, 158, 11, 0.28), inset 0 0 6px rgba(245, 158, 11, 0.15);
+}
+
+.hotbar-slot.rarity-utopian:hover {
+  border-color: rgba(239, 68, 68, 0.45);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.18) 0%, rgba(220, 38, 38, 0.13) 50%, rgba(248, 113, 113, 0.15) 100%);
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.32), inset 0 0 7px rgba(239, 68, 68, 0.16);
+}
 /* Inventory overlay and panels */
 .inventory-overlay { background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(16px); }
 .tactical-inventory { background: var(--glass-bg-strong); border: 1.5px solid var(--glass-border); border-radius: var(--glass-radius-lg); box-shadow: var(--glass-shadow); }
@@ -716,6 +865,80 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
 .slot { background: rgba(92, 92, 98, 0.32); border: 1.5px solid rgba(255, 255, 255, 0.12); }
 .slot:hover { background: rgba(110, 110, 118, 0.38); border-color: rgba(255, 255, 255, 0.2); }
 .slot.active { background: rgba(128, 128, 136, 0.46); border-color: rgba(255, 255, 255, 0.28); }
+
+/* === Main Inventory Slot Rarity Effects === */
+.slot.rarity-common {
+  border-color: rgba(180, 180, 180, 0.10);
+  background: linear-gradient(135deg, rgba(180, 180, 180, 0.05) 0%, rgba(150, 150, 150, 0.03) 50%, rgba(200, 200, 200, 0.04) 100%);
+  box-shadow: 0 0 4px rgba(180, 180, 180, 0.08), inset 0 0 2px rgba(180, 180, 180, 0.04);
+}
+
+.slot.rarity-unusual {
+  border-color: rgba(100, 200, 100, 0.15);
+  background: linear-gradient(135deg, rgba(100, 200, 100, 0.07) 0%, rgba(80, 180, 80, 0.05) 50%, rgba(120, 220, 120, 0.06) 100%);
+  box-shadow: 0 0 6px rgba(100, 200, 100, 0.12), inset 0 0 3px rgba(100, 200, 100, 0.06);
+}
+
+.slot.rarity-rare {
+  border-color: rgba(64, 156, 255, 0.20);
+  background: linear-gradient(135deg, rgba(64, 156, 255, 0.08) 0%, rgba(48, 140, 240, 0.06) 50%, rgba(80, 172, 255, 0.07) 100%);
+  box-shadow: 0 0 8px rgba(64, 156, 255, 0.18), inset 0 0 4px rgba(64, 156, 255, 0.09);
+}
+
+.slot.rarity-epic {
+  border-color: rgba(147, 51, 234, 0.25);
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.10) 0%, rgba(126, 34, 206, 0.07) 50%, rgba(168, 85, 247, 0.08) 100%);
+  box-shadow: 0 0 10px rgba(147, 51, 234, 0.22), inset 0 0 5px rgba(147, 51, 234, 0.11);
+}
+
+.slot.rarity-legendary {
+  border-color: rgba(245, 158, 11, 0.30);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.09) 50%, rgba(251, 191, 36, 0.10) 100%);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.25), inset 0 0 6px rgba(245, 158, 11, 0.13);
+}
+
+.slot.rarity-utopian {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.14) 0%, rgba(220, 38, 38, 0.10) 50%, rgba(248, 113, 113, 0.12) 100%);
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.28), inset 0 0 7px rgba(239, 68, 68, 0.14);
+}
+
+/* Hover effects for main inventory rarity slots */
+.slot.rarity-common:hover {
+  border-color: rgba(180, 180, 180, 0.18);
+  background: linear-gradient(135deg, rgba(180, 180, 180, 0.08) 0%, rgba(150, 150, 150, 0.06) 50%, rgba(200, 200, 200, 0.07) 100%);
+  box-shadow: 0 0 6px rgba(180, 180, 180, 0.15), inset 0 0 3px rgba(180, 180, 180, 0.07);
+}
+
+.slot.rarity-unusual:hover {
+  border-color: rgba(100, 200, 100, 0.22);
+  background: linear-gradient(135deg, rgba(100, 200, 100, 0.10) 0%, rgba(80, 180, 80, 0.07) 50%, rgba(120, 220, 120, 0.08) 100%);
+  box-shadow: 0 0 8px rgba(100, 200, 100, 0.18), inset 0 0 4px rgba(100, 200, 100, 0.09);
+}
+
+.slot.rarity-rare:hover {
+  border-color: rgba(64, 156, 255, 0.26);
+  background: linear-gradient(135deg, rgba(64, 156, 255, 0.12) 0%, rgba(48, 140, 240, 0.09) 50%, rgba(80, 172, 255, 0.10) 100%);
+  box-shadow: 0 0 10px rgba(64, 156, 255, 0.22), inset 0 0 5px rgba(64, 156, 255, 0.11);
+}
+
+.slot.rarity-epic:hover {
+  border-color: rgba(147, 51, 234, 0.30);
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.14) 0%, rgba(126, 34, 206, 0.10) 50%, rgba(168, 85, 247, 0.12) 100%);
+  box-shadow: 0 0 12px rgba(147, 51, 234, 0.25), inset 0 0 6px rgba(147, 51, 234, 0.13);
+}
+
+.slot.rarity-legendary:hover {
+  border-color: rgba(245, 158, 11, 0.34);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.16) 0%, rgba(217, 119, 6, 0.12) 50%, rgba(251, 191, 36, 0.14) 100%);
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.28), inset 0 0 7px rgba(245, 158, 11, 0.15);
+}
+
+.slot.rarity-utopian:hover {
+  border-color: rgba(239, 68, 68, 0.38);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.18) 0%, rgba(220, 38, 38, 0.13) 50%, rgba(248, 113, 113, 0.15) 100%);
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.32), inset 0 0 8px rgba(239, 68, 68, 0.16);
+}
 /* Messages, weapon info, ammo */
 .message, .weapon-info, .ammo-counter, .drag-instructions { background: var(--glass-bg-strong); border: 1.5px solid var(--glass-border); border-radius: var(--glass-radius); box-shadow: var(--glass-shadow); backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)); }
 /* Extraction panel */

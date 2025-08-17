@@ -318,6 +318,7 @@
       case 'reload':
         ammoText.textContent = 'RELOADING';
         reloadPrompt.style.display = 'none';
+        reloadTextContainer.style.display = 'none';
         break;
       case 'ammo-indicator':
         updateAmmoIndicator(data);
@@ -435,6 +436,7 @@
       if (data.reloading) {
         ammoText.textContent = 'RELOADING';
         reloadPrompt.style.display = 'none';
+        reloadTextContainer.style.display = 'none';
       } else {
         updateAmmoDisplay(data);
       }
@@ -466,6 +468,10 @@
 
   const updateReloadProgress = data => {
     reloadTextContainer.style.display = data.show === false ? 'none' : 'block';
+    // Ensure reload prompt is hidden when reload progress is shown
+    if (data.show !== false) {
+      reloadPrompt.style.display = 'none';
+    }
   };
 
   const updateMedkitProgress = data => {
@@ -650,6 +656,9 @@
     const slot = hotbarGrid.children[position];
     if (!slot) return;
     
+    // Remove all rarity classes first
+    slot.classList.remove('rarity-common', 'rarity-unusual', 'rarity-rare', 'rarity-epic', 'rarity-legendary', 'rarity-utopian');
+    
     if (itemData.removed) {
       slot.innerHTML = `<span class="slot-number">${position + 1}</span>`;
     } else {
@@ -667,12 +676,19 @@
         <img src="${CDN_ASSETS_URL}/${itemData.iconImageUri}" title="${itemData.name}">
         ${quantityDisplay}
       `;
+      
+      // Add rarity class for stained glass effect
+      const rarity = itemData.rarity || 'common';
+      slot.classList.add(`rarity-${rarity}`);
     }
   };
 
   const updateInventorySlot = (grid, position, itemData) => {
     const slot = grid.children[position];
     if (!slot) return;
+    
+    // Remove all rarity classes first
+    slot.classList.remove('rarity-common', 'rarity-unusual', 'rarity-rare', 'rarity-epic', 'rarity-legendary', 'rarity-utopian');
     
     removeTooltip(slot);
     
@@ -699,6 +715,10 @@
       `;
       slot._itemData = itemData;
       slot._tooltipEnabled = true;
+      
+      // Add rarity class for stained glass effect
+      const rarity = itemData.rarity || 'common';
+      slot.classList.add(`rarity-${rarity}`);
       
       slot.removeEventListener('mouseenter', createLazyTooltip);
       slot.addEventListener('mouseenter', createLazyTooltip);

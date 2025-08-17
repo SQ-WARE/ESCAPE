@@ -205,6 +205,10 @@
   const updateSlot = (grid, position, itemData) => {
     const slot = grid.children[position];
     if (!slot) return;
+    
+    // Remove all rarity classes first
+    slot.classList.remove('rarity-common', 'rarity-unusual', 'rarity-rare', 'rarity-epic', 'rarity-legendary', 'rarity-utopian');
+    
     if (itemData.removed) {
       slot.innerHTML = '';
       slot._itemData = null;
@@ -222,6 +226,11 @@
       slot.innerHTML = `<img src="${CDN_ASSETS_URL}/${itemData.iconImageUri}" alt="${itemData.name}">${quantityDisplay}`;
       slot._itemData = itemData;
       slot._tooltipEnabled = true;
+      
+      // Add rarity class for stained glass effect
+      const rarity = itemData.rarity || 'common';
+      slot.classList.add(`rarity-${rarity}`);
+      
       slot.classList.remove('drop-target');
       slot.removeEventListener('mouseenter', createStashTooltip);
       slot.removeEventListener('mouseleave', removeStashTooltip);

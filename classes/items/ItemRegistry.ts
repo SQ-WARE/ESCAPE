@@ -33,4 +33,21 @@ export const ItemRegistry = {
     const weaponIds = WeaponFactory.getAllWeaponDefinitions().map(def => def.id);
     return [...legacyIds, ...weaponIds];
   },
+
+  registerAllItems(): void {
+    // Import and register all items
+    const { default: MedkitItem } = require('./MedkitItem');
+    const { default: EnergyDrinkItem } = require('./EnergyDrinkItem');
+    const { default: GoldBarItem } = require('./GoldBarItem');
+    const { default: BandageItem } = require('./BandageItem');
+    const { default: DiamondItem } = require('./DiamondItem');
+    const { default: PainkillerItem } = require('./PainkillerItem');
+
+    this.registerItem(MedkitItem);
+    this.registerItem(EnergyDrinkItem);
+    this.registerItem(GoldBarItem);
+    this.registerItem(BandageItem);
+    this.registerItem(DiamondItem);
+    this.registerItem(PainkillerItem);
+  },
 }; 
