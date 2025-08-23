@@ -1,141 +1,498 @@
 {
-  "currency": 0,
+  "achievements": {
+    "achievements": {
+      "rising_star": {
+        "id": "rising_star",
+        "title": "Rising Star",
+        "description": "Reach level 15",
+        "icon": "⭐",
+        "category": "progression",
+        "requirement": 15,
+        "xpReward": 300,
+        "rarity": "common",
+        "completed": false,
+        "progress": 6,
+        "completions": 0,
+        "awarded": false,
+        "lastNotificationTime": 0
+      },
+      "veteran": {
+        "id": "veteran",
+        "title": "Veteran",
+        "description": "Reach level 35",
+        "icon": "🌟",
+        "category": "progression",
+        "requirement": 35,
+        "xpReward": 750,
+        "rarity": "rare",
+        "completed": false,
+        "progress": 6,
+        "completions": 0,
+        "awarded": false,
+        "lastNotificationTime": 0
+      },
+      "legend": {
+        "id": "legend",
+        "title": "Legend",
+        "description": "Reach level 75",
+        "icon": "💫",
+        "category": "progression",
+        "requirement": 75,
+        "xpReward": 2000,
+        "rarity": "epic",
+        "completed": false,
+        "progress": 6,
+        "completions": 0,
+        "awarded": false,
+        "lastNotificationTime": 0
+      },
+      "mythic": {
+        "id": "mythic",
+        "title": "Mythic",
+        "description": "Reach level 150",
+        "icon": "✨",
+        "category": "progression",
+        "requirement": 150,
+        "xpReward": 6000,
+        "rarity": "legendary",
+        "completed": false,
+        "progress": 6,
+        "completions": 0,
+        "awarded": false,
+        "lastNotificationTime": 0
+      },
+      "first_mission": {
+        "id": "first_mission",
+        "title": "First Mission",
+        "description": "Complete your first raid",
+        "icon": "🎖️",
+        "category": "exploration",
+        "requirement": 1,
+        "xpReward": 100,
+        "rarity": "common",
+        "completed": true,
+        "progress": 1,
+        "completions": 1,
+        "awarded": true,
+        "lastNotificationTime": 1755725998407,
+        "completedAt": 1755725998404
+      },
+      "mission_veteran": {
+        "id": "mission_veteran",
+        "title": "Mission Veteran",
+        "description": "Complete 100 raids",
+        "icon": "🎯",
+        "category": "exploration",
+        "requirement": 100,
+        "xpReward": 750,
+        "rarity": "rare",
+        "completed": true,
+        "progress": 100,
+        "completions": 1,
+        "awarded": true,
+        "lastNotificationTime": 1755882031806,
+        "completedAt": 1755882031804
+      },
+      "mission_master": {
+        "id": "mission_master",
+        "title": "Mission Master",
+        "description": "Complete 500 raids",
+        "icon": "🏅",
+        "category": "exploration",
+        "requirement": 500,
+        "xpReward": 2000,
+        "rarity": "epic",
+        "completed": false,
+        "progress": 250,
+        "completions": 0,
+        "awarded": false,
+        "lastNotificationTime": 0
+      },
+      "mission_legend": {
+        "id": "mission_legend",
+        "title": "Mission Legend",
+        "description": "Complete 2000 raids",
+        "icon": "🏅",
+        "category": "exploration",
+        "requirement": 2000,
+        "xpReward": 7500,
+        "rarity": "legendary",
+        "completed": false,
+        "progress": 250,
+        "completions": 0,
+        "awarded": false,
+        "lastNotificationTime": 0
+      },
+      "wealth_builder": {
+        "id": "wealth_builder",
+        "title": "Wealth Builder",
+        "description": "Earn 50,000 credits",
+        "icon": "💰",
+        "category": "progression",
+        "requirement": 50000,
+        "xpReward": 500,
+        "rarity": "rare",
+        "completed": true,
+        "progress": 50000,
+        "completions": 1,
+        "awarded": true,
+        "lastNotificationTime": 1755904258048,
+        "completedAt": 1755904258045
+      },
+      "millionaire": {
+        "id": "millionaire",
+        "title": "Millionaire",
+        "description": "Earn 1,000,000 credits",
+        "icon": "💎",
+        "category": "progression",
+        "requirement": 1000000,
+        "xpReward": 2500,
+        "rarity": "epic",
+        "completed": false,
+        "progress": 688935,
+        "completions": 0,
+        "awarded": false,
+        "lastNotificationTime": 0
+      },
+      "billionaire": {
+        "id": "billionaire",
+        "title": "Billionaire",
+        "description": "Earn 1,000,000,000 credits",
+        "icon": "💎",
+        "category": "progression",
+        "requirement": 1000000000,
+        "xpReward": 10000,
+        "rarity": "legendary",
+        "completed": false,
+        "progress": 688935,
+        "completions": 0,
+        "awarded": false,
+        "lastNotificationTime": 0
+      },
+      "weapon_master": {
+        "id": "weapon_master",
+        "title": "Weapon Master",
+        "description": "Get 1000 kills with any weapon category",
+        "icon": "🔫",
+        "category": "mastery",
+        "requirement": 1000,
+        "xpReward": 1500,
+        "rarity": "epic",
+        "completed": false,
+        "progress": 1,
+        "completions": 0,
+        "awarded": false,
+        "lastNotificationTime": 0
+      },
+      "weapon_grandmaster": {
+        "id": "weapon_grandmaster",
+        "title": "Weapon Grandmaster",
+        "description": "Get 5000 kills with any weapon category",
+        "icon": "🏆",
+        "category": "mastery",
+        "requirement": 5000,
+        "xpReward": 5000,
+        "rarity": "legendary",
+        "completed": false,
+        "progress": 1,
+        "completions": 0,
+        "awarded": false,
+        "lastNotificationTime": 0
+      },
+      "first_blood": {
+        "id": "first_blood",
+        "title": "First Blood",
+        "description": "Get your first kill",
+        "icon": "🎯",
+        "category": "combat",
+        "requirement": 1,
+        "xpReward": 150,
+        "rarity": "common",
+        "completed": true,
+        "progress": 1,
+        "completions": 1,
+        "awarded": true,
+        "lastNotificationTime": 1755904258034,
+        "completedAt": 1755904258031
+      },
+      "combat_initiate": {
+        "id": "combat_initiate",
+        "title": "Combat Initiate",
+        "description": "Reach 50 total kills",
+        "icon": "⚔️",
+        "category": "combat",
+        "requirement": 50,
+        "xpReward": 300,
+        "rarity": "common",
+        "completed": false,
+        "progress": 1,
+        "completions": 0,
+        "awarded": false,
+        "lastNotificationTime": 0
+      },
+      "combat_veteran": {
+        "id": "combat_veteran",
+        "title": "Combat Veteran",
+        "description": "Reach 500 total kills",
+        "icon": "🗡️",
+        "category": "combat",
+        "requirement": 500,
+        "xpReward": 1000,
+        "rarity": "rare",
+        "completed": false,
+        "progress": 1,
+        "completions": 0,
+        "awarded": false,
+        "lastNotificationTime": 0
+      },
+      "combat_master": {
+        "id": "combat_master",
+        "title": "Combat Master",
+        "description": "Reach 2500 total kills",
+        "icon": "⚔️",
+        "category": "combat",
+        "requirement": 2500,
+        "xpReward": 2500,
+        "rarity": "epic",
+        "completed": false,
+        "progress": 1,
+        "completions": 0,
+        "awarded": false,
+        "lastNotificationTime": 0
+      },
+      "combat_legend": {
+        "id": "combat_legend",
+        "title": "Combat Legend",
+        "description": "Reach 10000 total kills",
+        "icon": "👑",
+        "category": "combat",
+        "requirement": 10000,
+        "xpReward": 7500,
+        "rarity": "legendary",
+        "completed": false,
+        "progress": 1,
+        "completions": 0,
+        "awarded": false,
+        "lastNotificationTime": 0
+      },
+      "sharpshooter": {
+        "id": "sharpshooter",
+        "title": "Sharpshooter",
+        "description": "Achieve 60%+ accuracy",
+        "icon": "🎯",
+        "category": "combat",
+        "requirement": 60,
+        "xpReward": 1000,
+        "rarity": "rare",
+        "completed": false,
+        "progress": 8,
+        "completions": 0,
+        "awarded": false,
+        "lastNotificationTime": 0
+      },
+      "dead_eye": {
+        "id": "dead_eye",
+        "title": "Dead Eye",
+        "description": "Achieve 80%+ accuracy",
+        "icon": "🎯",
+        "category": "combat",
+        "requirement": 80,
+        "xpReward": 2500,
+        "rarity": "legendary",
+        "completed": false,
+        "progress": 8,
+        "completions": 0,
+        "awarded": false,
+        "lastNotificationTime": 0
+      },
+      "kill_streak_5": {
+        "id": "kill_streak_5",
+        "title": "Kill Streak",
+        "description": "Get 5 kills in a single raid",
+        "icon": "🔥",
+        "category": "combat",
+        "requirement": 5,
+        "xpReward": 400,
+        "rarity": "rare",
+        "repeatable": true,
+        "maxCompletions": 5,
+        "completed": false,
+        "progress": 1,
+        "completions": 0,
+        "awarded": false,
+        "lastNotificationTime": 0
+      },
+      "kill_frenzy": {
+        "id": "kill_frenzy",
+        "title": "Kill Frenzy",
+        "description": "Get 10 kills in a single raid",
+        "icon": "🔥",
+        "category": "combat",
+        "requirement": 10,
+        "xpReward": 800,
+        "rarity": "epic",
+        "repeatable": true,
+        "maxCompletions": 3,
+        "completed": false,
+        "progress": 1,
+        "completions": 0,
+        "awarded": false,
+        "lastNotificationTime": 0
+      },
+      "kill_storm": {
+        "id": "kill_storm",
+        "title": "Kill Storm",
+        "description": "Get 15 kills in a single raid",
+        "icon": "🔥",
+        "category": "combat",
+        "requirement": 15,
+        "xpReward": 2000,
+        "rarity": "legendary",
+        "repeatable": true,
+        "maxCompletions": 2,
+        "completed": false,
+        "progress": 1,
+        "completions": 0,
+        "awarded": false,
+        "lastNotificationTime": 0
+      }
+    },
+    "totalCompleted": 4,
+    "totalXP": 1500,
+    "totalSecretFound": 0,
+    "totalLegendary": 0,
+    "lastAchievementCheck": 1755908594098
+  },
+  "currency": 688935,
   "backpack": {
     "items": [
       {
         "position": 0,
-        "itemId": "sniper_ammo",
-        "quantity": 100
+        "itemId": "medkit"
       },
       {
         "position": 1,
+        "itemId": "medkit"
+      },
+      {
+        "position": 9,
+        "itemId": "medkit"
+      },
+      {
+        "position": 3,
+        "itemId": "gold_bar",
+        "quantity": 4
+      },
+      {
+        "position": 10,
+        "itemId": "shotgun_ammo",
+        "quantity": 1
+      },
+      {
+        "position": 12,
         "itemId": "rifle_ammo",
-        "quantity": 70
+        "quantity": 467
+      },
+      {
+        "position": 11,
+        "itemId": "sniper_ammo",
+        "quantity": 1
       },
       {
         "position": 2,
-        "itemId": "pistol_ammo",
-        "quantity": 8464
+        "itemId": "m9_beretta",
+        "ammo": 15
+      },
+      {
+        "position": 5,
+        "itemId": "akm",
+        "ammo": 30
+      },
+      {
+        "position": 6,
+        "itemId": "spetsnaz_akm_nsb",
+        "ammo": 30
+      },
+      {
+        "position": 7,
+        "itemId": "medkit"
+      },
+      {
+        "position": 8,
+        "itemId": "diamonds",
+        "quantity": 2
       }
     ]
   },
   "hotbar": {
     "items": [
       {
-        "position": 1,
-        "itemId": "hk_mp5sd",
-        "ammo": 30
-      },
-      {
-        "position": 2,
-        "itemId": "akm",
-        "ammo": 19
-      },
-      {
-        "position": 3,
-        "itemId": "hk_mp5k",
-        "ammo": 30
-      },
-      {
         "position": 0,
-        "itemId": "fn_502_tactical_fde",
-        "ammo": 10
-      }
-    ]
-  },
-  "stash": {
-    "items": [
-      {
-        "position": 0,
-        "itemId": "shotgun_ammo",
-        "quantity": 100
-      },
-      {
-        "position": 2,
-        "itemId": "ingram_m6"
-      },
-      {
-        "position": 3,
-        "itemId": "hk_mp5k"
-      },
-      {
-        "position": 5,
-        "itemId": "mp5a2"
-      },
-      {
-        "position": 6,
-        "itemId": "sword_mk18_mjolnir"
-      },
-      {
-        "position": 7,
-        "itemId": "desert_eagle",
-        "ammo": 4
-      },
-      {
-        "position": 8,
-        "itemId": "glock_17",
-        "ammo": 11
-      },
-      {
-        "position": 9,
-        "itemId": "spetsnaz_akm_nsb"
-      },
-      {
-        "position": 10,
-        "itemId": "victrix_corvo_v"
-      },
-      {
-        "position": 11,
-        "itemId": "asvkm",
-        "ammo": 0
-      },
-      {
-        "position": 12,
-        "itemId": "ingram_m6",
-        "ammo": 0
-      },
-      {
-        "position": 13,
-        "itemId": "kbp_pp90_shotgun",
-        "ammo": 6
-      },
-      {
-        "position": 14,
-        "itemId": "akm",
-        "ammo": 19
-      },
-      {
-        "position": 16,
-        "itemId": "mp5a2",
-        "ammo": 0
-      },
-      {
-        "position": 17,
         "itemId": "m9_beretta",
         "ammo": 0
+      },
+      {
+        "position": 1,
+        "itemId": "akm",
+        "ammo": 0
+      },
+      {
+        "position": 2,
+        "itemId": "fn_502_tactical_fde",
+        "ammo": 0
+      },
+      {
+        "position": 3,
+        "itemId": "desert_eagle",
+        "ammo": 0
       }
     ]
   },
+  "stash": {},
+  "kills": 1,
+  "deaths": 0,
+  "accuracy": 8,
+  "extractions": 0,
+  "raids": 250,
+  "level": 1,
+  "xp": 0,
+  "lastKillTime": 1755900900118,
+  "lastDeathTime": 0,
+  "lastExtractionTime": 0,
+  "lastLevelUpTime": 1755904258047,
+  "weaponProgress": {},
+  "partyInvites": [],
+  "raidStartTime": 1755908594097,
   "progression": {
-    "level": 6,
-    "xp": 20
-  },
-  "stats": {
-    "kills": 6,
-    "deaths": 17
+    "level": 9,
+    "xp": 100
   },
   "weaponProgression": {
     "akm": {
       "kills": 1
-    },
-    "mp5a2": {
-      "kills": 2
     }
   },
-  "weaponCamos": {
-    "fn_502_tactical_fde": "gold",
-    "desert_eagle": "gold",
-    "akm": "gold",
-    "m9_beretta": "gold"
-  }
+  "recentWeaponProgress": [
+    {
+      "weaponName": "AKM",
+      "timestamp": 1755900900108
+    }
+  ],
+  "stats": {
+    "kills": 1,
+    "deaths": 0,
+    "headshots": 0,
+    "currentKillStreak": 1,
+    "bestKillStreak": 1,
+    "weaponKills": {
+      "rifle": 1
+    }
+  },
+  "headshots": 0,
+  "currentKillStreak": 1,
+  "bestKillStreak": 1,
+  "weaponKills": {
+    "rifle": 1
+  },
+  "totalSessions": 1
 }

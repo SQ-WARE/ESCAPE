@@ -11,14 +11,10 @@ import Stash from './systems/Stash';
 import type BaseItem from './items/BaseItem';
 import GamePlayerEntity from './GamePlayerEntity';
 import ItemInventory, { type SerializedItemInventoryData } from './systems/ItemInventory';
-import { ItemRegistry } from './items/ItemRegistry';
-import BaseWeaponItem from './items/BaseWeaponItem';
+
 import WeaponItem from './weapons/items/WeaponItem';
 
 import PistolAmmoItem from './items/ammo/PistolAmmoItem';
-import RifleAmmoItem from './items/ammo/RifleAmmoItem';
-import SniperAmmoItem from './items/ammo/SniperAmmoItem';
-import ShotgunAmmoItem from './items/ammo/ShotgunAmmoItem';
 import MedkitItem from './items/MedkitItem';
 
 import WeaponEntity from './weapons/entities/WeaponEntity';
@@ -28,18 +24,19 @@ import WeaponProgressionSystem from './systems/WeaponProgressionSystem';
 import ProgressionSystem from './systems/ProgressionSystem';
 import SessionManager from './systems/SessionManager';
 import AchievementSystem from './systems/AchievementSystem';
+import { MarketUIHandler } from './systems/MarketUIHandler';
+import { ProgressionUIHandler } from './systems/ProgressionUIHandler';
+import { InventoryUIHandler } from './systems/InventoryUIHandler';
+import { WeaponUIHandler } from './systems/WeaponUIHandler';
+import { CurrencyHandler } from './systems/CurrencyHandler';
+import { PersistenceHandler } from './systems/PersistenceHandler';
 
-// Register ammo items
-ItemRegistry.registerItem(PistolAmmoItem);
-ItemRegistry.registerItem(RifleAmmoItem);
-ItemRegistry.registerItem(SniperAmmoItem);
-ItemRegistry.registerItem(ShotgunAmmoItem);
-ItemRegistry.registerItem(MedkitItem);
+// Note: Items are now automatically registered through the ItemFactory system
 
 interface PlayerPersistedData extends Record<string, unknown> {
   backpack: SerializedItemInventoryData;
   hotbar: SerializedItemInventoryData;
-  stash: SerializedItemInventoryData;
+  stash: Record<string, number>;
   currency?: number;
 }
 
@@ -74,20 +71,42 @@ export default class GamePlayer {
   private _isBackpackOpen: boolean = false;
   private _inventoryTransitioning: boolean = false;
   private _saveTimeout: NodeJS.Timeout | undefined;
-  private _gun: WeaponEntity | undefined;
   private _isInMenu: boolean = true;
   private _isDestroyed: boolean = false;
   private _isCrateOpen: boolean = false;
-	private _isDeploying: boolean = false;
-	private _pendingDeploy: boolean = false;
+  private _isDeploying: boolean = false;
+  private _pendingDeploy: boolean = false;
+  private _partySystemLoaded: boolean = false;
+  private _cachedPartySystem: any = null;
+  
+  // UI Handlers
+  private _marketUIHandler: MarketUIHandler;
+  private _progressionUIHandler: ProgressionUIHandler;
+  private _inventoryUIHandler: InventoryUIHandler;
+  private _weaponUIHandler: WeaponUIHandler;
+  private _currencyHandler: CurrencyHandler;
+  private _persistenceHandler: PersistenceHandler;
 
   private constructor(player: Player) {
     this.player = player;
     this.backpack = new Backpack(this);
     this.hotbar = new Hotbar(this);
-    this.stash = new Stash(player);
+    this.stash = new Stash(player, this);
+
+    // Initialize UI handlers
+    this._marketUIHandler = new MarketUIHandler(this);
+    this._progressionUIHandler = new ProgressionUIHandler(this);
+    this._inventoryUIHandler = new InventoryUIHandler(this);
+    this._weaponUIHandler = new WeaponUIHandler(this);
+    this._currencyHandler = new CurrencyHandler(this);
+    this._persistenceHandler = new PersistenceHandler(this);
 
     this.hotbar.onSelectedItemChanged = this._onHotbarSelectedItemChanged;
+    
+    // Initialize achievements for new players
+    try {
+      AchievementSystem.initialize(this.player);
+    } catch {}
   }
 
   // ===== Static Methods =====
@@ -142,39 +161,17 @@ export default class GamePlayer {
     return this._isCrateOpen;
   }
 
-  public getCurrency(): number {
-    try {
-      const data = (this.player.getPersistedData?.() as any) || {};
-      return Math.max(0, Math.floor((data as any)?.currency ?? 0));
-    } catch {
-      return 0;
-    }
+  // Handler getters
+  public get currency() {
+    return this._currencyHandler;
   }
 
-  public setCurrency(amount: number): void {
-    try {
-      this.player.setPersistedData({ currency: Math.max(0, Math.floor(amount)) });
-    } catch {}
-  }
-
-  public addCurrency(amount: number, reason?: string): void {
-    const current = this.getCurrency();
-    this.setCurrency(current + Math.floor(amount));
-    this._notifyCurrency(`${amount >= 0 ? '+' : ''}${Math.floor(amount)} CR${reason ? ` (${reason})` : ''}`);
-  }
-
-  public spendCurrency(amount: number, reason?: string): boolean {
-    const current = this.getCurrency();
-    const spend = Math.floor(amount);
-    if (spend <= 0) return true;
-    if (current < spend) return false;
-    this.setCurrency(current - spend);
-    this._notifyCurrency(`-${spend} CR${reason ? ` (${reason})` : ''}`);
-    return true;
+  public get weapon() {
+    return this._weaponUIHandler;
   }
 
   public getCurrentWeapon(): WeaponEntity | undefined {
-    return this._gun;
+    return this._weaponUIHandler.currentWeapon;
   }
 
   public clearCurrentEntity(): void {
@@ -191,7 +188,12 @@ export default class GamePlayer {
       this._saveTimeout = undefined;
     }
     
-    this._cleanupAllWeaponData();
+    // Cleanup UI handlers
+    this._marketUIHandler.unload();
+    this._progressionUIHandler.unload();
+    this._persistenceHandler.destroy();
+    
+    this._weaponUIHandler.cleanupWeaponData();
     
     if (this._currentEntity) {
       this._currentEntity.despawn();
@@ -203,90 +205,54 @@ export default class GamePlayer {
   }
 
   public load(): void {
-    try {
-      const serializedData = this.player.getPersistedData();
-      
-      if (serializedData) {
-        const success = this._loadFromSerializedData(serializedData as PlayerPersistedData);
-        if (!success) {
-          this._loadDefaultItems();
-        }
-      } else {
-        this._loadDefaultItems();
-      }
-    } catch (error) {
-      console.error('Failed to load player data:', error);
-      this._loadDefaultItems();
-    }
+    this._persistenceHandler.load();
   }
 
   public save(): void {
-    if (this._isDestroyed) return;
-    
-    if (this._saveTimeout) {
-      clearTimeout(this._saveTimeout);
-    }
-    
-    this._saveTimeout = setTimeout(() => {
-      if (!this._isDestroyed) {
-        try {
-          this.player.setPersistedData(this._serialize());
-        } catch (error) {
-          console.error('Failed to save player data:', error);
-        }
-      }
-    }, 500);
+    this._persistenceHandler.save();
   }
 
   public loadMenu(): void {
     this._isInMenu = true;
     this.player.ui.load('ui/menu.html');
     // Ensure only menu handler is active
-    this.player.ui.off(PlayerUIEvent.DATA, this._onProgressionUIData);
+
     this.player.ui.off(PlayerUIEvent.DATA, this._onPlayerUIData);
     this.player.ui.on(PlayerUIEvent.DATA, this._onMenuUIData);
     this.player.ui.lockPointer(false);
     
     this._syncAllUI();
     
-    if (this._gun) {
-      this._gun.updateAmmoIndicatorUI();
-    }
+    this._weaponUIHandler.updateAmmoIndicator();
     
-    // Create a party for the player if they don't have one
-    try {
-      const { PartySystem } = require('./systems/PartySystem');
-      const partyData = PartySystem.instance.getPartyData(this.player.id);
-      if (!partyData) {
-        PartySystem.instance.createParty(this.player);
-      }
-    } catch (error) {
-      console.error('Error creating party:', error);
-    }
-    
-
+    // Lazy load party system only when needed
+    this._ensurePartyExists();
     
     this.player.ui.sendData({ type: 'enterMenu' });
   }
 
-  public deploy(): void {
-    if (this._currentEntity || !this.player.world) return;
-    if (!SessionManager.instance.beforeDeploy(this)) return;
-
-		// If a world transfer was triggered by session selection, wait until it completes.
-    try {
-      const pid = (this.player as any).id || this.player.username;
-      if (SessionManager.instance.isTransferringById(pid)) {
-				this._pendingDeploy = true;
-				return; // onJoined handler will resume deploy after transfer completes
+  private _ensurePartyExists(): void {
+    // Only load PartySystem when actually needed for party operations
+    if (!this._partySystemLoaded) {
+      try {
+        const { PartySystem } = require('./systems/PartySystem');
+        const partyData = PartySystem.instance.getPartyData(this.player.id);
+        if (!partyData) {
+          PartySystem.instance.createParty(this.player);
+        }
+        this._partySystemLoaded = true;
+      } catch (error) {
+        // Error creating party
       }
-    } catch {}
+    }
+  }
 
-		if (this._isDeploying) return;
-		this._isDeploying = true;
-		this._pendingDeploy = false;
-
-    // Check if player is in a party and handle deployment accordingly
+  private _handlePartyDeployment(): void {
+    // Only load PartySystem when actually needed for deployment
+    if (!this._partySystemLoaded) {
+      this._ensurePartyExists();
+    }
+    
     try {
       const { PartySystem } = require('./systems/PartySystem');
       const partyData = PartySystem.instance.getPartyData(this.player.id);
@@ -316,8 +282,38 @@ export default class GamePlayer {
         // Solo player, allow deployment
       }
     } catch (error) {
-      console.error('Error checking party status:', error);
+      // Error checking party status
     }
+  }
+
+  private async _getPartySystem(): Promise<any> {
+    // Cache the PartySystem import to avoid repeated dynamic imports
+    if (!this._cachedPartySystem) {
+      const { PartySystem } = await import('./systems/PartySystem');
+      this._cachedPartySystem = PartySystem;
+    }
+    return this._cachedPartySystem;
+  }
+
+  public deploy(): void {
+    if (this._currentEntity || !this.player.world) return;
+    if (!SessionManager.instance.beforeDeploy(this)) return;
+
+		// If a world transfer was triggered by session selection, wait until it completes.
+    try {
+      const pid = (this.player as any).id || this.player.username;
+      if (SessionManager.instance.isTransferringById(pid)) {
+				this._pendingDeploy = true;
+				return; // onJoined handler will resume deploy after transfer completes
+      }
+    } catch {}
+
+		if (this._isDeploying) return;
+		this._isDeploying = true;
+		this._pendingDeploy = false;
+
+    // Check if player is in a party and handle deployment accordingly (lazy load)
+    this._handlePartyDeployment();
 
     // Solo deployment
     this._deploySolo();
@@ -332,6 +328,8 @@ export default class GamePlayer {
 
   private _deploySolo(): void {
     this._isInMenu = false;
+    
+
     
     // Track raid statistics
     try {
@@ -357,16 +355,15 @@ export default class GamePlayer {
     // Ensure menu-related listeners are detached so UI events cannot bring the user back to menu while in-game
     try {
       this.player.ui.off(PlayerUIEvent.DATA, this._onMenuUIData);
-      this.player.ui.off(PlayerUIEvent.DATA, this._onProgressionUIData);
-      this.player.ui.off(PlayerUIEvent.DATA, this._onStashUIData);
+  
+  
     } catch {}
     const playerEntity = new GamePlayerEntity(this);
     if (!this.player.world) {
-      console.error('Player world is undefined, cannot spawn entity');
       this._isDeploying = false;
       return;
     }
-    playerEntity.spawn(this.player.world, { x: 31, y: 30, z: 6 });
+    playerEntity.spawn(this.player.world, { x: 0, y: 30, z: 0 });
     
     this.player.camera.setAttachedToEntity(playerEntity);
     this.player.ui.load('ui/index.html');
@@ -393,6 +390,38 @@ export default class GamePlayer {
       }
     }
     
+    // Check current stats against achievements immediately when deploying
+    try {
+      const data = (this.player.getPersistedData?.() as any) || {};
+      const kills = Math.floor((data as any)?.kills ?? 0);
+      const deaths = Math.floor((data as any)?.deaths ?? 0);
+      const accuracy = Math.floor((data as any)?.accuracy ?? 0);
+      const progression = ProgressionSystem.get(this.player);
+      const level = progression.level;
+      const currency = Math.floor((data as any)?.currency ?? 0);
+      const extractions = Math.floor((data as any)?.extractions ?? 0);
+      const raids = Math.floor((data as any)?.raids ?? 0);
+      const playtime = Math.floor((data as any)?.playtime ?? 0);
+      const headshots = Math.floor((data as any)?.headshots ?? 0);
+      const currentKillStreak = Math.floor((data as any)?.currentKillStreak ?? 0);
+      const weaponKills = (data as any)?.weaponKills || {};
+      
+      // Use comprehensive achievement check to prevent duplicates
+      AchievementSystem.checkAllAchievements(this.player, {
+        kills,
+        deaths,
+        accuracy,
+        level,
+        currency,
+        extractions,
+        raids,
+        playtime,
+        headshots,
+        currentKillStreak,
+        weaponKills
+      });
+    } catch {}
+    
 		this.player.ui.sendData({ type: 'exitMenu' });
 		this._isDeploying = false;
   }
@@ -410,7 +439,7 @@ export default class GamePlayer {
 
     this.backpack.clearAllItems();
     this.hotbar.clearAllItems();
-    this._gun = undefined;
+
 
     this.deploy();
   }
@@ -441,15 +470,16 @@ export default class GamePlayer {
         lastExtractionTime: Date.now()
       });
       
-      // Check extraction achievements
-      AchievementSystem.checkExtractionAchievements(this.player, currentExtractions + 1);
-      
-      // Check speed run achievements
-      AchievementSystem.checkSpeedRunAchievements(this.player, raidTime);
+      // Check achievements with comprehensive method to prevent duplicates
+      AchievementSystem.checkAllAchievements(this.player, {
+        extractions: currentExtractions + 1,
+        raids: currentRaids,
+        raidTime
+      });
     } catch {}
     // Persist current weapon ammo to the corresponding inventory item, if any
     try {
-      const currentGun = this._gun;
+      const currentGun = this._weaponUIHandler.currentWeapon;
       if (currentGun) {
         const weaponId = currentGun.weaponData.id;
         const ammoToPersist = currentGun.ammo;
@@ -477,14 +507,7 @@ export default class GamePlayer {
     } catch {}
 
     // Safely unequip and despawn current weapon entity to avoid animation calls after despawn
-    if (this._gun) {
-      try {
-        this._gun.unequip();
-        this._gun.despawn();
-      } catch {}
-      this._gun = undefined;
-      this._hideAmmoIndicator();
-    }
+    this._weaponUIHandler.unequipAndDespawn();
 
     // Keep items in their current containers (hotbar/backpack) on extraction
 
@@ -523,12 +546,9 @@ export default class GamePlayer {
     const droppedItem = container.getItemAt(fromIndex);
     if (!droppedItem) return;
     
-    if (droppedItem instanceof BaseWeaponItem && this._gun) {
-      this._saveWeaponAmmoData(droppedItem, this._gun);
-      this._gun.unequip();
-      this._gun.despawn();
-      this._gun = undefined;
-      this._hideAmmoIndicator();
+    if ('weaponData' in droppedItem && this._weaponUIHandler.currentWeapon) {
+      this._weaponUIHandler.saveWeaponAmmoData(droppedItem as any, this._weaponUIHandler.currentWeapon);
+      this._weaponUIHandler.unequipAndDespawn();
     }
     
     const removedItem = container.removeItem(fromIndex);
@@ -540,9 +560,7 @@ export default class GamePlayer {
       this._currentEntity.directionFromRotation
     );
     
-    if (this._gun) {
-      this._gun.updateAmmoIndicatorUI();
-    }
+    this._weaponUIHandler.updateAmmoIndicator();
   }
 
   public openInventory(): void {
@@ -566,81 +584,14 @@ export default class GamePlayer {
   }
 
   public serialize(): PlayerPersistedData {
-    return this._serialize();
+    return this._persistenceHandler.serialize();
   }
 
   // ===== Private Methods =====
 
-  private _loadDefaultItems(): void {
-    const startingPistol = WeaponFactory.create('m9_beretta');
-    const startingAmmo = PistolAmmoItem.create({ quantity: 50 });
-    
-    this.hotbar.addItem(startingPistol);
-    this.hotbar.addItem(startingAmmo);
-    this.hotbar.setSelectedIndex(0);
-    // Initialize currency for new players
-    this.setCurrency(this.getCurrency());
-  }
 
-  private _loadFromSerializedData(persistedData: PlayerPersistedData): boolean {
-    try {
-      if (!persistedData || typeof persistedData !== 'object') {
-        console.warn('Invalid persisted data structure, using defaults');
-        return false;
-      }
 
-      const loadResults = [
-        this._loadInventoryData('backpack', persistedData.backpack, this.backpack),
-        this._loadInventoryData('hotbar', persistedData.hotbar, this.hotbar),
-        this._loadInventoryData('stash', persistedData.stash, this.stash)
-      ];
 
-      if (typeof persistedData.currency === 'number') {
-        this.setCurrency(persistedData.currency);
-      }
-
-      return loadResults.every(result => result);
-    } catch (error) {
-      console.error('Failed to deserialize GamePlayer data:', error);
-      return false;
-    }
-  }
-
-  private _loadInventoryData(name: string, data: any, inventory: ItemInventory): boolean {
-    if (data) {
-      try {
-        inventory.loadFromSerializedData(data);
-        return true;
-      } catch (error) {
-        console.warn(`Failed to load ${name} data:`, error);
-        return false;
-      }
-    } else {
-      console.warn(`No ${name} data found in persisted data`);
-      return false;
-    }
-  }
-
-  private _saveWeaponAmmoData(weaponItem: BaseWeaponItem, gun: WeaponEntity): void {
-    if (weaponItem instanceof WeaponItem) {
-      weaponItem.setPersistedAmmo(gun.ammo);
-      this.save();
-    }
-  }
-
-  private _hideAmmoIndicator(): void {
-    if (!this.player) return;
-    
-    this.player.ui.sendData({
-      type: 'ammo-indicator',
-      show: false
-    });
-    
-    this.player.ui.sendData({
-      type: 'reload-prompt',
-      show: false
-    });
-  }
 
   private _getContainerByType(type: string): ItemInventory | null {
     switch (type) {
@@ -651,195 +602,25 @@ export default class GamePlayer {
     }
   }
 
-  private _equipWeapon(weaponItem: BaseWeaponItem): void {
-    if (!this._currentEntity?.world) return;
 
-    if (weaponItem instanceof WeaponItem) {
-      const weaponEntity = new WeaponEntity({
-        weaponData: weaponItem.weaponData,
-        ammo: weaponItem.persistedAmmo || 0,
-      });
-      
-      this._gun = weaponEntity;
-      
-      weaponEntity.spawn(
-        this._currentEntity.world, 
-        { x: 0, y: 0, z: 0 }, 
-        { x: 0, y: 0, z: 0, w: 1 }
-      );
-      
-      const handAnchor = weaponEntity.heldHand === 'left' ? 'hand_left_anchor' : 'hand_right_anchor';
-      weaponEntity.setParent(this._currentEntity, handAnchor);
-      
-      weaponEntity.setParentAnimations();
-      weaponEntity.equip();
-      weaponEntity.updateAmmoIndicatorUI();
-      
-      if (weaponEntity.ammo <= 0) {
-        this.player.ui.sendData({
-          type: 'reload-prompt',
-          show: true,
-          message: 'Press R to Reload!'
-        });
-      }
-    } else {
-      console.error('Invalid weapon type. Only WeaponItem is supported.');
-    }
-  }
 
-  private _spawnHeldItem(): void {
-    if (this._currentEntity && this.hotbar.selectedItem instanceof BaseWeaponItem) {
-      this._equipWeapon(this.hotbar.selectedItem);
-    }
-  }
+
 
   private _onHotbarSelectedItemChanged = (
     selectedItem: BaseItem | null, 
     lastItem: BaseItem | null
   ) => {
-    if (this._gun) {
-      if (lastItem instanceof BaseWeaponItem) {
-        this._saveWeaponAmmoData(lastItem, this._gun);
-      }
-      this._gun.unequip();
-      this._gun.despawn();
-      this._gun = undefined;
-    }
-    
-    if (this._currentEntity) {
-      this._currentEntity.medkitSystem.cleanup();
-    }
-    
-    this._hideAmmoIndicator();
-    
-    if (!selectedItem && this._currentEntity) {
-      this._currentEntity.weaponSystem.updateWeapon({});
-      
-      this.player.ui.sendData({
-        type: 'crosshair-state',
-        canFire: false
-      });
-    }
-    
-    if (selectedItem instanceof BaseWeaponItem && this._currentEntity) {
-      this._equipWeapon(selectedItem);
-      
-      if (this._gun) {
-        (this._gun as WeaponEntity).updateFireRateIndicator();
-      }
-    }
-    
-    // Handle medkit selection - create and equip medkit entity
-    if (selectedItem instanceof MedkitItem && this._currentEntity) {
-      this._currentEntity.medkitSystem.equipMedkit(selectedItem);
-    }
+    this._weaponUIHandler.handleHotbarSelectionChanged(
+      selectedItem && 'weaponData' in selectedItem ? selectedItem as any : null,
+      lastItem && 'weaponData' in lastItem ? lastItem as any : null
+    );
   }
 
-  private _handleMoveItem(data: MoveItemData): void {
-    const fromType = data.from || data.fromType;
-    const toType = data.to || data.toType;
-    const fromIndex = parseInt(data.fromIndex.toString());
-    const toIndex = parseInt(data.toIndex.toString());
 
-    if (!fromType || !toType) {
-      console.warn('Invalid move item data: missing fromType or toType');
-      return;
-    }
 
-    // Server-side guard: stash moves are only valid when in menu context
-    if ((fromType === 'stash' || toType === 'stash') && !this._isInMenu) {
-      console.warn('Blocked stash move outside of menu context');
-      return;
-    }
 
-    const source = this._getContainerByType(fromType);
-    const dest = this._getContainerByType(toType);
 
-    if (!source || !dest) {
-      console.warn(`Invalid container types: ${fromType} -> ${toType}`);
-      return;
-    }
 
-    this._moveInventoryItem(source, dest, fromIndex, toIndex);
-  }
-
-  private _handleQuickMoveItem(data: QuickMoveItemData): void {
-    const fromType = data.fromType;
-    const fromIndex = parseInt(data.fromIndex.toString());
-
-    const source = this._getContainerByType(fromType);
-    if (!source) {
-      console.warn(`Invalid quick-move source: ${fromType}`);
-      return;
-    }
-
-    const item = source.getItemAt(fromIndex);
-    if (!item) return;
-
-    const allCandidates = this._getQuickMoveTargets(fromType);
-    // Enforce stash access only in menu context
-    const candidates = this._isInMenu ? allCandidates : allCandidates.filter(t => t !== 'stash');
-    const removed = source.removeItem(fromIndex);
-    if (!removed) return;
-
-    let placed = false;
-    for (const destType of candidates) {
-      const dest = this._getContainerByType(destType);
-      if (!dest) continue;
-      if (dest.addItem(removed)) {
-        placed = true;
-        break;
-      }
-    }
-
-    if (!placed) {
-      // Restore to original slot
-      source.addItem(removed, fromIndex);
-      return;
-    }
-
-    if (this._gun) {
-      try { this._gun.updateAmmoIndicatorUI(); } catch {}
-    }
-    this.save();
-  }
-
-  private _getQuickMoveTargets(fromType: string): string[] {
-    // In-game inventory has only backpack/hotbar; stash UI runs in menu context
-    if (fromType === 'backpack') {
-      return this._isInMenu ? ['stash', 'hotbar'] : ['hotbar'];
-    }
-    if (fromType === 'hotbar') {
-      return this._isInMenu ? ['stash', 'backpack'] : ['backpack'];
-    }
-    if (fromType === 'stash') {
-      return ['backpack', 'hotbar'];
-    }
-    return [];
-  }
-
-  private _moveInventoryItem(
-    source: ItemInventory,
-    dest: ItemInventory,
-    fromIndex: number,
-    toIndex: number,
-  ): void {
-    const item = source.removeItem(fromIndex);
-    if (!item) return;
-
-    // Exact placement only when an explicit toIndex is provided
-    const placedExactly = dest.addItem(item, toIndex);
-    if (!placedExactly) {
-      // Restore to original index if exact destination is not available
-      source.addItem(item, fromIndex);
-      return;
-    }
-
-    if (this._gun) {
-      try { this._gun.updateAmmoIndicatorUI(); } catch {}
-    }
-    this.save();
-  }
 
   private _handleInventoryAction(action: 'open' | 'close', type: 'inventory' | 'stash'): void {
     if (this._inventoryTransitioning) return;
@@ -857,9 +638,7 @@ export default class GamePlayer {
       
       this._syncAllUI();
       
-      if (this._gun) {
-        this._gun.updateAmmoIndicatorUI();
-      }
+      this._weaponUIHandler.updateAmmoIndicator();
     } else {
       this._isBackpackOpen = false;
       this.player.ui.sendData({ type: `hide${type.charAt(0).toUpperCase() + type.slice(1)}` });
@@ -868,10 +647,7 @@ export default class GamePlayer {
     this._inventoryTransitioning = false;
   }
 
-  private _handleDropItem(data: DropItemData): void {
-    const fromIndex = parseInt(data.fromIndex.toString());
-    this.dropItem(data.fromType, fromIndex);
-  }
+
 
   private _syncAllUI(): void {
     this.backpack.syncUI(this.player);
@@ -892,10 +668,19 @@ export default class GamePlayer {
         }
         break;
       case 'openStash':
-      case 'openProgression':
         // Prevent opening other menus unless currently in menu
         if (!this._isInMenu) return;
-        this._loadProgressionUI();
+        this.openStash();
+        break;
+      case 'openCareer':
+        // Prevent opening other menus unless currently in menu
+        if (!this._isInMenu) return;
+        this._progressionUIHandler.load();
+        break;
+      case 'openMarket':
+        // Prevent opening other menus unless currently in menu
+        if (!this._isInMenu) return;
+        this._marketUIHandler.load();
         break;
       case 'rejoin':
         this.rejoin();
@@ -908,8 +693,9 @@ export default class GamePlayer {
         this.openInventory();
         break;
       case 'requestProgressOverview':
-        this._sendProgressOverview();
+        this._progressionUIHandler.sendProgressOverview();
         break;
+
       case 'closeInventory':
         this.closeInventory();
         break;
@@ -917,13 +703,13 @@ export default class GamePlayer {
         this.closeStash();
         break;
       case 'moveItem':
-        this._handleMoveItem(data as MoveItemData);
+        this._inventoryUIHandler.handleMoveItem(data as MoveItemData);
         break;
       case 'quickMoveItem':
-        this._handleQuickMoveItem(data as QuickMoveItemData);
+        this._inventoryUIHandler.handleQuickMoveItem(data as QuickMoveItemData);
         break;
       case 'dropItem':
-        this._handleDropItem(data as DropItemData);
+        this._inventoryUIHandler.handleDropItem(data as DropItemData);
         break;
       case 'close':
         this.player.ui.off(PlayerUIEvent.DATA, this._onMenuUIData);
@@ -932,7 +718,7 @@ export default class GamePlayer {
       case 'send-party-invite':
         if (typeof data.username === 'string') {
           try {
-            const { PartySystem } = await import('./systems/PartySystem');
+            const PartySystem = await this._getPartySystem();
             PartySystem.instance.sendInvite(this.player, data.username);
           } catch (error) {
             console.error('Failed to send party invite:', error);
@@ -942,35 +728,35 @@ export default class GamePlayer {
       case 'accept-party-invite':
         if (typeof data.inviteId === 'string') {
           try {
-            const { PartySystem } = await import('./systems/PartySystem');
+            const PartySystem = await this._getPartySystem();
             PartySystem.instance.acceptInvite(this.player, data.inviteId);
           } catch (error) {
-            console.error('Failed to accept party invite:', error);
+            // Failed to accept party invite
           }
         }
         break;
       case 'decline-party-invite':
         if (typeof data.inviteId === 'string') {
           try {
-            const { PartySystem } = await import('./systems/PartySystem');
+            const PartySystem = await this._getPartySystem();
             PartySystem.instance.declineInvite(this.player, data.inviteId);
           } catch (error) {
-            console.error('Failed to decline party invite:', error);
+            // Failed to decline party invite
           }
         }
         break;
       case 'leave-party':
         try {
-          const { PartySystem } = await import('./systems/PartySystem');
+          const PartySystem = await this._getPartySystem();
           PartySystem.instance.leaveParty(this.player);
         } catch (error) {
-          console.error('Failed to leave party:', error);
+          // Failed to leave party
         }
         break;
       case 'kick-player':
         if (typeof data.username === 'string') {
           try {
-            const { PartySystem } = await import('./systems/PartySystem');
+            const PartySystem = await this._getPartySystem();
             const success = PartySystem.instance.kickPlayer(this.player, data.username);
             if (!success) {
               this.player.ui.sendData({
@@ -980,7 +766,6 @@ export default class GamePlayer {
               });
             }
           } catch (error) {
-            console.error('Failed to kick player:', error);
             this.player.ui.sendData({
               type: 'show-message',
               message: 'Failed to kick player.',
@@ -1014,13 +799,13 @@ export default class GamePlayer {
         this.closeInventory();
         break;
       case 'moveItem':
-        this._handleMoveItem(data as MoveItemData);
+        this._inventoryUIHandler.handleMoveItem(data as MoveItemData);
         break;
       case 'quickMoveItem':
-        this._handleQuickMoveItem(data as QuickMoveItemData);
+        this._inventoryUIHandler.handleQuickMoveItem(data as QuickMoveItemData);
         break;
       case 'dropItem':
-        this._handleDropItem(data as DropItemData);
+        this._inventoryUIHandler.handleDropItem(data as DropItemData);
         break;
       case 'requestHudSync':
         // Refresh HUD containers on demand (e.g., after closing crate UI)
@@ -1029,15 +814,7 @@ export default class GamePlayer {
         break;
       case 'requestWeaponHud':
         // Re-send current weapon HUD info
-        if (this._gun) {
-          try {
-            this._gun.updateAmmoIndicatorUI();
-            (this._gun as WeaponEntity).updateFireRateIndicator();
-          } catch {}
-        } else {
-          // ensure HUD hides weapon panel cleanly if there is truly no weapon
-          this.player.ui.sendData({ type: 'ammo-indicator', show: false });
-        }
+        this._weaponUIHandler.updateAmmoIndicator();
         break;
     }
   }
@@ -1058,7 +835,7 @@ export default class GamePlayer {
       const xp = Math.max(0, Math.floor(prog.xp ?? 0));
       // mirror the curve used in ProgressionSystem
       const xpNext = 100 + 25 * Math.max(0, level - 1);
-      const currency = Math.max(0, Math.floor((data as any)?.currency ?? 0));
+      const currency = Math.max(0, Math.floor(this.currency.getCurrency()));
       const username = this.player.username || this.player.id || 'Player';
       const sessionExtras = SessionManager.instance.getMenuHudExtras(this);
       this.player.ui.sendData({
@@ -1079,6 +856,10 @@ export default class GamePlayer {
       this.player.ui.sendData({ type: 'weapon-progress', rows });
     } catch {}
   }
+
+
+
+
 
   private _generateActivityFeed(data: any): Array<{icon: string, text: string, time: string}> {
     const activities = [];
@@ -1161,80 +942,9 @@ export default class GamePlayer {
     return 0;
   }
 
-  private _sendProgressOverview(): void {
-    try {
-      const data = (this.player.getPersistedData?.() as any) || {};
-      const currency = Math.max(0, Math.floor((data as any)?.currency ?? 0));
-      const stats = PlayerStatsSystem.get(this.player);
-      const weapons = WeaponProgressionSystem.buildMenuRows(this.player);
-      const progression = ProgressionSystem.get(this.player);
-      const achievements = AchievementSystem.get(this.player);
-      
-      // Calculate additional stats for Combat Record
-      const totalKills = weapons.reduce((sum, w) => sum + w.kills, 0);
-      const playtime = Math.floor((data as any)?.playtime ?? 0); // in minutes
-      const extractions = Math.floor((data as any)?.extractions ?? 0);
-      const raids = Math.floor((data as any)?.raids ?? 0);
-      const accuracy = Math.floor((data as any)?.accuracy ?? 0);
-      
-      // Calculate real activity data
-      const lastSessionTime = Math.floor((data as any)?.lastSessionTime ?? 0);
-      const totalSessions = Math.floor((data as any)?.totalSessions ?? 0);
-      const bestKillStreak = Math.floor((data as any)?.bestKillStreak ?? 0);
-      const totalDamageDealt = Math.floor((data as any)?.totalDamageDealt ?? 0);
-      const totalDamageTaken = Math.floor((data as any)?.totalDamageTaken ?? 0);
-      const headshots = Math.floor((data as any)?.headshots ?? 0);
-      const longestSurvival = Math.floor((data as any)?.longestSurvival ?? 0); // in minutes
-      
-      // Generate real activity feed
-      const activities = this._generateActivityFeed(data);
-      
-      this.player.ui.sendData({ 
-        type: 'progress-overview', 
-        kills: stats.kills, 
-        deaths: stats.deaths, 
-        currency, 
-        weapons,
-        level: progression.level,
-        xp: progression.xp,
-        xpNext: ProgressionSystem.getXpForNextLevel(progression.level),
-        totalKills,
-        playtime,
-        extractions,
-        raids,
-        accuracy,
-        achievements,
-        // Additional real data
-        lastSessionTime,
-        totalSessions,
-        bestKillStreak,
-        totalDamageDealt,
-        totalDamageTaken,
-        headshots,
-        longestSurvival,
-        activities
-      });
-    } catch {}
-  }
 
-  private _loadProgressionUI(): void {
-    try {
-      this.player.ui.load('ui/progression.html');
-      // Ensure only progression handler is active
-      this.player.ui.off(PlayerUIEvent.DATA, this._onMenuUIData);
-      this.player.ui.off(PlayerUIEvent.DATA, this._onPlayerUIData);
-      this.player.ui.on(PlayerUIEvent.DATA, this._onProgressionUIData);
-      this.player.ui.lockPointer(false);
-      // Proactively send initial data to avoid race where client requests before handler attaches
-      setTimeout(() => {
-        try {
-          if (this._isInMenu) {
-            this._sendProgressOverview();
-          }
-        } catch {}
-      }, 120);
-    } catch {}
-  }
+
+
 
   private _loadStashUI(): void {
     try {
@@ -1242,7 +952,7 @@ export default class GamePlayer {
       // Ensure only stash handler is active
       this.player.ui.off(PlayerUIEvent.DATA, this._onMenuUIData);
       this.player.ui.off(PlayerUIEvent.DATA, this._onPlayerUIData);
-      this.player.ui.off(PlayerUIEvent.DATA, this._onProgressionUIData);
+  
       this.player.ui.on(PlayerUIEvent.DATA, this._onStashUIData);
       this.player.ui.lockPointer(false);
       // client will request data via requestStashSync on load
@@ -1256,10 +966,10 @@ export default class GamePlayer {
         this._syncAllUI();
         break;
       case 'moveItem':
-        this._handleMoveItem(data as MoveItemData);
+        this._inventoryUIHandler.handleMoveItem(data as MoveItemData);
         break;
       case 'quickMoveItem':
-        this._handleQuickMoveItem(data as QuickMoveItemData);
+        this._inventoryUIHandler.handleQuickMoveItem(data as QuickMoveItemData);
         break;
       case 'backToMenu':
       case 'closeStash':
@@ -1268,77 +978,19 @@ export default class GamePlayer {
     }
   }
 
-  private _onProgressionUIData = (event: EventPayloads[PlayerUIEvent.DATA]) => {
-    const { data } = event;
-    switch (data.type) {
-      case 'requestProgressOverview':
-        // Ignore if not in menu context
-        if (!this._isInMenu) return;
-        this._sendProgressOverview();
-        break;
-      case 'openProgression':
-        if (!this._isInMenu) return;
-        this._sendWeaponProgress();
-        break;
-      case 'backToMenu':
-        // Only allow back to menu if we are currently in menu state
-        if (!this._isInMenu) return;
-        this.loadMenu();
-        break;
-    }
-  }
 
-  private _serialize(): PlayerPersistedData {
-    try {
-      const data = {
-        backpack: this.backpack.serialize(),
-        hotbar: this.hotbar.serialize(),
-        stash: this.stash.serialize(),
-        currency: this.getCurrency(),
-      };
 
-      if (!data.backpack || !data.hotbar || !data.stash) {
-        console.error('Failed to serialize inventory data');
-      }
 
-      return data as PlayerPersistedData;
-    } catch (error) {
-      console.error('Failed to serialize GamePlayer data:', error);
-      return {
-        backpack: { items: [] },
-        hotbar: { items: [] },
-        stash: { items: [] },
-        currency: this.getCurrency(),
-      } as PlayerPersistedData;
-    }
-  }
-
-  private _cleanupAllWeaponData(): void {
-    const containers = [this.hotbar, this.backpack];
-    
-    for (const container of containers) {
-      for (let i = 0; i < container.size; i++) {
-        const item = container.getItemAt(i);
-        if (item instanceof WeaponItem) {
-          item.setPersistedAmmo(0);
-        }
-      }
-    }
-  }
 
   // ===== Event Handlers =====
 
   public onEntitySpawned(entity: GamePlayerEntity): void {
     this._currentEntity = entity;
     this._loadUI();
-    this._hideAmmoIndicator();
-    this._spawnHeldItem();
+    this._weaponUIHandler.hideAmmoIndicator();
+    this._weaponUIHandler.spawnHeldItem();
     this.hotbar.syncUI(this.player);
   }
 
-  private _notifyCurrency(message: string): void {
-    try {
-      this.player.ui.sendData({ type: 'notification', message, color: '00FF00' });
-    } catch {}
-  }
+
 } 

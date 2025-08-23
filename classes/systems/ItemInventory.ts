@@ -1,8 +1,5 @@
 import type { Player } from 'hytopia';
 import type BaseItem from '../items/BaseItem';
-import BaseWeaponItem from '../items/BaseWeaponItem';
-import { ItemRegistry } from '../items/ItemRegistry';
-import { ItemUIDataHelper } from '../items/ItemUIDataHelper';
 
 export type SerializedItem = {
   position: number;
@@ -21,6 +18,7 @@ export default class ItemInventory {
   private _positionItems: Map<number, BaseItem> = new Map();
   private _size: number;
   private _tag: string;
+  private _cachedRarityColors: any = null;
 
   public constructor(size: number, gridWidth: number, tag: string) {
     if (size <= 0 || gridWidth <= 0) {
@@ -40,9 +38,18 @@ export default class ItemInventory {
   public get totalEmptySlots(): number { return this._size - this._itemPositions.size; }
 
   public addItem(item: BaseItem, position?: number): boolean {
+    if (!item) {
+      return false;
+    }
+    
     if (this._itemPositions.has(item)) {
       return false;
     }
+    
+    if (item.quantity <= 0 || item.quantity > 999999) {
+      return false;
+    }
+    
     // Only auto-merge when no explicit target position is provided
     if (item.stackable && (position === undefined || position === null)) {
       // First pass: try exact class/name merge (legacy path)
@@ -72,13 +79,17 @@ export default class ItemInventory {
         }
       }
     }
+    
     const targetPosition = position ?? this._findEmptyPosition();
+    
     if (targetPosition < 0 || targetPosition >= this._size) {
       return false;
     }
+    
     if (this._positionItems.has(targetPosition)) {
       return false;
     }
+    
     this._itemPositions.set(item, targetPosition);
     this._positionItems.set(targetPosition, item);
     this.onSlotChanged(targetPosition, item);
@@ -86,15 +97,25 @@ export default class ItemInventory {
   }
 
   public adjustItemQuantity(position: number, quantity: number): boolean {
+    if (position < 0 || position >= this._size) {
+      return false;
+    }
+    
     const item = this._positionItems.get(position);
     if (!item || !item.stackable) {
       return false;
     }
+    
     const newQuantity = item.quantity + quantity;
     if (newQuantity <= 0) {
       this.removeItem(position);
       return true;
     }
+    
+    if (newQuantity > 999999) {
+      return false;
+    }
+    
     item.adjustQuantity(quantity);
     this.onSlotChanged(position, item);
     return true;
@@ -163,6 +184,16 @@ export default class ItemInventory {
     let quantity = 0;
     for (const item of this.getItemsByClass(itemClass)) {
       quantity += item.quantity;
+    }
+    return quantity;
+  }
+
+  public getItemQuantityById(itemId: string): number {
+    let quantity = 0;
+    for (const item of this._positionItems.values()) {
+      if (item.id === itemId) {
+        quantity += item.quantity;
+      }
     }
     return quantity;
   }
@@ -238,20 +269,30 @@ export default class ItemInventory {
     }
   }
 
-  public syncUI(player: Player): void {
+  public async syncUI(player: Player): Promise<void> {
     for (const [ position, item ] of this._positionItems) {
-      this.syncUIUpdate(player, position, item);
+      await this.syncUIUpdate(player, position, item);
     }
   }
 
-  public syncUIUpdate(player: Player, position: number, item: BaseItem | null): void {
+  public async syncUIUpdate(player: Player, position: number, item: BaseItem | null): Promise<void> {
     const type = `${this._tag}Update`;
     if (item) {
-      player.ui.sendData(ItemUIDataHelper.getUIData(item, {
+      // Get rarity color from BaseItem (cached)
+      const rarityColor = await this._getRarityColor(item.rarity);
+      
+      player.ui.sendData({
         position,
-        quantity: item.quantity,
         type,
-      }));
+        itemId: item.id,
+        name: item.name,
+        description: item.description,
+        iconImageUri: item.iconImageUri,
+        quantity: item.quantity,
+        stackable: item.stackable,
+        rarity: item.rarity,
+        rarityColor: rarityColor
+      });
     } else {
       player.ui.sendData({
         position,
@@ -261,7 +302,7 @@ export default class ItemInventory {
     }
   }
   
-  protected onSlotChanged(position: number, item: BaseItem | null): void {
+  protected async onSlotChanged(position: number, item: BaseItem | null): Promise<void> {
     // Default implementation does nothing - subclasses can override
   }
 
@@ -275,7 +316,7 @@ export default class ItemInventory {
       if (item.stackable) {
         serializedItem.quantity = item.quantity;
       }
-      if (BaseWeaponItem.isWeaponItem(item) && 'persistedAmmo' in item) {
+      if ('persistedAmmo' in item && typeof (item as any).persistedAmmo === 'number') {
         const weaponItem = item as any;
         if (weaponItem.persistedAmmo !== undefined) {
           serializedItem.ammo = weaponItem.persistedAmmo;
@@ -286,28 +327,93 @@ export default class ItemInventory {
     return { items };
   }
 
-  public loadFromSerializedData(serializedItemInventoryData: SerializedItemInventoryData): boolean {
+  public async loadFromSerializedData(serializedItemInventoryData: SerializedItemInventoryData): Promise<boolean> {
     try {
       const { items } = serializedItemInventoryData;
+      
+      if (!Array.isArray(items)) {
+        return false;
+      }
+      
       this._itemPositions.clear();
       this._positionItems.clear();
+      
       for (const itemData of items) {
-        const ItemClass = ItemRegistry.getItemClass(itemData.itemId);
-        if (!ItemClass) continue;
+        if (!this._validateItemData(itemData)) {
+          continue;
+        }
+        
+        const { ItemFactory } = await import('../items/ItemFactory');
+        const item = ItemFactory.getInstance().createItem(itemData.itemId, { quantity: itemData.quantity });
+        if (!item) continue;
+        
         if (itemData.position < 0 || itemData.position >= this._size) continue;
         if (this._positionItems.has(itemData.position)) continue;
-        const item = ItemClass.create({ quantity: itemData.quantity });
-        if (itemData.ammo !== undefined && BaseWeaponItem.isWeaponItem(item) && 'setPersistedAmmo' in item) {
+        
+        if (itemData.quantity !== undefined && (itemData.quantity <= 0 || itemData.quantity > 999999)) {
+          continue;
+        }
+        
+        if (itemData.ammo !== undefined && 'setPersistedAmmo' in item && typeof (item as any).setPersistedAmmo === 'function') {
           const weaponItem = item as any;
           weaponItem.setPersistedAmmo(itemData.ammo);
         }
+        
         this._itemPositions.set(item, itemData.position);
         this._positionItems.set(itemData.position, item);
       }
+      
+      if (!this.verifyInventoryIntegrity()) {
+        return false;
+      }
+      
       return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // Validate item data during deserialization
+  private _validateItemData(itemData: SerializedItem): boolean {
+    try {
+      const { ItemFactory } = require('../items/ItemFactory');
+      if (!ItemFactory.getInstance().isValidItemId(itemData.itemId)) {
+        return false;
+      }
     } catch {
       return false;
     }
+    
+    if (itemData.position < 0 || itemData.position >= this._size) {
+      return false;
+    }
+    
+    if (itemData.quantity !== undefined) {
+      if (itemData.quantity <= 0 || itemData.quantity > 999999) {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+
+  // Verify inventory integrity
+  public verifyInventoryIntegrity(): boolean {
+    const itemIds = new Set<string>();
+    for (const item of this._positionItems.values()) {
+      if (itemIds.has(item.id)) {
+        return false;
+      }
+      itemIds.add(item.id);
+    }
+    
+    for (const [position, item] of this._positionItems) {
+      if (position < 0 || position >= this._size) {
+        return false;
+      }
+    }
+    
+    return true;
   }
 
   private _findEmptyPosition(): number {
@@ -317,5 +423,39 @@ export default class ItemInventory {
       }
     }
     return -1;
+  }
+
+  // Serialize inventory for UI with rarity colors
+  public async serializeForUI(): Promise<Array<Record<string, unknown>>> {
+    const out: Array<Record<string, unknown>> = [];
+    for (let i = 0; i < this._size; i++) {
+      const item = this._positionItems.get(i) as BaseItem | null;
+      if (!item) continue;
+      
+      // Get rarity color from BaseItem (cached)
+      const rarityColor = await this._getRarityColor(item.rarity);
+      
+      out.push({
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        iconImageUri: item.iconImageUri,
+        quantity: item.quantity,
+        position: i,
+        stackable: item.stackable,
+        rarity: item.rarity,
+        rarityColor: rarityColor
+      });
+    }
+    return out;
+  }
+
+  private async _getRarityColor(rarity: string): Promise<string> {
+    // Cache the rarity colors to avoid repeated dynamic imports
+    if (!this._cachedRarityColors) {
+      const { RARITY_RGB_COLORS } = await import('../items/BaseItem');
+      this._cachedRarityColors = RARITY_RGB_COLORS;
+    }
+    return this._cachedRarityColors[rarity];
   }
 } 

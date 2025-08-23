@@ -1,6 +1,7 @@
 import { WeaponRegistry } from './data/WeaponRegistry';
 import { WEAPON_DEFINITIONS } from './data/WeaponDefinitions';
-import WeaponItem, { WeaponItemOverrides } from './items/WeaponItem';
+import WeaponItem from './items/WeaponItem';
+import type { WeaponItemOverrides } from './items/WeaponItem';
 import type { WeaponData } from './data/WeaponData';
 import type { WeaponCategory, WeaponRarity } from './data/WeaponData';
 
@@ -67,6 +68,10 @@ export class WeaponFactory {
     }
     
     const randomWeapon = weapons[Math.floor(Math.random() * weapons.length)];
+    if (!randomWeapon) {
+      throw new Error(`No weapons available in rarity '${rarity}'`);
+    }
+    
     return new WeaponItem(randomWeapon, overrides);
   }
 

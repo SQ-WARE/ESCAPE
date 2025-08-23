@@ -13,8 +13,8 @@ export default class Backpack extends ItemInventory {
     this._owner = owner;
   }
 
-  protected override onSlotChanged(position: number, item: BaseItem | null): void {
-    this.syncUIUpdate(this._owner.player, position, item);
+  protected override async onSlotChanged(position: number, item: BaseItem | null): Promise<void> {
+    await this.syncUIUpdate(this._owner.player, position, item);
     this._owner.save(); // Auto-save when backpack changes
   }
 } 

@@ -13,6 +13,8 @@ export interface WeaponStats {
   stability: number;      // 0-100
 }
 
+
+
 export interface WeaponAssets {
   models: {
     held: string;
@@ -37,6 +39,7 @@ export interface WeaponAssets {
       rotation: QuaternionLike;
     };
   };
+
 }
 
 export interface WeaponBehavior {
@@ -69,9 +72,6 @@ export interface WeaponData {
   
   // Behavior configuration
   behavior: WeaponBehavior;
-  
-  // Economy
-  price: number;
 }
 
 export enum WeaponCategory {
@@ -85,13 +85,8 @@ export enum WeaponCategory {
 
 
 
-export enum WeaponRarity {
-  COMMON = 'common',
-  UNUSUAL = 'unusual',
-  RARE = 'rare',
-  EPIC = 'epic',
-  LEGENDARY = 'legendary',
-}
+// Use ItemRarity type instead of separate enum
+export type WeaponRarity = 'common' | 'unusual' | 'rare' | 'epic' | 'legendary';
 
 export enum FireMode {
   SINGLE = 'single',
@@ -99,6 +94,6 @@ export enum FireMode {
   AUTO = 'auto',
 }
 
-export type AmmoType = 'pistol' | 'rifle' | 'shotgun' | 'sniper';
+export type AmmoType = 'pistol' | 'rifle' | 'shotgun' | 'sniper' | 'nato';
 
  

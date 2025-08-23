@@ -1,19 +1,13 @@
 import {
   startServer,
-  Audio,
   PlayerEvent,
   WorldManager,
 } from 'hytopia';
 
 import worldMap from './assets/map.json' with { type: 'json' };
-import GamePlayerEntity from './classes/GamePlayerEntity';
 import GamePlayer from './classes/GamePlayer';
 import { CommandManager } from './classes/commands/CommandManager';
-
-import GiveAllWeaponsCommand from './classes/commands/GiveAllWeaponsCommand';
-import CurrencyCommand from './classes/commands/CurrencyCommand';
-
-
+import GiveItemCommand from './classes/commands/GiveItemCommand';
 import { LightingSystem } from './classes/systems/LightingSystem.ts';
 import LootSystem from './classes/systems/LootSystem';
 import { CameraEffectsSystem } from './classes/systems/CameraEffectsSystem';
@@ -38,31 +32,30 @@ startServer(() => {
   SessionManager.instance.initialize();
   
   // Initialize party system
-  const partySystem = PartySystem.instance;
+  PartySystem.instance;
 
-  // Register all items
-  ItemRegistry.registerAllItems();
+  // Initialize item registry (automatically registers all items)
+  ItemRegistry.getInstance();
 
   lightingAlpha.initialize();
   lightingOmega.useNightPreset().initialize();
-
-  // Favor day lighting for ALPHA: default values already day-like
-  // Favor night lighting for OMEGA: tune intensities lower and ambient cooler
-  // Explicit skybox intensity tuning for omega can be driven by preset now
 
   const lootAlpha = new LootSystem(alphaWorld);
   const lootOmega = new LootSystem(omegaWorld);
   (alphaWorld as any).lootSystem = lootAlpha;
   (omegaWorld as any).lootSystem = lootOmega;
-  // Define spawn areas; can be the same for both for now
+  
+  // Define spawn areas
   lootAlpha.addSpawnArea({ x: 0, y: 20, z: 0 }, 40);
   lootAlpha.addSpawnArea({ x: 60, y: 20, z: -30 }, 30);
   lootOmega.addSpawnArea({ x: 0, y: 20, z: 0 }, 40);
   lootOmega.addSpawnArea({ x: 60, y: 20, z: -30 }, 30);
+  
   WorldManager.instance.setDefaultWorld(alphaWorld);
   alphaWorld.loadMap(worldMap);
   omegaWorld.loadMap(worldMap);
-  // Spawn a few crates
+  
+  // Spawn crates
   lootAlpha.spawnCrates(8);
   lootOmega.spawnCrates(8);
 
@@ -72,13 +65,10 @@ startServer(() => {
   SessionManager.instance.setSessionWorld('omega', omegaWorld);
 
   CommandManager.instance.registerCommands([
-    new GiveAllWeaponsCommand(),
-    new CurrencyCommand(),
+    new GiveItemCommand(),
   ]);
   CommandManager.instance.setupCommandHandlers(alphaWorld);
   CommandManager.instance.setupCommandHandlers(omegaWorld);
-
-
 
   const onJoined = ({ player }: { player: any }) => {
     const gamePlayer = GamePlayer.getOrCreate(player);
@@ -101,8 +91,6 @@ startServer(() => {
       gamePlayer.loadMenu();
     }
     cameraEffectsSystem.setupPlayerCamera(player);
-    
-
   };
   alphaWorld.on(PlayerEvent.JOINED_WORLD, onJoined);
   omegaWorld.on(PlayerEvent.JOINED_WORLD, onJoined);
@@ -119,15 +107,4 @@ startServer(() => {
   };
   alphaWorld.on(PlayerEvent.LEFT_WORLD, onLeft);
   omegaWorld.on(PlayerEvent.LEFT_WORLD, onLeft);
-
-  new Audio({
-    uri: 'audio/music/hytopia-main-theme.mp3',
-    loop: true,
-    volume: 0.06,
-  }).play(alphaWorld);
-  new Audio({
-    uri: 'audio/music/hytopia-main-theme.mp3',
-    loop: true,
-    volume: 0.06,
-  }).play(omegaWorld);
 });

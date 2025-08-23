@@ -30,7 +30,6 @@ export class CommandManager {
         try {
           command.execute(player, args, world);
         } catch (error) {
-          console.error(`Error executing command ${name}:`, error);
           world.chatManager.sendPlayerMessage(player, 'An error occurred while executing the command.', 'FF0000');
         }
       });

@@ -83,7 +83,7 @@ export default class WeaponEffectsSystem {
         } catch {}
       }
     } catch (error) {
-      console.warn('Failed to create shot visual effects:', error);
+      // Failed to create shot visual effects
     }
   }
 
@@ -91,9 +91,21 @@ export default class WeaponEffectsSystem {
     if (!parent || !parent.world) return;
     
     try {
-      // Apply recoil system
+      // Apply recoil system with enhanced movement-based modifiers
       const weaponRecoil = this._weaponData.stats.recoil;
-      parent.recoilSystem.applyRecoil(weaponRecoil, true);
+      let recoilModifier = parent.weaponSystem?.getWeaponRecoilModifier(parent.gamePlayer.getCurrentWeapon()) || 1.0;
+      
+      // Additional recoil reduction for running scenarios
+      const isRunning = parent.movementSystem?.isSprinting() || false;
+      
+      if (isRunning) {
+        // Moderate recoil reduction when running
+        recoilModifier *= 0.8; // Additional 20% reduction
+      }
+      
+      const modifiedRecoil = weaponRecoil * recoilModifier;
+      
+      parent.recoilSystem.applyRecoil(modifiedRecoil, true);
       
       // Apply subtle camera bounce
       this._applySubtleCameraBounce(parent);
@@ -102,7 +114,7 @@ export default class WeaponEffectsSystem {
       this._applyKnockback(parent);
 
     } catch (error) {
-      console.warn('Failed to apply weapon recoil:', error);
+      // Failed to apply weapon recoil
     }
   }
 
@@ -114,7 +126,15 @@ export default class WeaponEffectsSystem {
       const damage = stats.damage ?? 20;
       
       // Very subtle bounce calculation
-      const bounceAmount = 0.02 + (recoil * 0.0001) + (damage * 0.00005);
+      let bounceAmount = 0.02 + (recoil * 0.0001) + (damage * 0.00005);
+      
+      // Reduce bounce based on movement state
+      const isRunning = parent.movementSystem?.isSprinting() || false;
+      
+      if (isRunning) {
+        // Further reduce bounce when running
+        bounceAmount *= 0.6; // Additional 40% reduction when running
+      }
       
       // Apply immediate upward camera bounce
       const currentOffset = parent.player.camera.offset;
@@ -131,19 +151,27 @@ export default class WeaponEffectsSystem {
         try {
           parent.player.camera.setOffset(currentOffset);
         } catch (error) {
-          console.warn('Failed to reset camera bounce:', error);
+          // Failed to reset camera bounce
         }
       }, 50); // 50ms bounce recovery
       
     } catch (error) {
-      console.warn('Failed to apply camera bounce:', error);
+      // Failed to apply camera bounce
     }
   }
 
   private _applyKnockback(parent: GamePlayerEntity): void {
     try {
       // Calculate knockback force
-      const knockbackForce = this._calculateRecoilForce();
+      let knockbackForce = this._calculateRecoilForce();
+      
+      // Reduce knockback based on movement state
+      const isRunning = parent.movementSystem?.isSprinting() || false;
+      
+      if (isRunning) {
+        // Further reduce knockback when running
+        knockbackForce *= 0.7; // Additional 30% reduction when running
+      }
       
       // Get player's facing direction for knockback direction
       const direction = parent.player.camera.facingDirection;
@@ -159,7 +187,7 @@ export default class WeaponEffectsSystem {
       parent.applyImpulse(impulse);
       
     } catch (error) {
-      console.warn('Failed to apply knockback:', error);
+      // Failed to apply knockback
     }
   }
 

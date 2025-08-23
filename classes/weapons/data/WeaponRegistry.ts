@@ -16,14 +16,32 @@ export class WeaponRegistry {
   
   static getByCategory(category: WeaponCategory): WeaponData[] {
     const ids = this._categories.get(category);
-    return ids ? Array.from(ids).map(id => this._weapons.get(id)!) : [];
+    if (!ids) return [];
+    
+    const weapons: WeaponData[] = [];
+    for (const id of ids) {
+      const weapon = this._weapons.get(id);
+      if (weapon) {
+        weapons.push(weapon);
+      }
+    }
+    return weapons;
   }
   
 
   
   static getByRarity(rarity: WeaponRarity): WeaponData[] {
     const ids = this._rarities.get(rarity);
-    return ids ? Array.from(ids).map(id => this._weapons.get(id)!) : [];
+    if (!ids) return [];
+    
+    const weapons: WeaponData[] = [];
+    for (const id of ids) {
+      const weapon = this._weapons.get(id);
+      if (weapon) {
+        weapons.push(weapon);
+      }
+    }
+    return weapons;
   }
   
   static getAll(): WeaponData[] {
@@ -42,6 +60,7 @@ export class WeaponRegistry {
     const ids = this.getAllIds();
     if (ids.length === 0) return undefined;
     const randomId = ids[Math.floor(Math.random() * ids.length)];
+    if (!randomId) return undefined;
     return this._weapons.get(randomId);
   }
   

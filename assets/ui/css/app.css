@@ -1,7 +1,7 @@
-/* Combined UI stylesheet: credits, tooltips, smoke effects, title, menu (imports removed), stash, game, theme-glass */
+/* Combined UI stylesheet: credits, tooltips, smoke effects, title, menu (imports removed), game, theme-glass */
 
 /* === Variables & Base Resets === */
-:root { --glass-bg: rgba(20, 20, 25, 0.26); --glass-bg-strong: rgba(30, 30, 38, 0.36); --glass-border: rgba(255, 255, 255, 0.16); --glass-border-strong: rgba(255, 255, 255, 0.22); --glass-shadow: 0 10px 36px rgba(0, 0, 0, 0.38); --glass-radius: 12px; --glass-radius-lg: 20px; --glass-blur: 20px; --glass-saturate: 1.22; --accent: #ff7a59; --accent-strong: #ff5a2b; --brand-cyan: #1ec8ff; --brand-deep: #0b1d2d; --brand-panel: rgba(16, 18, 24, 0.82);
+:root { --glass-bg: rgba(20, 20, 25, 0.26); --glass-bg-strong: rgba(30, 30, 38, 0.36); --glass-border: rgba(255, 255, 255, 0.16); --glass-border-strong: rgba(255, 255, 255, 0.22); --glass-shadow: 0 10px 36px rgba(0, 0, 0, 0.38); --glass-radius: 12px; --glass-radius-lg: 20px; --glass-blur: 8px; --glass-saturate: 1.22; --accent: #ff7a59; --accent-strong: #ff5a2b; --brand-cyan: #1ec8ff; --brand-deep: #0b1d2d; --brand-panel: rgba(16, 18, 24, 0.82);
   /* Gridline composite backgrounds */
   --grid-bg-neutral: radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,0.03), transparent 70%),
                      repeating-linear-gradient(0deg, rgba(255,255,255,0.05), rgba(255,255,255,0.05) 2px, transparent 2px, transparent 6px),
@@ -31,6 +31,20 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
 }
 .screen-fader.hidden { opacity: 0; }
 
+/* Page transition overlays */
+.market-overlay,
+.progression-overlay,
+.stash-overlay {
+  opacity: 1;
+  transition: opacity 350ms ease-in-out;
+}
+
+.market-overlay.fade-out,
+.progression-overlay.fade-out,
+.stash-overlay.fade-out {
+  opacity: 0;
+}
+
 /* === Utility: Credits watermark === */
 .credits {
   position: fixed;
@@ -48,10 +62,7 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
 
 
 /* ==== tooltips.css ==== */
-/* ===== TOOLTIPS FOR STASH OVERLAY ===== */
-/* consolidated below in a single tooltip section */
-
-/* moved tooltip content rules to single scoped section below */
+/* Tooltip styles moved to assets/ui/css/stash.css */
 
 /* ==== smoke-effects.css ==== */
 /* ===== SMOKE EFFECTS ===== */
@@ -220,134 +231,101 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
 
 /* Stash overlay, slot grids, drag ghost, and drop-targets included in stash/menu css above */
 
-/* === Stash overlay & grids === */
-.stash-overlay { position: fixed; inset: 0; display: none; justify-content: center; align-items: center; z-index: 100000; background: rgba(0,0,0,0.35); backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); }
-.stash-container { padding: clamp(12px, 2vw, 40px); max-width: min(1200px, 92vw); max-height: 90vh; overflow: visible; }
-.stash-content { display: flex; gap: clamp(16px, 3vw, 48px); align-items: flex-start; background: rgba(20, 20, 26, 0.26); border: 1.5px solid rgba(255, 255, 255, 0.18); box-shadow: 0 14px 50px rgba(0, 0, 0, 0.45); backdrop-filter: blur(26px) saturate(1.25); -webkit-backdrop-filter: blur(26px) saturate(1.25); border-radius: 20px; padding: 16px 12px 12px 16px; }
-.stash-overlay { --slot-size: clamp(36px, 4.6vw, 56px); --slot-gap: 4px; }
-.stash-overlay .backpack-grid, .stash-overlay .hotbar-grid, .stash-grid { --slot-gap: var(--slot-gap); display: grid; grid-template-columns: repeat(9, var(--slot-size)); gap: var(--slot-gap); padding: var(--slot-gap); border-radius: 14px; background: radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,0.02), transparent 70%), repeating-linear-gradient(0deg, rgba(255,255,255,0.02), rgba(255,255,255,0.02) 2px, transparent 2px, transparent 6px), linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), inset 0 1px 0 rgba(255,255,255,0.05); }
-.stash-overlay .backpack-slot, .stash-overlay .hotbar-slot, .stash-slot { width: var(--slot-size); height: var(--slot-size); box-sizing: border-box; position: relative; display: grid; place-items: center; background:
-  radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,0.02), transparent 70%),
-  repeating-linear-gradient(0deg, rgba(255,255,255,0.04), rgba(255,255,255,0.04) 2px, transparent 2px, transparent 6px),
-  linear-gradient(180deg, rgba(70, 70, 76, 0.16), rgba(70, 70, 76, 0.08));
-  border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 1px 4px rgba(0,0,0,0.25); transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, border-color 0.12s ease; }
-/* Hover effect for slots (non-drag state). Drag-specific styles override these below. */
-.stash-overlay .stash-slot:hover, .stash-overlay .backpack-slot:hover, .stash-overlay .hotbar-slot:hover {
-  border-color: rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 0 10px rgba(0,0,0,0.18);
-  transform: scale(1.02);
-}
-.stash-overlay .backpack-slot img, .stash-overlay .hotbar-slot img, .stash-slot img { max-width: calc(var(--slot-size) - 10px); max-height: calc(var(--slot-size) - 10px); width: 100%; height: 100%; object-fit: contain; }
-.stash-overlay .backpack-slot .ammo-label, .stash-overlay .hotbar-slot .ammo-label, .stash-grid .stash-slot .ammo-label, .stash-overlay .backpack-slot .item-quantity, .stash-overlay .hotbar-slot .item-quantity, .stash-grid .stash-slot .item-quantity { position: absolute; top: 2px; right: 2px; z-index: 3; pointer-events: none; }
-@media (max-width: 980px) { .stash-container { max-width: 96vw; } .stash-overlay { --slot-size: clamp(34px, 6.4vw, 50px); } }
-.inventory-side, .stash-side { flex: 1; min-width: 0; }
-.inventory-side { flex: 0 0 auto; }
-.stash-side { flex: 1 1 auto; }
-.inventory-section { padding: 10px 12px 12px; border-radius: 12px; }
-.inventory-section .backpack-grid, .inventory-section .hotbar-grid, .stash-side .stash-grid { max-height: none; overflow: visible; }
-.inventory-section .backpack-grid, .inventory-section .hotbar-grid, .stash-side .stash-grid { width: calc(9 * var(--slot-size) + 10 * var(--slot-gap)); }
-.section-title { margin: 0 0 8px 0; font-weight: 800; font-size: 14px; letter-spacing: 1px; }
-/* Stash drag ghost */
-.stash-overlay .drag-ghost { width: var(--slot-size); height: var(--slot-size); display: grid; place-items: center; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
-.stash-overlay .drag-ghost img { max-width: calc(var(--slot-size) - 14px); max-height: calc(var(--slot-size) - 14px); }
-/* Green highlight for all empty slots while dragging */
-.stash-overlay .stash-slot.drop-target, .stash-overlay .backpack-slot.drop-target, .stash-overlay .hotbar-slot.drop-target { border-color: #4caf50; background: rgba(76, 175, 80, 0.16); box-shadow: 0 0 20px rgba(76, 175, 80, 0.45), inset 0 0 8px rgba(76,175,80,0.12); transform: scale(1.03); transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease; }
-/* Hover candidate for stash page */
-.stash-overlay .stash-slot.drop-hover, .stash-overlay .backpack-slot.drop-hover, .stash-overlay .hotbar-slot.drop-hover {
-  border-color: #66bb6a;
-  background: rgba(102, 187, 106, 0.22);
-  box-shadow: 0 0 18px rgba(102, 187, 106, 0.45), inset 0 0 6px rgba(102,187,106,0.16);
-  transform: scale(1.02);
+/* Stash overlay - basic overlay styles only */
+.stash-overlay { 
+  position: fixed; 
+  inset: 0; 
+  display: none; 
+  justify-content: center; 
+  align-items: center; 
+  z-index: 100000; 
+  background: rgba(0,0,0,0.25); 
+  backdrop-filter: blur(8px); 
+  -webkit-backdrop-filter: blur(8px); 
 }
 
-/* === Item Rarity Stained Glass Effects === */
-.stash-overlay .stash-slot.rarity-common, .stash-overlay .backpack-slot.rarity-common, .stash-overlay .hotbar-slot.rarity-common {
-  border-color: rgba(180, 180, 180, 0.15);
-  background: linear-gradient(135deg, rgba(180, 180, 180, 0.06) 0%, rgba(150, 150, 150, 0.04) 50%, rgba(200, 200, 200, 0.05) 100%);
-  box-shadow: 0 0 4px rgba(180, 180, 180, 0.10), inset 0 0 2px rgba(180, 180, 180, 0.05);
-}
-
-.stash-overlay .stash-slot.rarity-unusual, .stash-overlay .backpack-slot.rarity-unusual, .stash-overlay .hotbar-slot.rarity-unusual {
-  border-color: rgba(100, 200, 100, 0.20);
-  background: linear-gradient(135deg, rgba(100, 200, 100, 0.08) 0%, rgba(80, 180, 80, 0.06) 50%, rgba(120, 220, 120, 0.07) 100%);
-  box-shadow: 0 0 6px rgba(100, 200, 100, 0.15), inset 0 0 3px rgba(100, 200, 100, 0.08);
-}
-
-.stash-overlay .stash-slot.rarity-rare, .stash-overlay .backpack-slot.rarity-rare, .stash-overlay .hotbar-slot.rarity-rare {
-  border-color: rgba(64, 156, 255, 0.25);
-  background: linear-gradient(135deg, rgba(64, 156, 255, 0.10) 0%, rgba(48, 140, 240, 0.07) 50%, rgba(80, 172, 255, 0.09) 100%);
-  box-shadow: 0 0 8px rgba(64, 156, 255, 0.20), inset 0 0 4px rgba(64, 156, 255, 0.10);
-}
-
-.stash-overlay .stash-slot.rarity-epic, .stash-overlay .backpack-slot.rarity-epic, .stash-overlay .hotbar-slot.rarity-epic {
-  border-color: rgba(147, 51, 234, 0.30);
-  background: linear-gradient(135deg, rgba(147, 51, 234, 0.12) 0%, rgba(126, 34, 206, 0.08) 50%, rgba(168, 85, 247, 0.10) 100%);
-  box-shadow: 0 0 10px rgba(147, 51, 234, 0.25), inset 0 0 5px rgba(147, 51, 234, 0.12);
-}
-
-.stash-overlay .stash-slot.rarity-legendary, .stash-overlay .backpack-slot.rarity-legendary, .stash-overlay .hotbar-slot.rarity-legendary {
-  border-color: rgba(245, 158, 11, 0.35);
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.14) 0%, rgba(217, 119, 6, 0.10) 50%, rgba(251, 191, 36, 0.12) 100%);
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.30), inset 0 0 6px rgba(245, 158, 11, 0.15);
-}
-
-.stash-overlay .stash-slot.rarity-utopian, .stash-overlay .backpack-slot.rarity-utopian, .stash-overlay .hotbar-slot.rarity-utopian {
-  border-color: rgba(239, 68, 68, 0.40);
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.16) 0%, rgba(220, 38, 38, 0.12) 50%, rgba(248, 113, 113, 0.14) 100%);
-  box-shadow: 0 0 14px rgba(239, 68, 68, 0.35), inset 0 0 7px rgba(239, 68, 68, 0.18);
-}
-
-/* Hover effects for rarity slots */
-.stash-overlay .stash-slot.rarity-common:hover, .stash-overlay .backpack-slot.rarity-common:hover, .stash-overlay .hotbar-slot.rarity-common:hover {
-  border-color: rgba(180, 180, 180, 0.25);
-  background: linear-gradient(135deg, rgba(180, 180, 180, 0.12) 0%, rgba(150, 150, 150, 0.08) 50%, rgba(200, 200, 200, 0.10) 100%);
-  box-shadow: 0 0 6px rgba(180, 180, 180, 0.18), inset 0 0 3px rgba(180, 180, 180, 0.08);
-}
-
-.stash-overlay .stash-slot.rarity-unusual:hover, .stash-overlay .backpack-slot.rarity-unusual:hover, .stash-overlay .hotbar-slot.rarity-unusual:hover {
-  border-color: rgba(100, 200, 100, 0.30);
-  background: linear-gradient(135deg, rgba(100, 200, 100, 0.12) 0%, rgba(80, 180, 80, 0.08) 50%, rgba(120, 220, 120, 0.10) 100%);
-  box-shadow: 0 0 8px rgba(100, 200, 100, 0.20), inset 0 0 4px rgba(100, 200, 100, 0.10);
-}
-
-.stash-overlay .stash-slot.rarity-rare:hover, .stash-overlay .backpack-slot.rarity-rare:hover, .stash-overlay .hotbar-slot.rarity-rare:hover {
-  border-color: rgba(64, 156, 255, 0.35);
-  background: linear-gradient(135deg, rgba(64, 156, 255, 0.14) 0%, rgba(48, 140, 240, 0.10) 50%, rgba(80, 172, 255, 0.12) 100%);
-  box-shadow: 0 0 10px rgba(64, 156, 255, 0.25), inset 0 0 5px rgba(64, 156, 255, 0.12);
-}
-
-.stash-overlay .stash-slot.rarity-epic:hover, .stash-overlay .backpack-slot.rarity-epic:hover, .stash-overlay .hotbar-slot.rarity-epic:hover {
-  border-color: rgba(147, 51, 234, 0.40);
-  background: linear-gradient(135deg, rgba(147, 51, 234, 0.16) 0%, rgba(126, 34, 206, 0.12) 50%, rgba(168, 85, 247, 0.14) 100%);
-  box-shadow: 0 0 12px rgba(147, 51, 234, 0.30), inset 0 0 6px rgba(147, 51, 234, 0.15);
-}
-
-.stash-overlay .stash-slot.rarity-legendary:hover, .stash-overlay .backpack-slot.rarity-legendary:hover, .stash-overlay .hotbar-slot.rarity-legendary:hover {
-  border-color: rgba(245, 158, 11, 0.45);
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(217, 119, 6, 0.13) 50%, rgba(251, 191, 36, 0.15) 100%);
-  box-shadow: 0 0 14px rgba(245, 158, 11, 0.35), inset 0 0 7px rgba(245, 158, 11, 0.18);
-}
-
-.stash-overlay .stash-slot.rarity-utopian:hover, .stash-overlay .backpack-slot.rarity-utopian:hover, .stash-overlay .hotbar-slot.rarity-utopian:hover {
-  border-color: rgba(239, 68, 68, 0.50);
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.20) 0%, rgba(220, 38, 38, 0.15) 50%, rgba(248, 113, 113, 0.17) 100%);
-  box-shadow: 0 0 16px rgba(239, 68, 68, 0.40), inset 0 0 8px rgba(239, 68, 68, 0.20);
-}
+/* Stash rarity effects moved to assets/ui/css/stash.css */
 
 /* === Game UI (HUD, effects, overlays) === */
 /* Crosshair */
-.crosshair { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 1000; transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); width: 16px; height: 16px; }
-.crosshair-dot { width: 2px; height: 2px; background: #ffffff; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 4px rgba(255, 255, 255, 0.8); transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
-.crosshair.recoiling .crosshair-dot { background: #ff4444; box-shadow: 0 0 8px rgba(255, 68, 68, 0.9), 0 0 16px rgba(255, 68, 68, 0.6); }
-.crosshair.recoiling .crosshair-line { background: #ff6666; box-shadow: 0 0 6px rgba(255, 102, 102, 0.8), 0 0 12px rgba(255, 102, 102, 0.5); }
-.crosshair-line { position: absolute; background: #ffffff; box-shadow: 0 0 4px rgba(255, 255, 255, 0.8); transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
-.crosshair-line-top, .crosshair-line-bottom { width: 2px; height: 8px; top: 50%; left: 50%; transform: translate(-50%, -50%); }
-.crosshair-line-top { transform: translate(-50%, -50%) translateY(-8px); }
-.crosshair-line-bottom { transform: translate(-50%, -50%) translateY(8px); }
-.crosshair-line-left, .crosshair-line-right { width: 8px; height: 2px; top: 50%; left: 50%; transform: translate(-50%, -50%); }
-.crosshair-line-left { transform: translate(-50%, -50%) translateX(-8px); }
-.crosshair-line-right { transform: translate(-50%, -50%) translateX(8px); }
+.crosshair { 
+  position: fixed; 
+  top: 50%; 
+  left: 50%; 
+  transform: translate(-50%, -50%); 
+  pointer-events: none; 
+  z-index: 1000; 
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
+  width: 16px; 
+  height: 16px; 
+}
+
+.crosshair-dot { 
+  width: 2px; 
+  height: 2px; 
+  background: #ffffff; 
+  position: absolute; 
+  top: 50%; 
+  left: 50%; 
+  transform: translate(-50%, -50%); 
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.8); 
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
+  border-radius: 0; /* Sharp edges */
+  outline: 1px solid #000000; /* Thin black outline */
+  outline-offset: 0px;
+}
+
+.crosshair.recoiling .crosshair-dot { 
+  background: #ff4444; 
+  box-shadow: 0 0 8px rgba(255, 68, 68, 0.9), 0 0 16px rgba(255, 68, 68, 0.6); 
+}
+
+.crosshair.recoiling .crosshair-line { 
+  background: #ff6666; 
+  box-shadow: 0 0 6px rgba(255, 102, 102, 0.8), 0 0 12px rgba(255, 102, 102, 0.5); 
+}
+
+.crosshair-line { 
+  position: absolute; 
+  background: #ffffff; 
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.8); 
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
+  border-radius: 0; /* Sharp edges */
+  outline: 1px solid #000000; /* Thin black outline */
+  outline-offset: 0px;
+}
+
+.crosshair-line-top, .crosshair-line-bottom { 
+  width: 2px; 
+  height: 8px; 
+  top: 50%; 
+  left: 50%; 
+  transform: translate(-50%, -50%); 
+}
+
+.crosshair-line-top { 
+  transform: translate(-50%, -50%) translateY(-8px); 
+}
+
+.crosshair-line-bottom { 
+  transform: translate(-50%, -50%) translateY(8px); 
+}
+
+.crosshair-line-left, .crosshair-line-right { 
+  width: 8px; 
+  height: 2px; 
+  top: 50%; 
+  left: 50%; 
+  transform: translate(-50%, -50%); 
+}
+
+.crosshair-line-left { 
+  transform: translate(-50%, -50%) translateX(-8px); 
+}
+
+.crosshair-line-right { 
+  transform: translate(-50%, -50%) translateX(8px); 
+}
 /* Hitmarker Effects */
 .crosshair.hitmarker-hit { animation: hitmarkerHit 0.2s ease-out; }
 .crosshair.hitmarker-kill { animation: hitmarkerKill 0.3s ease-out; }
@@ -356,19 +334,23 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
 .crosshair.hitmarker-hit .crosshair-dot, .crosshair.hitmarker-hit .crosshair-line { background: #ffffff; box-shadow: 0 0 12px rgba(255, 255, 255, 1), 0 0 24px rgba(255, 255, 255, 0.8); }
 .crosshair.hitmarker-kill .crosshair-dot, .crosshair.hitmarker-kill .crosshair-line { background: #ff4444; box-shadow: 0 0 16px rgba(255, 68, 68, 1), 0 0 32px rgba(255, 68, 68, 0.8); }
 /* Crosshair States */
-.crosshair.can-fire .crosshair-dot, .crosshair.can-fire .crosshair-line { background-color: #ffffff; box-shadow: 0 0 4px rgba(255, 255, 255, 0.6); }
-.crosshair.cannot-fire .crosshair-dot, .crosshair.cannot-fire .crosshair-line { background-color: #ff4444; box-shadow: 0 0 4px rgba(255, 68, 68, 0.6); }
+.crosshair.can-fire .crosshair-dot, .crosshair.can-fire .crosshair-line { 
+  background-color: #ffffff; 
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.6); 
+}
 
-/* Pistol Aiming State */
-.crosshair.aiming .crosshair-dot { 
-  background-color: #1ec8ff; 
-  box-shadow: 0 0 8px rgba(30, 200, 255, 0.8), 0 0 16px rgba(30, 200, 255, 0.4); 
-  transform: translate(-50%, -50%) scale(1.5);
+.crosshair.cannot-fire .crosshair-dot, .crosshair.cannot-fire .crosshair-line { 
+  background-color: #ff4444; 
+  box-shadow: 0 0 4px rgba(255, 68, 68, 0.6); 
 }
-.crosshair.aiming .crosshair-line { 
-  background-color: #1ec8ff; 
-  box-shadow: 0 0 6px rgba(30, 200, 255, 0.8), 0 0 12px rgba(30, 200, 255, 0.4); 
+
+/* Enemy hover state - red crosshair when hovering over enemies */
+.crosshair.enemy-hover .crosshair-dot, .crosshair.enemy-hover .crosshair-line { 
+  background-color: #ff4444; 
+  box-shadow: 0 0 6px rgba(255, 68, 68, 0.8), 0 0 12px rgba(255, 68, 68, 0.4); 
 }
+
+
 /* Reload UI */
 .reload-prompt { position: fixed; top: 55%; left: 50%; transform: translateX(-50%); color: #ff4444; font-size: 14px; font-weight: 600; pointer-events: none; z-index: 1000; text-shadow: 0 0 8px rgba(255, 68, 68, 0.8), 0 0 16px rgba(255, 68, 68, 0.6); }
 .reload-text { font-weight: 600; }
@@ -432,7 +414,19 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
 .sprint-warning { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); margin-top: -60px; color: #ff4444; font-family: 'Courier New', monospace; font-size: 14px; font-weight: bold; text-align: center; text-shadow: 0 0 4px rgba(255, 68, 68, 0.8), 0 0 8px rgba(255, 68, 68, 0.4); z-index: 1000; pointer-events: none; animation: sprintWarningPulse 1.5s ease-in-out infinite; }
 @keyframes sprintWarningPulse { 0%, 100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1);} 50% { opacity: 1; transform: translate(-50%, -50%) scale(1.05);} }
 /* Tactical Hotbar */
-.tactical-hotbar { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 3px; padding: 8px 10px; }
+.tactical-hotbar { 
+  position: fixed; 
+  bottom: 20px; 
+  left: 50%; 
+  transform: translateX(-50%); 
+  z-index: 1000; 
+  background: transparent; 
+  backdrop-filter: none; 
+  -webkit-backdrop-filter: none; 
+  border: 0; 
+  border-radius: 0; 
+  box-shadow: none; 
+}
 .hotbar-grid { display: grid; grid-template-columns: repeat(9, 44px); gap: 3px; padding: 4px; }
 .hotbar-slot { width: 44px; height: 44px; border-radius: 6px; display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; transition: all 0.2s ease; }
 .hotbar-slot:hover { transform: scale(1.02); }
@@ -443,21 +437,136 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
 .slot-number { position: absolute; bottom: -1px; right: -1px; background: rgba(15, 15, 20, 0.9); color: rgba(255, 255, 255, 0.8); font-size: 9px; padding: 1px 2px; border-radius: 3px; font-weight: 600; border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(4px); }
 /* Scope Overlay */
 .scope-overlay { position: fixed; top: 0; left: 0; pointer-events: none; width: 100%; height: 100%; z-index: 99; opacity: 0; transition: opacity 0.3s ease; background: radial-gradient(circle at center, transparent 0%, transparent 30%, rgba(0, 0, 0, 0.8) 35%, rgba(0, 0, 0, 0.9) 100%); }
+
+/* Tooltips */
+.item-tooltip {
+  position: fixed;
+  color: #ffffff;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  pointer-events: none;
+  z-index: 100003;
+  max-width: 250px;
+  white-space: normal;
+  display: none;
+  background: rgba(40, 40, 45, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+}
+
+.tooltip-header {
+  margin-bottom: 8px;
+}
+
+.tooltip-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: #ffffff;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.5px;
+}
+
+.tooltip-name.rarity-common { color: #b4b4b4; }
+.tooltip-name.rarity-unusual { color: #64c864; }
+.tooltip-name.rarity-rare { color: #409cff; }
+.tooltip-name.rarity-epic { color: #9333ea; }
+.tooltip-name.rarity-legendary { color: #f59e0b; }
+.tooltip-name.rarity-utopian { color: #ef4444; }
+
+.tooltip-description {
+  font-size: 11px;
+  color: #cccccc;
+  line-height: 1.4;
+  margin-bottom: 6px;
+  word-wrap: break-word;
+}
+
+.tooltip-quantity {
+  font-size: 11px;
+  color: #64b5f6;
+  font-weight: 600;
+  text-shadow: 0 0 4px rgba(100, 181, 246, 0.3);
+}
+
+.weapon-stats {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.weapon-description {
+  font-size: 10px;
+  color: #a0a0a0;
+  line-height: 1.3;
+  font-style: italic;
+  margin-bottom: 4px;
+}
+
+.bullet-type {
+  font-size: 9px;
+  color: #64b5f6;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  text-shadow: 0 0 4px rgba(100, 181, 246, 0.3);
+  margin-bottom: 6px;
+  padding: 2px 6px;
+  background: rgba(100, 181, 246, 0.1);
+  border-radius: 3px;
+  border: 1px solid rgba(100, 181, 246, 0.2);
+}
+
+.key-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.stat-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.stat-label {
+  font-size: 9px;
+  color: #888888;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.stat-value {
+  font-size: 11px;
+  color: #ffffff;
+  font-weight: 700;
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
+}
 .scope-overlay.active { opacity: 1; }
 .scope-reticle { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 200px; border: 2px solid rgba(255, 255, 255, 0.8); border-radius: 50%; box-shadow: 0 0 10px rgba(255, 255, 255, 0.3); }
 .scope-reticle::before, .scope-reticle::after { content: ''; position: absolute; background: rgba(255, 255, 255, 0.8); }
 .scope-reticle::before { top: 50%; left: 0; width: 100%; height: 1px; transform: translateY(-50%); }
 .scope-reticle::after { top: 0; left: 50%; width: 1px; height: 100%; transform: translateX(-50%); }
+
+
 /* Inventory Overlay */
-.inventory-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(20px); display: none; justify-content: center; align-items: center; z-index: 100000; transition: opacity 0.35s cubic-bezier(.4,1.4,.6,1), transform 0.35s cubic-bezier(.4,1.4,.6,1); opacity: 1; }
+.inventory-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.25); backdrop-filter: blur(8px); display: none; justify-content: center; align-items: center; z-index: 100000; transition: opacity 0.35s cubic-bezier(.4,1.4,.6,1), transform 0.35s cubic-bezier(.4,1.4,.6,1); opacity: 1; }
 .inventory-overlay[style*='display: none'] { opacity: 0; pointer-events: none; transform: scale(0.98); }
 .tactical-inventory { padding: 40px; max-width: 90vw; max-height: 90vh; overflow: hidden; position: relative; }
 .inventory-header { display: flex; justify-content: center; align-items: center; margin-bottom: 32px; padding-bottom: 18px; border-bottom: 2px solid rgba(255,255,255,0.22); position: relative; }
 .inventory-title { font-weight: 900; font-size: 24px; color: #ffffff; letter-spacing: 3px; font-family: 'Inter', sans-serif; text-shadow: 0 0 16px rgba(255, 255, 255, 0.4); text-transform: uppercase; text-align: center; }
-.close-btn { position: absolute; right: 0; top: 50%; transform: translateY(-50%); background: rgba(80, 80, 85, 0.8); backdrop-filter: blur(12px); border: 1.5px solid rgba(255, 255, 255, 0.15); color: #e0e0e0; font-size: 22px; cursor: pointer; padding: 10px 14px; transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease; font-family: 'Inter', sans-serif; border-radius: 14px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 16px rgba(0,0,0,0.3); }
+.close-btn { position: absolute; right: 0; top: 50%; transform: translateY(-50%); background: rgba(80, 80, 85, 0.8); backdrop-filter: blur(8px); border: 1.5px solid rgba(255, 255, 255, 0.15); color: #e0e0e0; font-size: 22px; cursor: pointer; padding: 10px 14px; transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease; font-family: 'Inter', sans-serif; border-radius: 14px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 16px rgba(0,0,0,0.3); }
 .close-btn:hover { background: rgba(100, 100, 105, 0.9); border-color: rgba(255, 255, 255, 0.25); color: #ff6b6b; box-shadow: 0 0 32px rgba(255, 107, 107, 0.4); }
 .inventory-grid-container { margin-bottom: 20px; }
-.backpack-grid { display: grid; grid-template-columns: repeat(9, 56px); gap: 4px; background: rgba(70, 70, 75, 0.6); backdrop-filter: blur(12px); padding: 4px; border-radius: 14px; border: 1.5px solid rgba(255, 255, 255, 0.1); box-shadow: 0 2px 12px rgba(0,0,0,0.2); }
+.backpack-grid { display: grid; grid-template-columns: repeat(9, 56px); gap: 4px; background: rgba(70, 70, 75, 0.6); backdrop-filter: blur(8px); padding: 4px; border-radius: 14px; border: 1.5px solid rgba(255, 255, 255, 0.1); box-shadow: 0 2px 12px rgba(0,0,0,0.2); }
 .hotbar-section { display: flex; flex-direction: column; gap: 24px; }
 .hotbar-label { font-weight: 800; font-size: 18px; color: #e0e0e0; letter-spacing: 2px; margin: 0 0 8px 0; font-family: 'Inter', sans-serif; text-shadow: 0 0 8px rgba(255, 255, 255, 0.3); text-transform: uppercase; border-bottom: 2px solid rgba(255,255,255,0.15); padding-bottom: 2px; }
 .inventory-hotbar-grid { display: grid; grid-template-columns: repeat(9, 56px); gap: 4px; padding: 4px; border-radius: 14px; }
@@ -486,31 +595,37 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
   box-shadow: 0 0 24px rgba(102, 187, 106, 0.55), inset 0 0 8px rgba(102, 187, 106, 0.18);
   transform: scale(1.09);
 }
-/* Quantity labels */
-.ammo-label { position: absolute; top: -2px; right: -2px; z-index: 3; pointer-events: none; min-width: 18px; text-align: center; }
-.item-quantity { position: absolute; bottom: -2px; right: -2px; background: rgba(0, 0, 0, 0.8); color: white; font-size: 10px; font-weight: bold; padding: 1px 4px; border-radius: 4px; z-index: 3; pointer-events: none; min-width: 14px; text-align: center; }
-/* Tooltips (base + content) */
-.tooltip-header { margin-bottom: 8px; }
-.tooltip-name { font-weight: 700; font-size: 14px; color: #ffffff; text-shadow: 0 0 8px rgba(255, 255, 255, 0.3); letter-spacing: 0.5px; }
-/* Rarity color helpers to avoid JS color logic duplication */
-.tooltip-name.rarity-common { color: #b4b4b4; }
-.tooltip-name.rarity-unusual { color: #64c864; }
-.tooltip-name.rarity-rare { color: #409cff; }
-.tooltip-name.rarity-epic { color: #9333ea; }
-.tooltip-name.rarity-legendary { color: #f59e0b; }
-.tooltip-name.rarity-utopian { color: #ef4444; }
-/* attr() for color is not widely supported; stash uses inline style for reliability */
-.tooltip-description { font-size: 11px; color: #cccccc; line-height: 1.4; margin-bottom: 6px; word-wrap: break-word; }
-.tooltip-quantity { font-size: 11px; color: #64b5f6; font-weight: 600; text-shadow: 0 0 4px rgba(100, 181, 246, 0.3); }
-.weapon-stats { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
-/* removed duplicate/overriding .weapon-info (tooltip uses .weapon-stats) */
-.weapon-description { font-size: 10px; color: #a0a0a0; line-height: 1.3; font-style: italic; margin-bottom: 4px; }
-.bullet-type { font-size: 9px; color: #64b5f6; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; text-shadow: 0 0 4px rgba(100, 181, 246, 0.3); margin-bottom: 6px; padding: 2px 6px; background: rgba(100, 181, 246, 0.1); border-radius: 3px; border: 1px solid rgba(100, 181, 246, 0.2); }
-.key-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
-.stat-group { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px; background: rgba(255, 255, 255, 0.05); border-radius: 4px; }
-.stat-label { font-size: 9px; color: #888888; font-weight: 600; letter-spacing: 0.2px; }
-.stat-value { font-size: 11px; color: #ffffff; font-weight: 700; text-shadow: 0 0 4px rgba(255, 255, 255, 0.3); }
-@keyframes tooltipFadeIn { from { opacity: 0; transform: translateY(-8px) scale(0.95);} to { opacity: 1; transform: translateY(0) scale(1);} }
+/* Item Quantity Labels */
+.ammo-label,
+.item-quantity {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 3;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.95);
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px 5px;
+  border-radius: 4px;
+  min-width: 16px;
+  text-align: center;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.ammo-label {
+  background: rgba(34, 197, 94, 0.95);
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.5);
+}
+/* Tooltip styles moved to assets/ui/css/stash.css */
 /* Item nameplate system */
 .item-nameplate-container { display: flex; flex-direction: column; align-items: center; position: relative; animation: itemFloat 3s ease-in-out infinite; }
 .item-nameplate-container::before { content: ''; position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%); width: 60px; height: 12px; background: radial-gradient(ellipse, rgba(0, 0, 0, 0.4), transparent 70%); border-radius: 50%; z-index: -1; }
@@ -522,7 +637,7 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
 .item-nameplate-icon { display: flex; align-items: center; justify-content: center; width: 80px; height: 80px; }
 .item-icon-image { width: 64px; height: 64px; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(2px 2px 1px rgba(0, 0, 0, 0.5)) drop-shadow(4px 4px 3px rgba(0, 0, 0, 0.3)) drop-shadow(0 8px 8px rgba(0, 0, 0, 0.4)); }
 @keyframes itemFloat { 0%, 100% { transform: translateY(0);} 50% { transform: translateY(-12px);} }
-.item-nameplate-interact { display: flex; justify-content: center; align-items: center; margin-top: 8px; padding: 6px 12px; background: rgba(40, 40, 45, 0.8); backdrop-filter: blur(8px); border-radius: 6px; border: 1.5px solid rgba(255, 255, 255, 0.15); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
+.item-nameplate-interact { display: flex; justify-content: center; align-items: center; margin-top: 8px; padding: 6px 12px; background: rgba(40, 40, 45, 0.8); backdrop-filter: blur(6px); border-radius: 6px; border: 1.5px solid rgba(255, 255, 255, 0.15); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
 .interact-text { font-size: 10px; color: #a0a0a0; font-weight: 500; letter-spacing: 0.5px; text-align: center; font-family: 'Inter', sans-serif; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }
 
 /* ==== theme-glass.css ==== */
@@ -531,7 +646,7 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
 .menu-background { position: fixed; inset: 0; z-index: -2; }
 /* Background images are set inline to support template vars */
 .background-overlay { position: absolute; inset: 0; z-index: 0; }
-.backdrop-blur { position: fixed; inset: 0; background: rgba(0,0,0,0.3); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); z-index: -1; }
+.backdrop-blur { position: fixed; inset: 0; background: rgba(0,0,0,0.25); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); z-index: -1; }
 .main-menu { 
   position: fixed; 
   inset: 0; 
@@ -644,7 +759,81 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
   max-width: 560px; 
 }
 /* Page transition cover */
-.page-transition-cover { position: fixed; inset: 0; background: #0b0f14; z-index: 2147483647; opacity: 1; transition: opacity .2s ease; }
+.page-transition-cover { 
+  position: fixed; 
+  inset: 0; 
+  background: #0b0f14; 
+  z-index: 2147483647; 
+  opacity: 1; 
+  transition: opacity .3s ease; 
+  pointer-events: none;
+}
+
+/* Fade transition classes */
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.fade-out {
+  animation: fadeOut 0.3s ease-in-out;
+}
+
+.fade-in-scale {
+  animation: fadeInScale 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-out-scale {
+  animation: fadeOutScale 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+
+
+/* Fade animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes fadeInScale {
+  from { 
+    opacity: 0; 
+    transform: scale(0.95) translateY(10px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: scale(1) translateY(0); 
+  }
+}
+
+@keyframes fadeOutScale {
+  from { 
+    opacity: 1; 
+    transform: scale(1) translateY(0); 
+  }
+  to { 
+    opacity: 0; 
+    transform: scale(0.95) translateY(10px); 
+  }
+}
+
+/* Simple fade transitions - only apply when explicitly added */
+.fade-transition {
+  transition: opacity 0.3s ease-in-out;
+}
+
+.fade-in {
+  opacity: 1 !important;
+}
+
+.fade-out {
+  opacity: 0 !important;
+}
+
 /* Utilities */
 .glass-surface { background: var(--glass-bg); backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)); border: 1.5px solid var(--glass-border); border-radius: var(--glass-radius); box-shadow: var(--glass-shadow); }
 .ui-panel { background: var(--glass-bg-strong); backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate)); border: 1.5px solid var(--glass-border); border-radius: var(--glass-radius); box-shadow: var(--glass-shadow); }
@@ -715,13 +904,26 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
 .action-button.secondary .button-title { color: #e8eef5; }
 .button-subtitle { display: none; }
 /* Hotbar glass adjustments */
-.tactical-hotbar { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; border: 0; border-radius: 0; box-shadow: none; }
+.tactical-hotbar { 
+  position: fixed; 
+  bottom: 20px; 
+  left: 50%; 
+  transform: translateX(-50%); 
+  z-index: 1000; 
+  background: transparent; 
+  backdrop-filter: none; 
+  -webkit-backdrop-filter: none; 
+  border: 0; 
+  border-radius: 0; 
+  box-shadow: none; 
+}
 .hotbar-slot { background: rgba(35, 35, 42, 0.28); border: 1px solid rgba(255, 255, 255, 0.12); backdrop-filter: blur(6px); }
 .hotbar-slot:hover { background: rgba(45, 45, 52, 0.34); border-color: rgba(255, 255, 255, 0.2); }
 .hotbar-slot.active { background: rgba(52, 52, 60, 0.42); border-color: rgba(255, 255, 255, 0.28); }
 
-/* === Main Game Hotbar Rarity Effects === */
-.hotbar-slot.rarity-common {
+/* === Main Game Hotbar Rarity Effects - DISABLED === */
+/* Rarity effects removed from in-game hotbar for cleaner appearance */
+/* .hotbar-slot.rarity-common {
   border-color: rgba(180, 180, 180, 0.12);
   background: linear-gradient(135deg, rgba(180, 180, 180, 0.05) 0%, rgba(150, 150, 150, 0.03) 50%, rgba(200, 200, 200, 0.04) 100%);
   box-shadow: 0 0 3px rgba(180, 180, 180, 0.08), inset 0 0 1px rgba(180, 180, 180, 0.04);
@@ -792,9 +994,9 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
   border-color: rgba(239, 68, 68, 0.45);
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.18) 0%, rgba(220, 38, 38, 0.13) 50%, rgba(248, 113, 113, 0.15) 100%);
   box-shadow: 0 0 15px rgba(239, 68, 68, 0.32), inset 0 0 7px rgba(239, 68, 68, 0.16);
-}
+} */
 /* Inventory overlay and panels */
-.inventory-overlay { background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(16px); }
+.inventory-overlay { background: rgba(0, 0, 0, 0.25); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 .tactical-inventory { background: var(--glass-bg-strong); border: 1.5px solid var(--glass-border); border-radius: var(--glass-radius-lg); box-shadow: var(--glass-shadow); }
 .backpack-grid, .inventory-hotbar-grid { 
   background:
@@ -802,7 +1004,7 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
     repeating-linear-gradient(0deg, rgba(255,255,255,0.05), rgba(255,255,255,0.05) 2px, transparent 2px, transparent 6px),
     linear-gradient(180deg, rgba(70, 70, 76, 0.38), rgba(70, 70, 76, 0.22));
   border: 1.5px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(8px);
 }
 .slot { background: rgba(92, 92, 98, 0.32); border: 1.5px solid rgba(255, 255, 255, 0.12); }
 .slot:hover { background: rgba(110, 110, 118, 0.38); border-color: rgba(255, 255, 255, 0.2); }
@@ -891,28 +1093,9 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
 /* Sprint indicator subtle glass; remove glass from reload prompts */
 .movement-speed-indicator { background: rgba(0, 0, 0, 0.22); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 10px; }
 .reload-text-container, .reload-prompt { background: transparent !important; border: 0 !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
-/* Tooltips & labels */
-.item-tooltip {
-  position: fixed;
-  color: #ffffff;
-  padding: 12px 16px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-  pointer-events: none;
-  z-index: 100003;
-  max-width: 250px;
-  white-space: normal;
-  display: none;
-  background: rgba(40, 40, 45, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  border: 1.5px solid rgba(255, 255, 255, 0.15);
-}
-.ammo-label { background: rgba(25, 25, 30, 0.95); color: #e0e0e0; font-size: 10px; font-weight: 700; padding: 2px 4px; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.2); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); }
-/* Drag ghost surface */
-.drag-ghost { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; border: 0; border-radius: 0; box-shadow: none; }
+/* Tooltip styles moved to assets/ui/css/stash.css */
+/* Ammo label styles moved to assets/ui/css/stash.css */
+/* Drag ghost styles moved to assets/ui/css/stash.css */
 
 /* === Session Chooser (ALPHA / OMEGA) === */
 #session-chooser { display: flex; gap: 10px; width: 100%; max-width: 560px; }
@@ -944,8 +1127,8 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
 }
 .session-card .session-meta { display: flex; justify-content: flex-end; }
 .session-pill { font-size: 9px; font-weight: 900; padding: 2px 8px; border-radius: 999px; letter-spacing: 1px; }
-.session-pill-alpha { color: #1b3a0a; background: linear-gradient(90deg, #c6ffdd, #fbd786); border: 1px solid rgba(255,255,255,0.28); }
-.session-pill-omega { color: #0a163a; background: linear-gradient(90deg, #00c6ff, #0072ff); border: 1px solid rgba(255,255,255,0.28); }
+.session-pill-alpha { color: #ffffff; background: linear-gradient(135deg, #4ade80, #22c55e); border: 1px solid rgba(255,255,255,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.6); box-shadow: 0 2px 8px rgba(74, 222, 128, 0.3); }
+.session-pill-omega { color: #000000; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border: 1px solid rgba(255,255,255,0.3); text-shadow: 0 1px 2px rgba(255,255,255,0.8); box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3); }
 .session-card .session-title { 
   font-size: 10px; 
   font-weight: 900; 
@@ -966,8 +1149,14 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
   letter-spacing: 1px; 
   text-shadow: 0 1px 2px rgba(0,0,0,0.8);
 }
-.session-card[data-session="alpha"] .session-title { color: #64b5f6; }
-.session-card[data-session="omega"] .session-title { color: #81c784; }
+.session-card[data-session="alpha"] .session-title { 
+  color: #4ade80; 
+  text-shadow: 0 0 8px rgba(74, 222, 128, 0.4);
+}
+.session-card[data-session="omega"] .session-title { 
+  color: #60a5fa; 
+  text-shadow: 0 0 8px rgba(96, 165, 250, 0.4);
+}
 
 /* === Party Section === */
 .party-section {
@@ -1202,6 +1391,8 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
   }
 }
 
+
+
 /* === Achievement Notifications === */
 .achievement-notifications {
   position: fixed;
@@ -1221,8 +1412,8 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   transform: translateX(-100vw);
   transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
@@ -1561,8 +1752,8 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
 
 .party-invite-content {
   background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 12px;
   padding: 24px;
@@ -1653,8 +1844,4 @@ html, body, .main-menu, .stash-overlay, .inventory-overlay, .tactical-inventory,
   color: #ef4444;
 }
 
-
-
-
-
-
+/* Stash styles moved to assets/ui/css/stash.css */

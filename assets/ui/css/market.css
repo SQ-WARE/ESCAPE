@@ -1,0 +1,718 @@
+/* Market-specific styles */
+/* Most styles are inline in market.html for simplicity */
+
+.market-overlay {
+  display: flex !important;
+}
+
+/* Additional market-specific overrides can go here */
+
+/* Enhanced Filter Bar Styles */
+.search-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  max-width: 400px;
+}
+
+.market-search {
+  flex: 1;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: white;
+  font-size: 14px;
+  backdrop-filter: blur(5px);
+  transition: all 0.3s ease;
+}
+
+.market-search::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.market-search:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
+
+.quick-sell-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #ff6b35, #f7931e);
+  border: none;
+  border-radius: 4px;
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(5px);
+}
+
+.quick-sell-btn:hover {
+  background: linear-gradient(135deg, #ff5722, #ff9800);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
+.quick-sell-btn:active {
+  transform: translateY(0);
+}
+
+.quick-sell-icon {
+  font-size: 14px;
+}
+
+/* Enhanced Item Card Styles */
+.item-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.item-image {
+  position: relative;
+}
+
+/* Enhanced Call-to-Action Button Styles with Ideal Color Prominence */
+
+/* Primary Purchase Button - High Urgency Blue */
+.purchase-btn.primary {
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+  border: 2px solid rgba(59, 130, 246, 0.8) !important;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4) !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  transition: all 0.3s ease !important;
+}
+
+.purchase-btn.primary:hover {
+  background: linear-gradient(135deg, #60a5fa, #3b82f6) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.6) !important;
+  border-color: rgba(59, 130, 246, 1) !important;
+}
+
+/* Primary Sell Button - Success Green */
+.sell-btn.primary {
+  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
+  border: 2px solid rgba(34, 197, 94, 0.8) !important;
+  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4) !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  transition: all 0.3s ease !important;
+}
+
+.sell-btn.primary:hover {
+  background: linear-gradient(135deg, #4ade80, #22c55e) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 25px rgba(34, 197, 94, 0.6) !important;
+  border-color: rgba(34, 197, 94, 1) !important;
+}
+
+/* Secondary Sell Button - Emerald Green */
+.sell-btn.secondary {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  border: 2px solid rgba(16, 185, 129, 0.8) !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.3px !important;
+  transition: all 0.3s ease !important;
+}
+
+.sell-btn.secondary:hover {
+  background: linear-gradient(135deg, #34d399, #10b981) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5) !important;
+  border-color: rgba(16, 185, 129, 1) !important;
+}
+
+/* Sell All Button - Deep Green for Bulk Actions */
+.sell-all-btn.secondary {
+  background: linear-gradient(135deg, #059669, #047857) !important;
+  border: 2px solid rgba(5, 150, 105, 0.8) !important;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3) !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.3px !important;
+  transition: all 0.3s ease !important;
+}
+
+.sell-all-btn.secondary:hover {
+  background: linear-gradient(135deg, #0d9488, #059669) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 20px rgba(5, 150, 105, 0.5) !important;
+  border-color: rgba(5, 150, 105, 1) !important;
+}
+
+/* Disabled State - Clear Visual Feedback */
+.purchase-btn.disabled, .sell-btn.disabled, .sell-all-btn.disabled {
+  background: rgba(156, 163, 175, 0.3) !important;
+  border-color: rgba(156, 163, 175, 0.5) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+  opacity: 0.6 !important;
+}
+
+/* Visual Feedback States */
+.market-item.purchasing {
+  animation: pulse-glow 1s ease-in-out;
+}
+
+.market-item.selling {
+  animation: pulse-glow 1s ease-in-out;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.6);
+  }
+}
+
+.market-item.selling {
+  animation: pulse-glow-green 1s ease-in-out;
+}
+
+@keyframes pulse-glow-green {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(34, 197, 94, 0.6);
+  }
+}
+
+
+
+/* Purchase button styles */
+.purchase-btn {
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+  border: 1.5px solid rgba(59, 130, 246, 0.8) !important;
+  color: #ffffff !important;
+  padding: 8px 16px !important;
+  border-radius: var(--glass-radius) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4) !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+}
+
+.purchase-btn:hover {
+  background: linear-gradient(135deg, #60a5fa, #3b82f6) !important;
+  border-color: rgba(59, 130, 246, 1) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6) !important;
+}
+
+.purchase-btn.enabled {
+  opacity: 1 !important;
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+  color: #ffffff !important;
+  cursor: pointer !important;
+  border-color: rgba(59, 130, 246, 0.8) !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4) !important;
+}
+
+.purchase-btn.disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  background: rgba(156, 163, 175, 0.3) !important;
+  border-color: rgba(156, 163, 175, 0.5) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Sell button styles */
+.sell-btn, .sell-all-btn {
+  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
+  border: 1.5px solid rgba(34, 197, 94, 0.8) !important;
+  color: #ffffff !important;
+  padding: 8px 16px !important;
+  border-radius: var(--glass-radius) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4) !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5) !important;
+}
+
+.sell-btn:hover, .sell-all-btn:hover {
+  background: linear-gradient(135deg, #4ade80, #22c55e) !important;
+  border-color: rgba(34, 197, 94, 1) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.6) !important;
+}
+
+.sell-btn.enabled, .sell-all-btn.enabled {
+  opacity: 1 !important;
+  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
+  color: #ffffff !important;
+  cursor: pointer !important;
+  border-color: rgba(34, 197, 94, 0.8) !important;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4) !important;
+}
+
+.sell-btn.disabled, .sell-all-btn.disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  background: rgba(239, 68, 68, 0.3) !important;
+}
+
+/* Market Popup System - Liquid Glass Theme */
+.market-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10002;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease-in-out;
+}
+
+.market-popup-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.market-popup {
+  background: var(--glass-bg-strong);
+  border: 1.5px solid var(--glass-border-strong);
+  border-radius: var(--glass-radius-lg);
+  box-shadow: var(--glass-shadow), 0 20px 40px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  padding: 32px;
+  max-width: 400px;
+  width: 90vw;
+  text-align: center;
+  transform: scale(0.9) translateY(20px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.market-popup-overlay.active .market-popup {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+
+.market-popup-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: 900;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.market-popup-icon.success {
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(34, 197, 94, 0.4);
+}
+
+.market-popup-icon.error {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4);
+}
+
+.market-popup-icon.warning {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4);
+}
+
+.market-popup-title {
+  font-weight: 900;
+  font-size: 20px;
+  letter-spacing: 2px;
+  color: #ffffff;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  margin: 0 0 12px 0;
+}
+
+.market-popup-subtitle {
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #64b5f6;
+  text-transform: uppercase;
+  opacity: 0.8;
+  margin: 0 0 20px 0;
+}
+
+.market-popup-message {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #e2e8f0;
+  margin: 0 0 24px 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.market-popup-details {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  padding: 16px;
+  margin: 0 0 24px 0;
+  text-align: left;
+}
+
+.market-popup-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 0 8px 0;
+  font-size: 13px;
+}
+
+.market-popup-detail-row:last-child {
+  margin: 0;
+}
+
+.market-popup-detail-label {
+  color: #94a3b8;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.market-popup-detail-value {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.market-popup-detail-value.success {
+  color: #4ade80;
+}
+
+.market-popup-detail-value.error {
+  color: #ef4444;
+}
+
+.market-popup-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.market-popup-btn {
+  background: var(--glass-bg);
+  border: 1.5px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  color: #ffffff;
+  padding: 10px 20px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.market-popup-btn:hover {
+  background: var(--glass-bg-strong);
+  border-color: var(--glass-border-strong);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.market-popup-btn.primary {
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #ffffff;
+}
+
+.market-popup-btn.primary:hover {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  border-color: rgba(34, 197, 94, 0.6);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+}
+
+.market-popup-btn.secondary {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+  color: #94a3b8;
+}
+
+.market-popup-btn.secondary:hover {
+  background: var(--glass-bg-strong);
+  border-color: var(--glass-border-strong);
+  color: #ffffff;
+}
+
+/* Legacy message styles (keeping for backward compatibility) */
+.purchase-message,
+.sell-message {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 10000;
+  animation: slideInRight 0.3s ease-out;
+}
+
+.purchase-message.success,
+.sell-message.success {
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+  color: #ffffff;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+}
+
+.purchase-message.error,
+.sell-message.error {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #ffffff;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Enhanced popup animations */
+@keyframes popupPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: var(--glass-shadow), 0 20px 40px rgba(0, 0, 0, 0.4);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: var(--glass-shadow), 0 25px 50px rgba(0, 0, 0, 0.5);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: var(--glass-shadow), 0 20px 40px rgba(0, 0, 0, 0.4);
+  }
+}
+
+.market-popup.success {
+  animation: popupPulse 2s ease-in-out infinite;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .market-popup {
+    padding: 24px;
+    max-width: 95vw;
+  }
+  
+  .market-popup-title {
+    font-size: 18px;
+  }
+  
+  .market-popup-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .market-popup-btn {
+    width: 100%;
+  }
+}
+
+/* Focus states for accessibility */
+.market-popup-btn:focus {
+  outline: 2px solid #64b5f6;
+  outline-offset: 2px;
+}
+
+.market-popup-overlay:focus-within {
+  outline: none;
+}
+
+/* Sellable item styles - when user can sell but can't afford to buy */
+.market-item.sellable {
+  border-color: rgba(34, 197, 94, 0.3);
+  background: rgba(34, 197, 94, 0.05);
+  opacity: 0.8;
+  filter: grayscale(0.3);
+}
+
+.market-item.sellable:hover {
+  border-color: rgba(34, 197, 94, 0.5);
+  background: rgba(34, 197, 94, 0.08);
+  box-shadow: 0 8px 24px rgba(34, 197, 94, 0.2);
+  opacity: 1;
+  filter: grayscale(0);
+}
+
+/* Expensive item styles - when user can't buy or sell */
+.market-item.expensive {
+  border-color: rgba(156, 163, 175, 0.3);
+  background: rgba(156, 163, 175, 0.05);
+  opacity: 0.6;
+  filter: grayscale(0.5);
+}
+
+.market-item.expensive:hover {
+  border-color: rgba(156, 163, 175, 0.5);
+  background: rgba(156, 163, 175, 0.08);
+  box-shadow: 0 8px 24px rgba(156, 163, 175, 0.2);
+  opacity: 0.8;
+  filter: grayscale(0.3);
+}
+
+
+
+/* Price label for sell items */
+.price-label {
+  font-size: 9px;
+  color: #ef4444;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-top: 2px;
+  display: block;
+}
+
+/* Item actions for sell items */
+.market-item.sellable .item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.market-item.sellable .sell-btn {
+  width: 100%;
+}
+
+.market-item.sellable .sell-all-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border-color: rgba(245, 158, 11, 0.7);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.market-item.sellable .sell-all-btn:hover {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  border-color: rgba(245, 158, 11, 0.85);
+  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
+}
+
+/* General item actions layout for inline buy/sell */
+.item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.purchase-btn {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  border: 1.5px solid rgba(59, 130, 246, 0.7);
+  color: #ffffff;
+  padding: 10px 16px;
+  border-radius: var(--glass-radius);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.purchase-btn:hover {
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  border-color: rgba(59, 130, 246, 0.85);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+}
+
+.purchase-btn.enabled {
+  opacity: 1;
+}
+
+.purchase-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: rgba(59, 130, 246, 0.3);
+}
+
+/* Item quantity display */
+.item-quantity {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 3;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.95);
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px 5px;
+  border-radius: 4px;
+  min-width: 16px;
+  text-align: center;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.item-quantity:empty::after {
+  content: "You have: 0";
+  color: #6b7280;
+}

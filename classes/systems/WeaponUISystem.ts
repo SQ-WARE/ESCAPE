@@ -12,6 +12,7 @@ export default class WeaponUISystem {
 
   private _shootAudio: Audio;
   private _lastFireTime: number = 0;
+  private _lastCrosshairState: boolean | null = null;
 
   constructor(weaponData: WeaponData) {
     this._weaponData = weaponData;
@@ -61,11 +62,17 @@ export default class WeaponUISystem {
     const now = performance.now();
     const cooldown = 60000 / this._fireRate;
     const canFire = !this._lastFireTime || (now - this._lastFireTime) >= cooldown;
+    const newCrosshairState = canFire && ammo > 0;
     
-    player.ui.sendData({
-      type: 'crosshair-state',
-      canFire: canFire && ammo > 0
-    });
+    // Only send update if state has changed
+    if (this._lastCrosshairState !== newCrosshairState) {
+      this._lastCrosshairState = newCrosshairState;
+      
+      player.ui.sendData({
+        type: 'crosshair-state',
+        canFire: newCrosshairState
+      });
+    }
   }
 
   public updateWeaponInfo(parent: GamePlayerEntity): void {
@@ -112,10 +119,10 @@ export default class WeaponUISystem {
     
     if (hit) {
       try {
-        const UnifiedAudioSystem = require('./UnifiedAudioSystem').default;
+        const AudioSystem = require('./AudioSystem').default;
         const world = parent.world!;
-        const sys = ((world as any).audioSystem ?? ((world as any).audioSystem = new UnifiedAudioSystem(world)));
-        sys.playSfx('audio/sfx/sfx/hitmarker.wav', { 
+        const sys = ((world as any).audioSystem ?? ((world as any).audioSystem = new AudioSystem(world)));
+        sys.play('audio/sfx/sfx/hitmarker.wav', { 
           volume: 0.7,
           x: parent.position.x, 
           y: parent.position.y, 
@@ -138,10 +145,10 @@ export default class WeaponUISystem {
   public playShootSound(parent: GamePlayerEntity): void {
     if (!parent || !parent.world) return;
     try {
-      const UnifiedAudioSystem = require('./UnifiedAudioSystem').default;
+      const AudioSystem = require('./AudioSystem').default;
       const world = parent.world!;
-      const sys = ((world as any).audioSystem ?? ((world as any).audioSystem = new UnifiedAudioSystem(world)));
-      sys.playSfx(this._weaponData.assets.audio.shoot, { volume: 0.3, x: parent.position.x, y: parent.position.y, z: parent.position.z, ref: 8, cut: 100 });
+      const sys = ((world as any).audioSystem ?? ((world as any).audioSystem = new AudioSystem(world)));
+      sys.play(this._weaponData.assets.audio.shoot, { volume: 0.3, x: parent.position.x, y: parent.position.y, z: parent.position.z, ref: 8, cut: 100 });
     } catch {
       // Fallback direct play
       this._shootAudio.play(parent.world, true);
@@ -151,10 +158,10 @@ export default class WeaponUISystem {
   public playEnvironmentHitSound(parent: GamePlayerEntity): void {
     if (!parent || !parent.world) return;
     try {
-      const UnifiedAudioSystem = require('./UnifiedAudioSystem').default;
+      const AudioSystem = require('./AudioSystem').default;
       const world = parent.world!;
-      const sys = ((world as any).audioSystem ?? ((world as any).audioSystem = new UnifiedAudioSystem(world)));
-      sys.playSfx('audio/sfx/ui/button-click.mp3', { volume: 0.2, x: parent.position.x, y: parent.position.y, z: parent.position.z });
+      const sys = ((world as any).audioSystem ?? ((world as any).audioSystem = new AudioSystem(world)));
+      sys.play('audio/sfx/ui/button-click.mp3', { volume: 0.2, x: parent.position.x, y: parent.position.y, z: parent.position.z });
     } catch {
       const environmentHitAudio = new Audio({ uri: 'audio/sfx/ui/button-click.mp3', loop: false, volume: 0.2 });
       environmentHitAudio.play(parent.world, true);

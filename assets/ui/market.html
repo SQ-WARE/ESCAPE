@@ -1,0 +1,1827 @@
+<link rel="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/app.css">
+<link rel="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/market.css">
+<link rel="preload" as="image" href="{{CDN_ASSETS_URL}}/ui/background4.png">
+<!-- Preload other page assets -->
+<link rel="preload" as="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/stash.css">
+<link rel="preload" as="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/progression.css">
+<!-- Page Loading System -->
+<div class="page-loading-spinner" id="page-loading-spinner"></div>
+<div class="page-transition-overlay" id="page-transition-overlay"></div>
+
+<div class="menu-background" style="background: url('{{CDN_ASSETS_URL}}/ui/background4.png') center center / cover no-repeat;">
+  <div class="background-overlay"></div>
+  <div class="smoke-effect">
+    <div class="smoke-layer smoke-layer-1"></div>
+    <div class="smoke-layer smoke-layer-2"></div>
+    <div class="smoke-layer smoke-layer-3"></div>
+  </div>
+</div>
+
+<div class="market-overlay page-loading" id="market-overlay-content" style="display: flex; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); background: rgba(0,0,0,0.25);">
+  <!-- Market Interface -->
+  <div class="market-interface">
+    <!-- Header Panel -->
+    <div class="market-header-panel">
+      <div class="market-title-section">
+        <h1 class="market-title">MARKET</h1>
+        <div class="market-subtitle">ARMS & SUPPLIES</div>
+      </div>
+      <div class="market-controls">
+        <div class="currency-display">
+          <span class="currency-label">CREDITS</span>
+          <span class="currency-value" id="market-currency">0</span>
+        </div>
+        <button class="close-btn-market" id="market-close-btn">CLOSE</button>
+      </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="market-content-panel">
+      <!-- Enhanced Filter & Search Bar -->
+      <div class="filter-bar">
+        <div class="filter-group">
+          <button class="filter-btn active" data-category="all">ALL ITEMS</button>
+          <button class="filter-btn" data-category="weapon">WEAPONS</button>
+          <button class="filter-btn" data-category="consumable">CONSUMABLES</button>
+          <button class="filter-btn" data-category="ammo">AMMUNITION</button>
+          <button class="filter-btn" data-category="explosive">EXPLOSIVES</button>
+          <button class="filter-btn" data-category="gear">GEAR</button>
+          <button class="filter-btn" data-category="valuable">VALUABLES</button>
+        </div>
+        <div class="search-group">
+          <input type="text" id="market-search" placeholder="Search items..." class="market-search">
+          <button class="quick-sell-btn" id="quick-sell-btn" title="Quick Sell All Valuables">
+            QUICK SELL
+          </button>
+        </div>
+        <div class="filter-info">
+          <span class="items-count">0 items</span>
+        </div>
+      </div>
+      
+
+      
+      <!-- Items Grid -->
+      <div class="items-container" id="market-content">
+        <div class="market-loading">
+          <div class="loading-spinner"></div>
+          <div class="loading-text">Loading inventory...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Market Popup System -->
+<div class="market-popup-overlay" id="market-popup-overlay">
+  <div class="market-popup" id="market-popup">
+    <div class="market-popup-icon" id="market-popup-icon"></div>
+    <h2 class="market-popup-title" id="market-popup-title"></h2>
+    <div class="market-popup-subtitle" id="market-popup-subtitle"></div>
+    <div class="market-popup-message" id="market-popup-message"></div>
+    <div class="market-popup-details" id="market-popup-details" style="display: none;"></div>
+    <div class="market-popup-actions" id="market-popup-actions">
+      <button class="market-popup-btn primary" id="market-popup-confirm">CONFIRM</button>
+      <button class="market-popup-btn secondary" id="market-popup-cancel">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const CDN_ASSETS_URL = '{{CDN_ASSETS_URL}}';
+  const marketContent = document.getElementById('market-content');
+  const marketCurrency = document.getElementById('market-currency');
+  let currentMarketData = null;
+  let currentFilter = 'all';
+  let currentSearch = '';
+  let preloadedIcons = new Map(); // Store preloaded icon Image objects
+
+  // Page Loading & Transition System - Optimized
+  const pageLoadingSpinner = document.getElementById('page-loading-spinner');
+  const pageTransitionOverlay = document.getElementById('page-transition-overlay');
+  const marketOverlayContent = document.getElementById('market-overlay-content');
+  
+  let isTransitioning = false;
+  let transitionTimeout = null;
+  let isInitialized = false;
+
+  // Initialize loading spinner
+  function initializeLoadingSpinner() {
+    if (pageLoadingSpinner) {
+      pageLoadingSpinner.classList.add('active');
+    }
+  }
+
+  // Page loading system with error handling
+  function showPageLoading() {
+    if (pageLoadingSpinner && !pageLoadingSpinner.classList.contains('active')) {
+      pageLoadingSpinner.classList.add('active');
+    }
+  }
+
+  function hidePageLoading() {
+    if (pageLoadingSpinner && pageLoadingSpinner.classList.contains('active')) {
+      pageLoadingSpinner.classList.remove('active');
+    }
+  }
+
+  function showPageTransition() {
+    if (pageTransitionOverlay && !pageTransitionOverlay.classList.contains('active')) {
+      pageTransitionOverlay.classList.add('active');
+    }
+  }
+
+  function hidePageTransition() {
+    if (pageTransitionOverlay && pageTransitionOverlay.classList.contains('active')) {
+      pageTransitionOverlay.classList.remove('active');
+    }
+  }
+
+  function navigateBackToMenu() {
+    // Prevent multiple simultaneous transitions
+    if (isTransitioning) {
+      console.warn('Page transition already in progress, ignoring navigation request');
+      return;
+    }
+
+    isTransitioning = true;
+
+    try {
+      // Clean up preloaded icons
+      cleanupPreloadedIcons();
+      
+      // Show transition overlay
+      showPageTransition();
+      
+      // Add fade out animation to current content
+      if (marketOverlayContent) {
+        marketOverlayContent.classList.add('overlay-scale-out');
+      }
+      
+      // Clear any existing timeout
+      if (transitionTimeout) {
+        clearTimeout(transitionTimeout);
+      }
+      
+      // After fade out, navigate
+      transitionTimeout = setTimeout(() => {
+        try {
+          hytopia.sendData({ type: 'backToMenu' });
+        } catch (error) {
+          console.error('Failed to send navigation data:', error);
+          // Revert transition on error
+          revertTransition();
+        }
+      }, 300);
+    } catch (error) {
+      console.error('Navigation error:', error);
+      revertTransition();
+    }
+  }
+
+  function revertTransition() {
+    isTransitioning = false;
+    hidePageTransition();
+    
+    if (marketOverlayContent) {
+      marketOverlayContent.classList.remove('overlay-scale-out');
+    }
+    
+    if (transitionTimeout) {
+      clearTimeout(transitionTimeout);
+      transitionTimeout = null;
+    }
+  }
+
+  // Initialize page when everything is loaded
+  function initializePage() {
+    if (isInitialized) {
+      console.warn('Page already initialized, skipping');
+      return;
+    }
+
+    try {
+      // Hide loading spinner
+      hidePageLoading();
+      
+      // Show main content with scale in
+      if (marketOverlayContent) {
+        marketOverlayContent.classList.remove('page-loading');
+        marketOverlayContent.classList.add('page-loaded', 'overlay-scale-in');
+      }
+      
+      isInitialized = true;
+      
+      // Request market data after initialization
+      setTimeout(() => {
+        try {
+          hytopia.sendData({ type: 'requestMarketData' });
+        } catch (error) {
+          console.error('Failed to request market data:', error);
+        }
+      }, 100);
+    } catch (error) {
+      console.error('Page initialization error:', error);
+      // Fallback: show content without animation
+      if (marketOverlayContent) {
+        marketOverlayContent.classList.remove('page-loading');
+        marketOverlayContent.classList.add('page-loaded');
+      }
+      isInitialized = true;
+    }
+  }
+
+  // Wait for DOM and critical resources to load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(initializePage, 100);
+    });
+  } else {
+    // DOM is already loaded
+    setTimeout(initializePage, 100);
+  }
+
+  // Initialize loading spinner immediately
+  initializeLoadingSpinner();
+
+  // Handle page visibility changes (tab switching)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && isTransitioning) {
+      // Page hidden during transition, revert
+      revertTransition();
+    }
+  });
+
+  // Handle window focus/blur
+  window.addEventListener('blur', () => {
+    if (isTransitioning) {
+      // Window lost focus during transition, revert
+      revertTransition();
+    }
+  });
+
+  // Handle beforeunload to clean up
+  window.addEventListener('beforeunload', () => {
+    if (isTransitioning) {
+      revertTransition();
+    }
+    cleanupPreloadedIcons();
+  });
+
+  // Icon preloading functionality
+  function preloadIcons(items) {
+    if (!items) return;
+    
+    items.forEach(item => {
+      if (item.iconImageUri && !preloadedIcons.has(item.iconImageUri)) {
+        const img = new Image();
+        img.src = `${CDN_ASSETS_URL}/${item.iconImageUri}`;
+        preloadedIcons.set(item.iconImageUri, img);
+        
+
+      }
+    });
+    
+
+  }
+
+  // Cleanup preloaded icons
+  function cleanupPreloadedIcons() {
+    preloadedIcons.clear();
+  }
+
+  // Handle market close
+  function handleMarketClose() {
+    cleanupPreloadedIcons(); // Clean up preloaded icons when closing market
+    
+    // Use new navigation system
+    navigateBackToMenu();
+  }
+  
+  // Handle the header close button
+  const marketCloseBtn = document.getElementById('market-close-btn');
+  if (marketCloseBtn) {
+    marketCloseBtn.addEventListener('click', handleMarketClose);
+  }
+
+  // Add fade-in effect on page load
+  document.addEventListener('DOMContentLoaded', () => {
+    const marketOverlay = document.querySelector('.market-overlay');
+    if (marketOverlay) {
+      marketOverlay.classList.add('fade-in-scale');
+    }
+    
+    // Request initial market data to get latest stash quantities
+    setTimeout(() => {
+      hytopia.sendData({ type: 'requestMarketData' });
+    }, 100);
+  });
+
+  // Cleanup icons when page unloads (safety measure)
+  window.addEventListener('beforeunload', cleanupPreloadedIcons);
+  window.addEventListener('unload', cleanupPreloadedIcons);
+
+  // Enhanced filter and search functionality
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const category = e.target.getAttribute('data-category');
+      
+      // Update active filter
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      
+      currentFilter = category;
+      
+      // Re-render with filter and search
+      if (currentMarketData) {
+        renderMarket(currentMarketData);
+      }
+    });
+  });
+
+  // Search functionality
+  const marketSearch = document.getElementById('market-search');
+  if (marketSearch) {
+    marketSearch.addEventListener('input', (e) => {
+      currentSearch = e.target.value.toLowerCase().trim();
+      
+      // Re-render with search filter
+      if (currentMarketData) {
+        renderMarket(currentMarketData);
+      }
+    });
+  }
+
+  // Enhanced quick sell functionality with detailed calculations
+  const quickSellBtn = document.getElementById('quick-sell-btn');
+  if (quickSellBtn) {
+    quickSellBtn.addEventListener('click', () => {
+      if (currentMarketData && currentMarketData.sellableItems) {
+        const valuableItems = currentMarketData.sellableItems.filter(item => item.quantity > 0);
+        
+        if (valuableItems.length > 0) {
+          // Calculate total value
+          const totalValue = valuableItems.reduce((sum, item) => sum + (item.sellPrice * item.quantity), 0);
+          
+          // Create detailed breakdown for confirmation
+          const itemBreakdown = valuableItems.map(item => 
+            `${item.name}: ${item.quantity}x (${item.sellPrice * item.quantity} CR)`
+          ).join(' | ');
+          
+          showConfirmationPopup({
+            title: 'QUICK SELL ALL VALUABLES',
+            subtitle: 'BULK TRANSACTION',
+            message: `Sell all your valuable items for ${totalValue} credits?`,
+            details: {
+              'Total Value': `${totalValue} CR`,
+              'Items': itemBreakdown
+            },
+            confirmText: 'SELL ALL',
+            cancelText: 'CANCEL',
+                          onConfirm: () => {
+                // Show processing feedback
+                quickSellBtn.textContent = 'SELLING...';
+                quickSellBtn.disabled = true;
+                quickSellBtn.style.background = 'linear-gradient(135deg, #ff5722, #ff9800)';
+                quickSellBtn.style.transform = 'scale(0.95)';
+                
+                // Sell all valuable items with delay to prevent spam
+                valuableItems.forEach((item, index) => {
+                  setTimeout(() => {
+                    hytopia.sendData({ type: 'sellItem', itemId: item.id, quantity: item.quantity });
+                  }, index * 100); // 100ms delay between each sell
+                });
+                
+                // Reset button after all sells
+                setTimeout(() => {
+                  quickSellBtn.textContent = 'QUICK SELL';
+                  quickSellBtn.disabled = false;
+                  quickSellBtn.style.background = 'linear-gradient(135deg, #ff6b35, #f7931e)';
+                  quickSellBtn.style.transform = 'scale(1)';
+                  
+                  // Re-render market to update values
+                  if (currentMarketData) {
+                    renderMarket(currentMarketData);
+                  }
+                }, valuableItems.length * 100 + 1000);
+              }
+          });
+        } else {
+          showInfoPopup({
+            title: 'NO VALUABLE ITEMS',
+            subtitle: 'INVENTORY EMPTY',
+            message: 'You have no valuable items to sell.',
+            details: {
+              'Status': 'No sellable items found',
+              'Tip': 'Collect valuable items from raids to sell'
+            },
+            autoClose: true,
+            autoCloseDelay: 3000
+          });
+        }
+      }
+    });
+  }
+
+  hytopia.onData(data => {
+    switch (data.type) {
+      case 'market-data':
+        renderMarket(data);
+        break;
+      case 'purchase-success':
+        showPurchaseSuccess(data);
+        break;
+      case 'purchase-failed':
+        showPurchaseFailed(data);
+        break;
+      case 'sell-success':
+        showSellSuccess(data);
+        break;
+      case 'sell-failed':
+        showSellFailed(data);
+        break;
+    }
+  });
+
+  function renderMarket(data) {
+    const { currency, items, sellableItems = [] } = data;
+    currentMarketData = data;
+    
+    // Preload all icons for fluid browsing
+    preloadIcons(items);
+    preloadIcons(sellableItems);
+    
+    // Update currency display
+    if (marketCurrency) {
+      marketCurrency.textContent = currency;
+    }
+    
+    // Create a map of sellable items for quick lookup
+    const sellableItemsMap = new Map();
+    sellableItems.forEach(item => {
+      sellableItemsMap.set(item.id, item);
+    });
+    
+
+    
+    // Filter items based on current filter and search
+    let filteredItems = items;
+    
+    // Apply category filter
+    if (currentFilter !== 'all') {
+      filteredItems = filteredItems.filter(item => item.category === currentFilter);
+    }
+    
+    // Apply search filter
+    if (currentSearch) {
+      filteredItems = filteredItems.filter(item => 
+        item.name.toLowerCase().includes(currentSearch) ||
+        item.description.toLowerCase().includes(currentSearch) ||
+        item.category.toLowerCase().includes(currentSearch)
+      );
+    }
+    
+    // Update item count
+    const itemsCount = document.querySelector('.items-count');
+    if (itemsCount) {
+      itemsCount.textContent = `${filteredItems.length} items`;
+    }
+
+
+    
+    let marketHTML = '';
+    
+    if (filteredItems.length === 0) {
+      marketHTML = `
+        <div class="no-items">
+          <div class="no-items-text">No items available in this category</div>
+        </div>
+      `;
+    } else {
+      // Render items in grid with both buy and sell options
+      filteredItems.forEach(item => {
+        const canAfford = currency >= item.price;
+        const sellableItem = sellableItemsMap.get(item.id);
+        const stashQuantity = sellableItem ? sellableItem.quantity : 0;
+        const isValuable = item.category === 'valuable';
+        const canSell = isValuable && stashQuantity > 0;
+        
+
+        
+        // Determine the card state based on affordability and sellability
+        let cardClass = 'market-item';
+        if (canAfford) {
+          cardClass += ' affordable';
+        } else {
+          cardClass += ' expensive';
+        }
+        if (canSell) {
+          cardClass += ' sellable';
+        }
+        
+        marketHTML += `
+          <div class="${cardClass}" data-category="${item.category}" data-item-id="${item.id}">
+            <div class="item-header">
+              <div class="item-image">
+                <img src="${CDN_ASSETS_URL}/${item.iconImageUri}" alt="${item.name}">
+                ${isValuable && stashQuantity > 0 ? `<div class="item-badge">${stashQuantity}</div>` : ''}
+              </div>
+              <div class="item-category">${item.category.toUpperCase()}</div>
+            </div>
+            <div class="item-content">
+              <h3 class="item-name">${item.name}</h3>
+              <p class="item-description">${item.description}</p>
+              <div class="item-meta">
+                <div class="item-price">
+                  <span class="price-value">${item.price} CR</span>
+                </div>
+                ${item.maxQuantity ? `<div class="item-limit">Max: ${item.maxQuantity}</div>` : ''}
+              </div>
+            </div>
+            <div class="item-actions">
+              <button class="purchase-btn ${canAfford ? 'primary' : 'disabled'}" 
+                      data-item-id="${item.id}" 
+                      ${canAfford ? '' : 'disabled'}
+                      title="${canAfford ? `Purchase for ${item.price} CR` : 'Insufficient funds'}">
+                ${canAfford ? 'PURCHASE' : 'INSUFFICIENT FUNDS'}
+              </button>
+              ${canSell ? `
+                <button class="sell-btn primary" 
+                        data-item-id="${item.id}" 
+                        data-quantity="${stashQuantity}"
+                        title="Sell 1 for ${Math.floor(item.price * 0.5)} CR">
+                  SELL 1
+                </button>
+                ${stashQuantity > 1 ? `
+                  <button class="sell-all-btn secondary" 
+                          data-item-id="${item.id}" 
+                          data-quantity="${stashQuantity}"
+                          title="Sell all ${stashQuantity} for ${Math.floor(item.price * 0.5) * stashQuantity} CR">
+                    SELL ALL
+                  </button>
+                ` : ''}
+              ` : ''}
+            </div>
+          </div>
+        `;
+      });
+    }
+    
+    if (marketContent) {
+      marketContent.innerHTML = marketHTML;
+    }
+    
+    // Add event listeners for both buy and sell with improved UX
+    document.querySelectorAll('.purchase-btn:not(.disabled)').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const itemId = e.target.getAttribute('data-item-id');
+        const itemCard = e.target.closest('.market-item');
+        
+        // Add visual feedback
+        itemCard.classList.add('purchasing');
+        btn.textContent = 'PURCHASING...';
+        btn.disabled = true;
+        
+        hytopia.sendData({ type: 'purchaseItem', itemId });
+        
+        // Reset after a delay
+        setTimeout(() => {
+          itemCard.classList.remove('purchasing');
+          btn.textContent = 'PURCHASE';
+          btn.disabled = false;
+        }, 2000);
+      });
+    });
+    
+    document.querySelectorAll('.sell-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const itemId = e.target.getAttribute('data-item-id');
+        const itemCard = e.target.closest('.market-item');
+        
+        // Add visual feedback
+        itemCard.classList.add('selling');
+        btn.textContent = 'SELLING...';
+        btn.disabled = true;
+        
+        hytopia.sendData({ type: 'sellItem', itemId, quantity: 1 });
+        
+        // Reset after a delay
+        setTimeout(() => {
+          itemCard.classList.remove('selling');
+          btn.textContent = 'SELL 1';
+          btn.disabled = false;
+        }, 2000);
+      });
+    });
+    
+    document.querySelectorAll('.sell-all-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const itemId = e.target.getAttribute('data-item-id');
+        const quantity = parseInt(e.target.getAttribute('data-quantity'));
+        const itemCard = e.target.closest('.market-item');
+        
+        // Add visual feedback
+        itemCard.classList.add('selling');
+        btn.textContent = 'SELLING...';
+        btn.disabled = true;
+        
+        hytopia.sendData({ type: 'sellItem', itemId, quantity });
+        
+        // Reset after a delay
+        setTimeout(() => {
+          itemCard.classList.remove('selling');
+          btn.textContent = 'SELL ALL';
+          btn.disabled = false;
+        }, 2000);
+      });
+    });
+  }
+
+  // Market Popup System
+  const marketPopupOverlay = document.getElementById('market-popup-overlay');
+  const marketPopup = document.getElementById('market-popup');
+  const marketPopupIcon = document.getElementById('market-popup-icon');
+  const marketPopupTitle = document.getElementById('market-popup-title');
+  const marketPopupSubtitle = document.getElementById('market-popup-subtitle');
+  const marketPopupMessage = document.getElementById('market-popup-message');
+  const marketPopupDetails = document.getElementById('market-popup-details');
+  const marketPopupConfirm = document.getElementById('market-popup-confirm');
+  const marketPopupCancel = document.getElementById('market-popup-cancel');
+
+  // Helper function to extract item information from messages
+  function extractItemInfo(message, type = 'purchase') {
+    if (!message) return { itemName: 'Unknown Item', price: 'N/A', quantity: 1 };
+    
+    let itemName = 'Unknown Item';
+    let price = 'N/A';
+    let quantity = 1;
+    
+    console.log(`Extracting info from message: "${message}" (type: ${type})`);
+    
+    // Try to extract item name
+    if (type === 'purchase') {
+      if (message.includes('Successfully purchased ')) {
+        itemName = message.replace('Successfully purchased ', '');
+      } else if (message.includes('purchased ')) {
+        itemName = message.split('purchased ')[1]?.split(' ')[0] || 'Unknown Item';
+      } else if (message.includes('bought ')) {
+        itemName = message.split('bought ')[1]?.split(' ')[0] || 'Unknown Item';
+      } else {
+        itemName = message;
+      }
+    } else if (type === 'sell') {
+      if (message.includes('Successfully sold ')) {
+        itemName = message.replace('Successfully sold ', '');
+      } else if (message.includes('sold ')) {
+        itemName = message.split('sold ')[1]?.split(' ')[0] || 'Unknown Item';
+      } else if (message.includes('sold for ')) {
+        itemName = message.split('sold for ')[0]?.split(' ').pop() || 'Unknown Item';
+      } else {
+        itemName = message;
+      }
+    }
+    
+    // Try to extract price information - multiple patterns
+    let priceMatch = null;
+    
+    console.log('Attempting to extract price from message...');
+    
+    // Pattern 1: "for X credits" or "for X credit"
+    priceMatch = message.match(/for\s+(\d+)\s*credits?/i);
+    if (priceMatch) {
+      price = `${priceMatch[1]} Credits`;
+      console.log('Pattern 1 matched - Price:', price);
+    }
+    
+    // Pattern 2: "X credits" or "X credit" (standalone)
+    if (price === 'N/A') {
+      priceMatch = message.match(/(\d+)\s*credits?/i);
+      if (priceMatch) {
+        price = `${priceMatch[1]} Credits`;
+        console.log('Pattern 2 matched - Price:', price);
+      }
+    }
+    
+    // Pattern 3: "cost X" or "price X"
+    if (price === 'N/A') {
+      priceMatch = message.match(/(?:cost|price)\s+(\d+)/i);
+      if (priceMatch) {
+        price = `${priceMatch[1]} Credits`;
+        console.log('Pattern 3 matched - Price:', price);
+      }
+    }
+    
+    // Pattern 4: "X cr" or "X c" (abbreviated)
+    if (price === 'N/A') {
+      priceMatch = message.match(/(\d+)\s*cr\b/i);
+      if (priceMatch) {
+        price = `${priceMatch[1]} Credits`;
+        console.log('Pattern 4 matched - Price:', price);
+      }
+    }
+    
+    // Pattern 5: Any number that might be a price (last resort)
+    if (price === 'N/A') {
+      const numbers = message.match(/\d+/g);
+      if (numbers && numbers.length > 0) {
+        // Use the largest number as it's likely the price
+        const maxNumber = Math.max(...numbers.map(n => parseInt(n)));
+        if (maxNumber > 0 && maxNumber < 100000) { // Reasonable price range
+          price = `${maxNumber} Credits`;
+          console.log('Pattern 5 matched (largest number) - Price:', price);
+        }
+      }
+    }
+    
+    // Try to extract quantity - multiple patterns
+    let quantityMatch = null;
+    
+    // Pattern 1: "Xx Item" or "X x Item"
+    quantityMatch = message.match(/(\d+)\s*x\s+/i);
+    if (quantityMatch) {
+      quantity = parseInt(quantityMatch[1]) || 1;
+    }
+    
+    // Pattern 2: "quantity: X"
+    if (quantity === 1) {
+      quantityMatch = message.match(/quantity:\s*(\d+)/i);
+      if (quantityMatch) {
+        quantity = parseInt(quantityMatch[1]) || 1;
+      }
+    }
+    
+    // Pattern 3: "X of" or "X items"
+    if (quantity === 1) {
+      quantityMatch = message.match(/(\d+)\s+(?:of|items?)/i);
+      if (quantityMatch) {
+        quantity = parseInt(quantityMatch[1]) || 1;
+      }
+    }
+    
+    // Pattern 4: Look for numbers that might be quantities (before item names)
+    if (quantity === 1) {
+      const words = message.split(' ');
+      for (let i = 0; i < words.length - 1; i++) {
+        const num = parseInt(words[i]);
+        if (!isNaN(num) && num > 0 && num < 1000) {
+          // Check if next word might be an item indicator
+          const nextWord = words[i + 1].toLowerCase();
+          if (nextWord.includes('x') || nextWord.includes('of') || nextWord.includes('item')) {
+            quantity = num;
+            break;
+          }
+        }
+      }
+    }
+    
+    console.log(`Extracted: itemName="${itemName}", price="${price}", quantity=${quantity}`);
+    
+    return { itemName, price, quantity };
+  }
+
+  function showMarketPopup(config) {
+    // Validate config
+    if (!config || typeof config !== 'object') {
+      console.error('Invalid popup config:', config);
+      return;
+    }
+
+    const {
+      type = 'success', // success, error, warning
+      title = '',
+      subtitle = '',
+      message = '',
+      details = null,
+      showConfirm = false,
+      showCancel = true,
+      confirmText = 'CONFIRM',
+      cancelText = 'CLOSE',
+      onConfirm = null,
+      onCancel = null,
+      autoClose = true,
+      autoCloseDelay = 3000
+    } = config;
+
+    // Validate type
+    const validTypes = ['success', 'error', 'warning'];
+    if (!validTypes.includes(type)) {
+      console.warn(`Invalid popup type: ${type}, defaulting to success`);
+      type = 'success';
+    }
+
+    try {
+      // Set icon
+      if (marketPopupIcon) {
+        marketPopupIcon.className = `market-popup-icon ${type}`;
+        marketPopupIcon.innerHTML = type === 'success' ? '✓' : type === 'error' ? '✕' : '⚠';
+      }
+
+      // Set content with sanitization
+      if (marketPopupTitle) {
+        marketPopupTitle.textContent = title || '';
+      }
+      if (marketPopupSubtitle) {
+        marketPopupSubtitle.textContent = subtitle || '';
+      }
+      if (marketPopupMessage) {
+        marketPopupMessage.textContent = message || '';
+      }
+
+      // Set details if provided
+      if (details && Object.keys(details).length > 0 && marketPopupDetails) {
+        marketPopupDetails.style.display = 'block';
+        marketPopupDetails.innerHTML = '';
+        
+        Object.entries(details).forEach(([label, value]) => {
+          if (label && value !== undefined) {
+            const row = document.createElement('div');
+            row.className = 'market-popup-detail-row';
+            
+            const labelEl = document.createElement('span');
+            labelEl.className = 'market-popup-detail-label';
+            labelEl.textContent = String(label).toUpperCase();
+            
+            const valueEl = document.createElement('span');
+            valueEl.className = `market-popup-detail-value ${type}`;
+            valueEl.textContent = String(value);
+            
+            row.appendChild(labelEl);
+            row.appendChild(valueEl);
+            marketPopupDetails.appendChild(row);
+          }
+        });
+      } else if (marketPopupDetails) {
+        marketPopupDetails.style.display = 'none';
+      }
+
+      // Set button visibility and text
+      if (marketPopupConfirm) {
+        marketPopupConfirm.style.display = showConfirm ? 'block' : 'none';
+        marketPopupConfirm.textContent = confirmText || 'CONFIRM';
+      }
+      if (marketPopupCancel) {
+        marketPopupCancel.style.display = showCancel ? 'block' : 'none';
+        marketPopupCancel.textContent = cancelText || 'CLOSE';
+      }
+
+      // Set button handlers with error handling
+      if (marketPopupConfirm) {
+        marketPopupConfirm.onclick = () => {
+          hideMarketPopup();
+          if (typeof onConfirm === 'function') {
+            try {
+              onConfirm();
+            } catch (error) {
+              console.error('Error in popup confirm callback:', error);
+            }
+          }
+        };
+      }
+      
+      if (marketPopupCancel) {
+        marketPopupCancel.onclick = () => {
+          hideMarketPopup();
+          if (typeof onCancel === 'function') {
+            try {
+              onCancel();
+            } catch (error) {
+              console.error('Error in popup cancel callback:', error);
+            }
+          }
+        };
+      }
+
+      // Show popup
+      if (marketPopupOverlay) {
+        marketPopupOverlay.classList.add('active');
+      }
+
+      // Auto-close if enabled
+      if (autoClose && typeof autoCloseDelay === 'number' && autoCloseDelay > 0) {
+    setTimeout(() => {
+          hideMarketPopup();
+        }, autoCloseDelay);
+      }
+    } catch (error) {
+      console.error('Error showing market popup:', error);
+      // Fallback: try to show a simple error popup
+      try {
+        if (marketPopupOverlay) {
+          marketPopupOverlay.classList.add('active');
+        }
+        if (marketPopupTitle) {
+          marketPopupTitle.textContent = 'ERROR';
+        }
+        if (marketPopupMessage) {
+          marketPopupMessage.textContent = 'Failed to display popup';
+        }
+      } catch (fallbackError) {
+        console.error('Fallback popup also failed:', fallbackError);
+      }
+    }
+  }
+
+  function hideMarketPopup() {
+    try {
+      if (marketPopupOverlay && marketPopupOverlay.classList.contains('active')) {
+        marketPopupOverlay.classList.remove('active');
+      }
+    } catch (error) {
+      console.error('Error hiding market popup:', error);
+    }
+  }
+
+  function showPurchaseSuccess(data) {
+    // Debug: log the actual data structure
+    console.log('=== PURCHASE SUCCESS DEBUG ===');
+    console.log('Purchase success data:', data);
+    console.log('Data keys:', Object.keys(data));
+    console.log('Data values:', Object.values(data));
+    console.log('Message:', data.message);
+    console.log('Raw data:', JSON.stringify(data, null, 2));
+    console.log('================================');
+    
+    // Check if price/quantity are in separate data properties
+    let extractedPrice = 'N/A';
+    let extractedQuantity = 1;
+    
+    console.log('Checking data properties for price/quantity...');
+    
+    // Look for price in data properties - check all possible variations
+    const priceKeys = ['price', 'cost', 'amount', 'value', 'credits', 'currency'];
+    for (const key of priceKeys) {
+      if (data[key] !== undefined && data[key] !== null) {
+        console.log(`Found price in data.${key}:`, data[key]);
+        extractedPrice = `${data[key]} Credits`;
+        break;
+      }
+    }
+    
+    // Look for quantity in data properties - check all possible variations
+    const quantityKeys = ['quantity', 'count', 'qty', 'amount', 'number'];
+    for (const key of quantityKeys) {
+      if (data[key] !== undefined && data[key] !== null) {
+        console.log(`Found quantity in data.${key}:`, data[key]);
+        extractedQuantity = data[key];
+        break;
+      }
+    }
+    
+    console.log('Extracted from data properties - Price:', extractedPrice, 'Quantity:', extractedQuantity);
+    
+    // Extract item information using helper function
+    const { itemName, price: messagePrice, quantity: messageQuantity } = extractItemInfo(data.message, 'purchase');
+    
+    // Use data properties if available, otherwise use extracted from message
+    const finalPrice = extractedPrice !== 'N/A' ? extractedPrice : messagePrice;
+    const finalQuantity = extractedQuantity !== 1 ? extractedQuantity : messageQuantity;
+    
+    showMarketPopup({
+      type: 'success',
+      title: 'PURCHASE SUCCESSFUL',
+      subtitle: 'ITEM ACQUIRED',
+      message: data.message || 'Your purchase has been completed successfully!',
+      details: {
+        'Item': itemName,
+        'Quantity': finalQuantity
+      },
+      autoClose: true,
+      autoCloseDelay: 4000
+    });
+  }
+
+  function showPurchaseFailed(data) {
+    // Debug: log the actual data structure
+    console.log('Purchase failed data:', data);
+    
+    showMarketPopup({
+      type: 'error',
+      title: 'PURCHASE FAILED',
+      subtitle: 'TRANSACTION DENIED',
+      message: data.reason || data.message || 'Your purchase could not be completed.',
+      details: {
+        'Reason': data.reason || data.message || 'Unknown Error',
+        'Required': data.required ? `${data.required} Credits` : 'N/A',
+        'Available': data.available ? `${data.available} Credits` : 'N/A'
+      },
+      autoClose: true,
+      autoCloseDelay: 5000
+    });
+  }
+
+  function showSellSuccess(data) {
+    // Debug: log the actual data structure
+    console.log('Sell success data:', data);
+    console.log('Data keys:', Object.keys(data));
+    console.log('Data values:', Object.values(data));
+    
+    // Check if earnings/quantity are in separate data properties
+    let extractedEarnings = 'N/A';
+    let extractedQuantity = 1;
+    
+    // Look for earnings in data properties
+    if (data.earnings !== undefined) {
+      extractedEarnings = `${data.earnings} Credits`;
+    } else if (data.price !== undefined) {
+      extractedEarnings = `${data.price} Credits`;
+    } else if (data.amount !== undefined) {
+      extractedEarnings = `${data.amount} Credits`;
+    }
+    
+    // Look for quantity in data properties
+    if (data.quantity !== undefined) {
+      extractedQuantity = data.quantity;
+    } else if (data.count !== undefined) {
+      extractedQuantity = data.count;
+    } else if (data.qty !== undefined) {
+      extractedQuantity = data.qty;
+    }
+    
+    // Extract item information using helper function
+    const { itemName, price: messagePrice, quantity: messageQuantity } = extractItemInfo(data.message, 'sell');
+    
+    // Use data properties if available, otherwise use extracted from message
+    const finalEarnings = extractedEarnings !== 'N/A' ? extractedEarnings : messagePrice;
+    const finalQuantity = extractedQuantity !== 1 ? extractedQuantity : messageQuantity;
+    
+    showMarketPopup({
+      type: 'success',
+      title: 'SALE SUCCESSFUL',
+      subtitle: 'ITEM SOLD',
+      message: data.message || 'Your item has been sold successfully!',
+      details: {
+        'Item': itemName,
+        'Quantity': finalQuantity
+      },
+      autoClose: true,
+      autoCloseDelay: 4000
+    });
+  }
+
+  function showSellFailed(data) {
+    // Debug: log the actual data structure
+    console.log('Sell failed data:', data);
+    
+    showMarketPopup({
+      type: 'error',
+      title: 'SALE FAILED',
+      subtitle: 'TRANSACTION DENIED',
+      message: data.reason || data.message || 'Your sale could not be completed.',
+      details: {
+        'Reason': data.reason || data.message || 'Unknown Error',
+        'Item': 'Unknown Item'
+      },
+      autoClose: true,
+      autoCloseDelay: 5000
+    });
+  }
+
+  // Additional utility functions for other market scenarios
+  function showConfirmationPopup(config) {
+    showMarketPopup({
+      type: 'warning',
+      title: config.title || 'CONFIRM ACTION',
+      subtitle: config.subtitle || 'REQUIRES CONFIRMATION',
+      message: config.message || 'Are you sure you want to proceed?',
+      details: config.details || null,
+      showConfirm: true,
+      showCancel: true,
+      confirmText: config.confirmText || 'CONFIRM',
+      cancelText: config.cancelText || 'CANCEL',
+      onConfirm: config.onConfirm,
+      onCancel: config.onCancel,
+      autoClose: false
+    });
+  }
+
+  function showInfoPopup(config) {
+    showMarketPopup({
+      type: 'success',
+      title: config.title || 'INFORMATION',
+      subtitle: config.subtitle || 'DETAILS',
+      message: config.message || '',
+      details: config.details || null,
+      showConfirm: false,
+      showCancel: true,
+      cancelText: config.cancelText || 'CLOSE',
+      onCancel: config.onCancel,
+      autoClose: config.autoClose !== false,
+      autoCloseDelay: config.autoCloseDelay || 4000
+    });
+  }
+
+  function showErrorPopup(config) {
+    showMarketPopup({
+      type: 'error',
+      title: config.title || 'ERROR',
+      subtitle: config.subtitle || 'PROBLEM DETECTED',
+      message: config.message || 'An error occurred.',
+      details: config.details || null,
+      showConfirm: false,
+      showCancel: true,
+      cancelText: config.cancelText || 'CLOSE',
+      onCancel: config.onCancel,
+      autoClose: config.autoClose !== false,
+      autoCloseDelay: config.autoCloseDelay || 5000
+    });
+  }
+
+  // Close popup when clicking outside
+  marketPopupOverlay.addEventListener('click', (e) => {
+    if (e.target === marketPopupOverlay) {
+      hideMarketPopup();
+    }
+  });
+
+  // Close popup with Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && marketPopupOverlay.classList.contains('active')) {
+      hideMarketPopup();
+    }
+  });
+
+  // Example usage functions (can be removed in production)
+  function testMarketPopups() {
+    // Test success popup with different data structures
+    setTimeout(() => {
+      showPurchaseSuccess({
+        message: 'AKM Rifle purchased successfully!',
+        price: 2500,
+        quantity: 1
+      });
+    }, 1000);
+
+    // Test with message-only data
+    setTimeout(() => {
+      showPurchaseSuccess({
+        message: 'Successfully purchased 5x Medkit for 500 credits'
+      });
+    }, 3000);
+
+    // Test error popup
+    setTimeout(() => {
+      showPurchaseFailed({
+        reason: 'Insufficient credits',
+        required: 2500,
+        available: 1500
+      });
+    }, 6000);
+
+    // Test sell success
+    setTimeout(() => {
+      showSellSuccess({
+        message: 'Successfully sold Gold Bar for 1000 credits',
+        earnings: 1000,
+        quantity: 1
+      });
+    }, 9000);
+
+    // Test confirmation popup
+    setTimeout(() => {
+      showConfirmationPopup({
+        title: 'CONFIRM PURCHASE',
+        subtitle: 'LARGE TRANSACTION',
+        message: 'Are you sure you want to purchase 10 AKM Rifles for 25,000 credits?',
+        details: {
+          'Total Cost': '25,000 Credits',
+          'Current Balance': '30,000 Credits',
+          'Remaining': '5,000 Credits'
+        },
+        onConfirm: () => {
+          showPurchaseSuccess({
+            message: 'Bulk purchase completed!',
+            price: 2500,
+            quantity: 10
+          });
+        }
+      });
+    }, 12000);
+  }
+
+  // Uncomment the line below to test popups and see data structure (remove in production)
+  // testMarketPopups();
+
+  // Temporary function to test price extraction with common message formats
+  function testPriceExtraction() {
+    const testMessages = [
+      'Successfully purchased AKM Rifle for 2500 credits',
+      'AKM Rifle purchased for 2500 cr',
+      'Bought 5x Medkit for 500 credits',
+      'Successfully purchased Gold Bar',
+      'Item purchased successfully',
+      'AKM Rifle - 2500 credits',
+      'Purchase: AKM Rifle (2500 cr)',
+      'Successfully bought AKM Rifle for 2500 credits'
+    ];
+    
+    console.log('=== TESTING PRICE EXTRACTION ===');
+    testMessages.forEach((message, index) => {
+      console.log(`\nTest ${index + 1}: "${message}"`);
+      const result = extractItemInfo(message, 'purchase');
+      console.log('Result:', result);
+    });
+    console.log('=== END TEST ===');
+  }
+
+  // Uncomment to test price extraction patterns
+  // testPriceExtraction();
+</script>
+
+<style>
+  .market-overlay { 
+    position: fixed; 
+    inset: 0; 
+    display: none; 
+    justify-content: center; 
+    align-items: center; 
+    background: rgba(0,0,0,0.25); 
+    backdrop-filter: blur(8px); 
+    -webkit-backdrop-filter: blur(8px); 
+    z-index: 10001; 
+  }
+
+  .market-interface {
+    width: min(1200px, 95vw);
+    height: min(800px, 90vh);
+    background: var(--glass-bg-strong);
+    border: 1.5px solid var(--glass-border-strong);
+    border-radius: var(--glass-radius);
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header Panel */
+  .market-header-panel {
+    background: var(--glass-bg);
+    border-bottom: 1.5px solid var(--glass-border);
+    padding: 24px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .market-title-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .market-title {
+    font-weight: 900;
+    font-size: 24px;
+    letter-spacing: 4px;
+    color: #ffffff;
+    text-transform: uppercase;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    margin: 0;
+  }
+
+  .market-subtitle {
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: #64b5f6;
+    text-transform: uppercase;
+    opacity: 0.8;
+  }
+
+  .market-controls {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .currency-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .currency-label {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: #b5c0cc;
+    text-transform: uppercase;
+  }
+
+  .currency-value {
+    font-size: 20px;
+    font-weight: 900;
+    color: #ffd700;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  }
+
+  .close-btn-market {
+    background: var(--glass-bg);
+    border: 1.5px solid var(--glass-border);
+    border-radius: var(--glass-radius);
+    color: #ffffff;
+    padding: 8px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .close-btn-market:hover {
+    background: var(--glass-bg-strong);
+    border-color: var(--glass-border-strong);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+
+  /* Content Panel */
+  .market-content-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Enhanced Filter Bar */
+  .filter-bar {
+    background: var(--glass-bg);
+    border-bottom: 1.5px solid var(--glass-border);
+    padding: 16px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .filter-group {
+    display: flex;
+    gap: 8px;
+  }
+
+  .search-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    max-width: 400px;
+  }
+
+  .market-search {
+    flex: 1;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: white;
+    font-size: 14px;
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+  }
+
+  .market-search::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .market-search:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+  }
+
+  .quick-sell-btn {
+    padding: 6px 16px;
+    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 3px 10px rgba(255, 107, 53, 0.4);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .quick-sell-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+  }
+
+  .quick-sell-btn:hover {
+    background: linear-gradient(135deg, #ff5722, #ff9800);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 107, 53, 0.6);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
+  .quick-sell-btn:hover::before {
+    left: 100%;
+  }
+
+  .quick-sell-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+  }
+
+  .quick-sell-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+
+
+  .filter-btn {
+    background: var(--glass-bg);
+    border: 1.5px solid var(--glass-border);
+    border-radius: var(--glass-radius);
+    color: #b5c0cc;
+    padding: 8px 16px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .filter-btn:hover {
+    background: var(--glass-bg-strong);
+    border-color: var(--glass-border-strong);
+    color: #ffffff;
+  }
+
+  .filter-btn.active {
+    background: linear-gradient(135deg, #64b5f6, #42a5f5);
+    border-color: #64b5f6;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(100,181,246,0.3);
+  }
+
+  .filter-info {
+    color: #b5c0cc;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* Items Container */
+  .items-container {
+    flex: 1;
+    padding: 24px 32px;
+    overflow: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .items-container::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  /* Market Items */
+  .market-item {
+    background: var(--glass-bg);
+    border: 1.5px solid var(--glass-border);
+    border-radius: var(--glass-radius);
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    padding: 20px;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .market-item:hover {
+    background: var(--glass-bg-strong);
+    border-color: var(--glass-border-strong);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+
+  .market-item.expensive {
+    opacity: 0.6;
+    filter: grayscale(0.3);
+  }
+
+  /* Visual Feedback States */
+  .market-item.purchasing {
+    animation: pulse-glow 1s ease-in-out;
+  }
+
+  .market-item.selling {
+    animation: pulse-glow-green 1s ease-in-out;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 30px rgba(59, 130, 246, 0.6);
+    }
+  }
+
+  @keyframes pulse-glow-green {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 30px rgba(34, 197, 94, 0.6);
+    }
+  }
+
+  .item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .item-image {
+    position: relative;
+  }
+
+  .item-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.4);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .item-image {
+    width: 48px;
+    height: 48px;
+    background: var(--glass-bg);
+    border: 1.5px solid var(--glass-border);
+    border-radius: var(--glass-radius);
+    display: grid;
+    place-items: center;
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  }
+
+  .item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: brightness(1.1) contrast(1.05) drop-shadow(0 1px 2px rgba(0,0,0,0.6));
+  }
+
+  .item-category {
+    font-size: 9px;
+    color: #64b5f6;
+    background: rgba(100,181,246,0.1);
+    padding: 4px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+  }
+
+  .item-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .item-name {
+    font-size: 14px;
+    font-weight: 800;
+    color: #ffffff;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+  }
+
+  .item-description {
+    font-size: 11px;
+    color: #b5c0cc;
+    line-height: 1.4;
+    margin: 0;
+  }
+
+  .item-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+  }
+
+  .item-price {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .price-value {
+    color: #ffd700;
+    font-weight: 700;
+    font-size: 14px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  }
+
+  .item-limit {
+    color: #b5c0cc;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .item-actions {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* Handle multiple buttons in item actions */
+  .item-actions .purchase-btn + .sell-btn,
+  .item-actions .purchase-btn + .sell-all-btn {
+    margin-top: 4px;
+  }
+
+  .purchase-btn {
+    width: 100%;
+    background: var(--glass-bg);
+    border: 1.5px solid var(--glass-border);
+    border-radius: var(--glass-radius);
+    color: #ffffff;
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .purchase-btn.enabled:hover {
+    background: linear-gradient(135deg, #64b5f6, #42a5f5);
+    border-color: #64b5f6;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(100,181,246,0.3);
+  }
+
+  .purchase-btn.disabled {
+    background: rgba(244,67,54,0.2);
+    border-color: rgba(244,67,54,0.3);
+    color: #b5c0cc;
+    cursor: not-allowed;
+  }
+
+  /* Loading and Empty States */
+  .market-loading {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: #b5c0cc;
+  }
+
+  .loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(100,181,246,0.2);
+    border-top: 3px solid #64b5f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .loading-text {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .no-items {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: #b5c0cc;
+  }
+
+  .no-items-text {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* Purchase Messages */
+  .purchase-message { 
+    position: fixed; 
+    top: 20px; 
+    left: 50%; 
+    transform: translateX(-50%); 
+    padding: 12px 24px; 
+    border-radius: var(--glass-radius); 
+    font-size: 14px; 
+    font-weight: 700; 
+    z-index: 10002; 
+    animation: messageSlideIn 0.3s ease-out; 
+    box-shadow: var(--glass-shadow);
+  }
+
+  .purchase-message.success { 
+    background: linear-gradient(135deg, #27ae60, #2ecc71); 
+    color: #ffffff; 
+    border: 1.5px solid rgba(39,174,96,0.3); 
+  }
+
+  .purchase-message.error { 
+    background: linear-gradient(135deg, #e74c3c, #c0392b); 
+    color: #ffffff; 
+    border: 1.5px solid rgba(231,76,60,0.3); 
+  }
+
+  @keyframes messageSlideIn { 
+    from { 
+      opacity: 0; 
+      transform: translateX(-50%) translateY(-20px); 
+    } 
+    to { 
+      opacity: 1; 
+      transform: translateX(-50%) translateY(0); 
+    } 
+  }
+
+  /* Responsive Design */
+  @media (max-width: 1200px) {
+    .market-interface {
+      width: 95vw;
+      height: 90vh;
+    }
+    
+    .market-header-panel {
+      padding: 20px 24px;
+    }
+    
+    .filter-bar {
+      padding: 12px 24px;
+    }
+    
+    .items-container {
+      padding: 20px 24px;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    }
+  }
+
+  @media (max-width: 768px) {
+    .market-controls {
+      gap: 16px;
+    }
+    
+    .filter-group {
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    
+    .filter-btn {
+      padding: 6px 12px;
+      font-size: 9px;
+    }
+    
+    .items-container {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

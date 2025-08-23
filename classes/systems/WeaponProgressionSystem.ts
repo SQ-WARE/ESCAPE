@@ -115,15 +115,19 @@ export default class WeaponProgressionSystem {
 
   private static _rarityMultiplier(weaponId: string): number {
     const def = WeaponFactory.getWeaponData(weaponId);
-    const rarity = (def as any)?.rarity || 'common';
-    switch (String(rarity).toLowerCase()) {
-      case 'legendary': return 3.0;
-      case 'epic': return 2.2;
-      case 'rare': return 1.6;
-      case 'unusual':
-      case 'uncommon': return 1.25;
-      default: return 1.0;
-    }
+    const rarity = def?.rarity || 'common';
+    
+    // Use standardized rarity-based multipliers
+    const rarityMultipliers: Record<string, number> = {
+      'common': 1.0,
+      'unusual': 1.25,
+      'rare': 1.6,
+      'epic': 2.2,
+      'legendary': 3.0,
+      'utopian': 4.0, // In case weapons ever use utopian rarity
+    };
+    
+    return rarityMultipliers[rarity] || 1.0;
   }
 
   private static _get(player: Player): WeaponProgressionData {

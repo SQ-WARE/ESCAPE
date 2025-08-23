@@ -43,7 +43,7 @@ export default class ProgressionSystem {
         const AchievementSystem = require('./AchievementSystem').default;
         const data = (player.getPersistedData?.() as any) || {};
         const currency = Math.floor((data as any)?.currency ?? 0);
-        AchievementSystem.checkProgressionAchievements(player, newLevel, currency);
+        AchievementSystem.checkAllAchievements(player, { level: newLevel, currency });
         
         // Track level up timestamp
         player.setPersistedData({

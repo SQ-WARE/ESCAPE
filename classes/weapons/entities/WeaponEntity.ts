@@ -16,6 +16,7 @@ import WeaponEffectsSystem from '../../systems/WeaponEffectsSystem';
 import WeaponUISystem from '../../systems/WeaponUISystem';
 import WeaponItem from '../items/WeaponItem';
 
+
 export type WeaponHand = 'left' | 'right' | 'both';
 
 export interface WeaponEntityOptions extends ModelEntityOptions {
@@ -37,6 +38,7 @@ export default class WeaponEntity extends Entity {
   private _reloadSystem: WeaponReloadSystem;
   private _effectsSystem: WeaponEffectsSystem;
   private _uiSystem: WeaponUISystem;
+
 
   public constructor(options: WeaponEntityOptions) {
     const weaponData = options.weaponData;
@@ -62,6 +64,7 @@ export default class WeaponEntity extends Entity {
     this._shootingSystem = new WeaponShootingSystem(weaponData, this._uiSystem);
     this._reloadSystem = new WeaponReloadSystem(weaponData, options.ammo ?? 0);
     this._effectsSystem = new WeaponEffectsSystem(weaponData, this, this._shootingSystem);
+
   }
 
   // Getters
@@ -199,7 +202,6 @@ export default class WeaponEntity extends Entity {
   // Core weapon methods
   public equip(): void {
     if (!this.parent) {
-      console.error('WeaponEntity.equip(): No parent entity found');
       return;
     }
     
@@ -216,11 +218,17 @@ export default class WeaponEntity extends Entity {
     this._uiSystem.updateFireRateIndicator(this.parent as GamePlayerEntity, this._reloadSystem.ammo);
   }
 
+  public updateAimPosition(): void {
+    // No-op: aiming is disabled
+  }
+
   public unequip(): void {
     // Cancel any ongoing reload
     if (this._reloadSystem.isReloading) {
       this._reloadSystem.cancelReload(this.parent as GamePlayerEntity);
     }
+    
+    // No aim state to clear
     
     this._uiSystem.hideReloadProgress(this.parent as GamePlayerEntity);
     this._uiSystem.updateWeaponInfo(this.parent as GamePlayerEntity);
@@ -279,7 +287,18 @@ export default class WeaponEntity extends Entity {
       // Perform shooting
       if (this._shootingSystem.shoot(parentPlayerEntity)) {
         // Play effects
-        parentPlayerEntity.startModelOneshotAnimations([this._shootAnimation]);
+        // Reduce weapon animation based on movement state
+        const isRunning = parentPlayerEntity.movementSystem?.isSprinting() || false;
+        
+        if (isRunning) {
+          // When running, use a more subtle animation to reduce extreme arm/weapon movement
+          const subtleAnimation = this._getSubtleShootAnimationForHand(this._heldHand);
+          parentPlayerEntity.startModelOneshotAnimations([subtleAnimation]);
+        } else {
+          // Normal weapon animation when not running
+          parentPlayerEntity.startModelOneshotAnimations([this._shootAnimation]);
+        }
+        
         this._uiSystem.playShootSound(parentPlayerEntity);
         this._effectsSystem.createMuzzleFlash(parentPlayerEntity);
         this._effectsSystem.createShotLight(parentPlayerEntity);
@@ -362,6 +381,28 @@ export default class WeaponEntity extends Entity {
       default:
         return 'shoot_gun_right';
     }
+  }
+
+  /**
+   * Get a more subtle shooting animation when running
+   * This reduces extreme arm/weapon movement during running
+   */
+  private _getSubtleShootAnimationForHand(heldHand: WeaponHand): string {
+    // For rifles and other two-handed weapons, use single-hand animation when running
+    // This significantly reduces the extreme movement of the player model
+    if (heldHand === 'both') {
+      // Use right-hand animation for rifles when running to reduce movement
+      return 'shoot_gun_right';
+    }
+    
+    // For single-hand weapons, use a more subtle version
+    if (heldHand === 'right') {
+      // Use a more subtle single-hand animation
+      return 'shoot_gun_right';
+    }
+    
+    // For left-hand weapons, use the normal animation but it's already subtle
+    return this._getShootAnimationForHand(heldHand);
   }
 
   private _getIdleAnimationForHand(heldHand: WeaponHand): string {

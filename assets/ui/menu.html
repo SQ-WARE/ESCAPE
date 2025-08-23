@@ -2,7 +2,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700;900&family=Roboto+Condensed:wght@700;900&display=swap" rel="stylesheet">
+<!-- Only preload the main background image that's immediately needed -->
 <link rel="preload" as="image" href="{{CDN_ASSETS_URL}}/ui/background.png">
+<!-- Page Loading System -->
+<div class="page-loading-spinner" id="page-loading-spinner"></div>
+<div class="page-transition-overlay" id="page-transition-overlay"></div>
+
 <div class="menu-background" style="background: url('{{CDN_ASSETS_URL}}/ui/background.png') center center / cover no-repeat;">
   <div class="background-overlay"></div>
   <div class="smoke-effect">
@@ -12,9 +17,11 @@
   </div>
 </div>
 
-  <div class="main-menu">
+  <div class="main-menu page-loading" id="main-menu-content">
     <!-- Top HUD - Always at top -->
     <div class="top-hud">
+
+      
       <div class="hud-panel ui-panel" id="profile-hud">
         <div class="level-badge">
           <span class="level-label">LVL</span>
@@ -81,18 +88,20 @@
           </div>
         </button>
         
-        <button class="action-button secondary" id="settings-button" data-action="openSettings">
+
+
+        <button class="action-button secondary" id="career-button" data-action="openCareer">
           <div class="button-content">
             <div class="button-text">
-              <span class="button-title">SETTINGS</span>
+              <span class="button-title">CAREER</span>
             </div>
           </div>
         </button>
-
-        <button class="action-button secondary" id="progression-button" data-action="openProgression">
+        
+        <button class="action-button secondary" id="market-button" data-action="openMarket">
           <div class="button-content">
             <div class="button-text">
-              <span class="button-title">PROGRESSION</span>
+              <span class="button-title">MARKET</span>
             </div>
           </div>
         </button>
@@ -155,16 +164,173 @@
 <!-- Scene UI templates not used on menu (defined in index.html) -->
 
 <div class="backdrop-blur"></div> 
-<div class="credits">3D models by Kaan</div>
 
 <script>
   const CDN_ASSETS_URL = '{{CDN_ASSETS_URL}}';
   // Slot constants live in dedicated pages
 
+  // Page Loading & Transition System - Optimized
+  const pageLoadingSpinner = document.getElementById('page-loading-spinner');
+  const pageTransitionOverlay = document.getElementById('page-transition-overlay');
+  const mainMenuContent = document.getElementById('main-menu-content');
+  
+  let isTransitioning = false;
+  let transitionTimeout = null;
+
+  // Initialize loading spinner
+  function initializeLoadingSpinner() {
+    if (pageLoadingSpinner) {
+      pageLoadingSpinner.classList.add('active');
+    }
+  }
+
+  // Page loading system with error handling
+  function showPageLoading() {
+    if (pageLoadingSpinner && !pageLoadingSpinner.classList.contains('active')) {
+      pageLoadingSpinner.classList.add('active');
+    }
+  }
+
+  function hidePageLoading() {
+    if (pageLoadingSpinner && pageLoadingSpinner.classList.contains('active')) {
+      pageLoadingSpinner.classList.remove('active');
+    }
+  }
+
+  function showPageTransition() {
+    if (pageTransitionOverlay && !pageTransitionOverlay.classList.contains('active')) {
+      pageTransitionOverlay.classList.add('active');
+    }
+  }
+
+  function hidePageTransition() {
+    if (pageTransitionOverlay && pageTransitionOverlay.classList.contains('active')) {
+      pageTransitionOverlay.classList.remove('active');
+    }
+  }
+
+  function navigateToPage(pageType) {
+    // Prevent multiple simultaneous transitions
+    if (isTransitioning) {
+      console.warn('Page transition already in progress, ignoring navigation request');
+      return;
+    }
+
+    // Validate page type
+    const validPageTypes = ['openStash', 'openCareer', 'openMarket'];
+    if (!validPageTypes.includes(pageType)) {
+      console.error(`Invalid page type: ${pageType}`);
+      return;
+    }
+
+    isTransitioning = true;
+
+    try {
+      // Show transition overlay
+      showPageTransition();
+      
+      // Add fade out animation to current content
+      if (mainMenuContent) {
+        mainMenuContent.classList.add('page-fade-out');
+      }
+      
+      // Show loading spinner during transition
+      showPageLoading();
+      
+      // Clear any existing timeout
+      if (transitionTimeout) {
+        clearTimeout(transitionTimeout);
+      }
+      
+      // After fade out, navigate
+      transitionTimeout = setTimeout(() => {
+        try {
+          hytopia.sendData({ type: pageType });
+        } catch (error) {
+          console.error('Failed to send navigation data:', error);
+          // Revert transition on error
+          revertTransition();
+        }
+      }, 300);
+    } catch (error) {
+      console.error('Navigation error:', error);
+      revertTransition();
+    }
+  }
+
+  function revertTransition() {
+    isTransitioning = false;
+    hidePageLoading();
+    hidePageTransition();
+    
+    if (mainMenuContent) {
+      mainMenuContent.classList.remove('page-fade-out');
+    }
+    
+    if (transitionTimeout) {
+      clearTimeout(transitionTimeout);
+      transitionTimeout = null;
+    }
+  }
+
+  // Initialize page when everything is loaded
+  function initializePage() {
+    try {
+      // Hide loading spinner
+      hidePageLoading();
+      
+      // Show main content with fade in
+      if (mainMenuContent) {
+        mainMenuContent.classList.remove('page-loading');
+        mainMenuContent.classList.add('page-loaded', 'page-fade-in');
+      }
+      
+      // Assets will be loaded when needed for better performance
+    } catch (error) {
+      console.error('Page initialization error:', error);
+      // Fallback: show content without animation
+      if (mainMenuContent) {
+        mainMenuContent.classList.remove('page-loading');
+        mainMenuContent.classList.add('page-loaded');
+      }
+    }
+  }
+
+  // Removed unnecessary preloading - assets will be loaded when needed
+
+  // Wait for DOM and critical resources to load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(initializePage, 100);
+    });
+  } else {
+    // DOM is already loaded
+    setTimeout(initializePage, 100);
+  }
+
+  // Initialize loading spinner immediately
+  initializeLoadingSpinner();
+
+  // Handle page visibility changes (tab switching)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && isTransitioning) {
+      // Page hidden during transition, revert
+      revertTransition();
+    }
+  });
+
+  // Handle window focus/blur
+  window.addEventListener('blur', () => {
+    if (isTransitioning) {
+      // Window lost focus during transition, revert
+      revertTransition();
+    }
+  });
+
   const deployButton = document.getElementById('deploy-button');
   const stashButton = document.getElementById('stash-button');
-  const settingsButton = document.getElementById('settings-button');
-  const progressionButton = document.getElementById('progression-button');
+  const careerButton = document.getElementById('career-button');
+  const marketButton = document.getElementById('market-button');
   const menuButtons = Array.from(document.querySelectorAll('.action-button'));
   const titleEl = document.getElementById('escape-title');
   // Progression now opens a dedicated page. Stash is also dedicated; no in-menu elements are used.
@@ -184,15 +350,21 @@
   });
 
   stashButton.addEventListener('click', () => {
-    hytopia.sendData({ type: 'openStash' });
+    // Add loading state to button
+    stashButton.classList.add('loading');
+    navigateToPage('openStash');
   });
 
-  settingsButton.addEventListener('click', () => {
-    // placeholder for settings page
+  careerButton.addEventListener('click', () => {
+    // Add loading state to button
+    careerButton.classList.add('loading');
+    navigateToPage('openCareer');
   });
 
-  progressionButton.addEventListener('click', () => {
-    hytopia.sendData({ type: 'openProgression' });
+  marketButton.addEventListener('click', () => {
+    // Add loading state to button
+    marketButton.classList.add('loading');
+    navigateToPage('openMarket');
   });
 
   // Party functionality
@@ -301,6 +473,9 @@
 
   // Listen for party data updates
   hytopia.onData(data => {
+    // Handle icon preloading
+    handleIconPreloading(data);
+    
     if (data.type === 'party-update') {
       updatePartyList(data.partyData);
     } else if (data.type === 'party-disbanded') {
@@ -429,6 +604,9 @@
 
   // Listen for party-related data
   hytopia.onData(data => {
+    // Handle icon preloading
+    handleIconPreloading(data);
+    
     switch (data.type) {
       case 'party-invite':
         showInvite(data.inviteId, data.fromUsername);
@@ -516,6 +694,9 @@
   // Stash-related UI and logic lives in ui/stash.html
   
   hytopia.onData(data => {
+    // Handle icon preloading
+    handleIconPreloading(data);
+    
     switch (data.type) {
       // Inventory is not managed on the menu page
       case 'hotbarUpdate':
@@ -550,6 +731,7 @@
       case 'menu-hud':
         updateMenuHud(data);
         break;
+
       // Progression data not used here; progression opens in its own page
     }
   });
@@ -649,4 +831,291 @@
   }
 
   // Removed legacy in-menu progression rendering and stash tooltip/grid helpers from menu page
+
+  // Icon preloading system
+  let preloadedIcons = new Map();
+  
+  function preloadIcons(iconUris) {
+    if (!iconUris || !Array.isArray(iconUris)) return;
+    
+    iconUris.forEach(iconUri => {
+      if (iconUri && !preloadedIcons.has(iconUri)) {
+        const img = new Image();
+        img.src = `${CDN_ASSETS_URL}/${iconUri}`;
+        
+        img.onload = () => {
+          // Icon preloaded successfully
+        };
+        
+        img.onerror = () => {
+          // Icon failed to preload (silent fail)
+        };
+        
+        preloadedIcons.set(iconUri, img);
+      }
+    });
+  }
+  
+  function requestIconPreloading() {
+    // Request market data to get all item icons
+    hytopia.sendData({ type: 'requestMarketData' });
+    
+    // Request stash data to get inventory icons
+    hytopia.sendData({ type: 'requestStashSync' });
+    
+    // Request progression data to get weapon icons
+    hytopia.sendData({ type: 'requestProgressionData' });
+  }
+  
+  // Icon preloading data handler
+  function handleIconPreloading(data) {
+    // Handle icon preloading for market data
+    if (data.type === 'market-data') {
+      const iconUris = [];
+      
+      // Collect market item icons
+      if (data.items && Array.isArray(data.items)) {
+        data.items.forEach(item => {
+          if (item.iconImageUri) {
+            iconUris.push(item.iconImageUri);
+          }
+        });
+      }
+      
+      // Collect sellable item icons
+      if (data.sellableItems && Array.isArray(data.sellableItems)) {
+        data.sellableItems.forEach(item => {
+          if (item.iconImageUri) {
+            iconUris.push(item.iconImageUri);
+          }
+        });
+      }
+      
+      if (iconUris.length > 0) {
+        preloadIcons(iconUris);
+      }
+    }
+    
+    // Handle icon preloading for stash/inventory data
+    else if (data.type === 'stashUpdate' || data.type === 'hotbarUpdate' || data.type === 'backpackUpdate') {
+      if (data.iconImageUri) {
+        preloadIcons([data.iconImageUri]);
+      }
+    }
+    
+    // Handle icon preloading for progression data
+    else if (data.type === 'progression-overview') {
+      const iconUris = [];
+      
+      if (data.weapons && Array.isArray(data.weapons)) {
+        data.weapons.forEach(weapon => {
+          if (weapon.iconImageUri) {
+            iconUris.push(weapon.iconImageUri);
+          }
+        });
+      }
+      
+      if (iconUris.length > 0) {
+        preloadIcons(iconUris);
+      }
+    }
+  }
+  
+  // Preload common static icons that we know will be used
+  function preloadStaticIcons() {
+    const staticIcons = [
+      // Common weapon icons (only the ones that likely exist)
+      'icons/pistol_m9.png',
+      'icons/pistol_glock.png',
+      'icons/rifle_akm.png',
+      
+      // Consumable icons
+      'icons/medkit.png',
+      
+      // Valuable item icons
+      'icons/gold_bar.png',
+      'icons/diamonds.png',
+      
+      // Other common icons
+      'icons/backpack.png'
+    ];
+    
+    preloadIcons(staticIcons);
+  }
+  
+  // Cleanup preloaded icons when menu is unloaded
+  function cleanupPreloadedIcons() {
+    preloadedIcons.clear();
+  }
+  
+  // Clean up on page unload
+  window.addEventListener('beforeunload', cleanupPreloadedIcons);
+  window.addEventListener('unload', cleanupPreloadedIcons);
+  
+  // Start icon preloading when menu loads
+  setTimeout(() => {
+    preloadStaticIcons();
+    requestIconPreloading();
+  }, 1000);
+
+
+</script>
+
+<style>
+  /* Title Text Spacing - Matching mainmenu.html */
+  .title-text {
+    font-family: 'Anton', sans-serif;
+    font-size: 10rem;
+    font-weight: 400;
+    color: #ffffff;
+    margin: 0;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-shadow: none;
+    position: relative;
+    line-height: 1;
+    animation: none;
+    text-align: center;
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    transform: translateY(-1vh);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* Session Text Spacing */
+  .session-title {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 0;
+    line-height: 1.2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  }
+
+  .session-subtitle, .session-world-subtitle {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 0.8rem;
+    color: #e2e8f0;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 0;
+    line-height: 1.2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  }
+
+  .session-timer-left, .session-timer-world {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 1rem;
+    color: #f59e0b;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 0;
+    line-height: 1.2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  }
+
+  .session-pill {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  .session-pill-alpha {
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.4);
+  }
+
+  .session-pill-omega {
+    color: #000000;
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8), 0 0 8px rgba(255, 255, 255, 0.4);
+  }
+
+  /* Button Text Spacing */
+  .button-title {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #ffffff;
+    margin: 0;
+    line-height: 1.2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  }
+
+  /* Party Text Spacing */
+  .party-label {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 0;
+    line-height: 1.2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  }
+
+  .member-name-horizontal {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0;
+    line-height: 1.2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  }
+
+  .member-level-horizontal {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 0.64rem;
+    color: #94a3b8;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin: 0;
+    line-height: 1.2;
+  }
+
+
+</style>
+
+<script>
+  // Simple fade transition system
+  function applyFadeTransition(element, type = 'in', duration = 300) {
+    if (!element) return;
+    
+    // Remove existing fade classes
+    element.classList.remove('fade-in', 'fade-out', 'fade-in-scale', 'fade-out-scale');
+    
+    // Add appropriate fade class
+    element.classList.add(`fade-${type}`);
+    
+    // Remove class after animation completes
+    setTimeout(() => {
+      element.classList.remove(`fade-${type}`);
+    }, duration);
+  }
+
+  // Page load fade in
+  document.addEventListener('DOMContentLoaded', () => {
+    const mainMenu = document.querySelector('.main-menu');
+    if (mainMenu) {
+      applyFadeTransition(mainMenu, 'in-scale');
+    }
+  });
 </script>

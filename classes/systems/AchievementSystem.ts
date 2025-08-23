@@ -11,11 +11,13 @@ export interface Achievement {
   completed: boolean;
   progress: number;
   completedAt?: number;
+  awarded: boolean; // Critical: Flag to track if XP has been awarded
   rarity?: 'common' | 'rare' | 'epic' | 'legendary';
   secret?: boolean;
   repeatable?: boolean;
   maxCompletions?: number;
   completions?: number;
+  lastNotificationTime?: number; // Track when last notification was sent
 }
 
 export interface AchievementData {
@@ -24,14 +26,20 @@ export interface AchievementData {
   totalXP: number;
   totalSecretFound: number;
   totalLegendary: number;
+  lastAchievementCheck?: number;
+  recentAchievements?: Array<{ title: string; unlockedAt: number }>;
 }
 
 /**
- * AchievementSystem manages player achievements, progress tracking, and rewards.
- * Stored under `achievements: { achievements, totalCompleted, totalXP, totalSecretFound, totalLegendary }` in persisted data.
+ * Optimized AchievementSystem with robust duplicate prevention
+ * Key Features:
+ * - Persistent awarded flags to prevent duplicate XP
+ * - Streamlined achievement checking
+ * - Comprehensive duplicate prevention
+ * - Performance optimized
  */
 export default class AchievementSystem {
-  private static readonly ACHIEVEMENTS: Record<string, Omit<Achievement, 'completed' | 'progress' | 'completedAt' | 'completions'>> = {
+  private static readonly ACHIEVEMENTS: Record<string, Omit<Achievement, 'completed' | 'progress' | 'completedAt' | 'completions' | 'lastNotificationTime' | 'awarded'>> = {
     // === CORE PROGRESSION ACHIEVEMENTS ===
     'first_blood': {
       id: 'first_blood',
@@ -429,59 +437,101 @@ export default class AchievementSystem {
     }
   };
 
-  public static get(player: Player): AchievementData {
+  // Global notification tracking to prevent duplicates
+  private static readonly RECENT_NOTIFICATIONS = new Map<string, number>();
+  private static readonly NOTIFICATION_COOLDOWN = 3000; // 3 seconds
+  private static readonly ACHIEVEMENT_CHECK_COOLDOWN = 1000; // 1 second
+
+  /**
+   * Initialize achievements for a player with proper flags
+   * Only initializes the achievement system, doesn't pre-populate all achievements
+   */
+  public static initialize(player: Player): void {
     try {
-      const data = (player.getPersistedData?.() as any) || {};
-      const achievementData = (data as any)?.achievements || {};
+      const data = this.getPersistedData(player);
       
-      // Initialize achievements if they don't exist
-      const achievements: Record<string, Achievement> = {};
-      let totalCompleted = 0;
-      let totalXP = 0;
-      let totalSecretFound = 0;
-      let totalLegendary = 0;
-
-      for (const [id, achievement] of Object.entries(this.ACHIEVEMENTS)) {
-        const saved = achievementData[id] || {};
-        const completed = saved.completed || false;
-        const progress = saved.progress || 0;
-        const completedAt = saved.completedAt;
-        const completions = saved.completions || 0;
-
-        achievements[id] = {
-          ...achievement,
-          completed,
-          progress,
-          completedAt,
-          completions
-        };
-
-        if (completed) {
-          totalCompleted++;
-          totalXP += achievement.xpReward;
-          if (achievement.secret) totalSecretFound++;
-          if (achievement.rarity === 'legendary') totalLegendary++;
-        }
+      // If achievements already exist, just ensure flags are correct
+      if (data.achievements && Object.keys(data.achievements).length > 0) {
+        this.ensureFlagsCorrect(player);
+        return;
       }
+      
+      // Initialize with empty achievements - only add them when actually tracked
+      const initialData: AchievementData = {
+        achievements: {}, // Start with empty achievements
+        totalCompleted: 0,
+        totalXP: 0,
+        totalSecretFound: 0,
+        totalLegendary: 0,
+        lastAchievementCheck: 0
+      };
+      
+      this.setPersistedData(player, initialData);
 
-      return { achievements, totalCompleted, totalXP, totalSecretFound, totalLegendary };
-    } catch {
-      return { achievements: {}, totalCompleted: 0, totalXP: 0, totalSecretFound: 0, totalLegendary: 0 };
+    } catch (error) {
+      // Initialize error
     }
   }
 
-  public static set(player: Player, achievementData: AchievementData): void {
+  /**
+   * Get achievement data from persistence
+   */
+  public static get(player: Player): AchievementData {
     try {
-      player.setPersistedData({ achievements: achievementData });
-    } catch {}
+      const data = this.getPersistedData(player);
+      
+      // Initialize if needed
+      if (!data.achievements || Object.keys(data.achievements).length === 0) {
+        this.initialize(player);
+        return this.getPersistedData(player);
+      }
+      
+      return data;
+    } catch (error) {
+      return this.getDefaultData();
+    }
   }
 
+  /**
+   * Update achievement progress with robust duplicate prevention
+   */
   public static updateProgress(player: Player, achievementId: string, progress: number): boolean {
     try {
-      const data = this.get(player);
-      const achievement = data.achievements[achievementId];
+      // Ensure initialized
+      this.initialize(player);
       
+      const data = this.get(player);
+      let achievement = data.achievements[achievementId];
+      
+      // If achievement doesn't exist in player data, add it only when progress starts
       if (!achievement) {
+        const achievementDef = this.ACHIEVEMENTS[achievementId];
+        if (!achievementDef) {
+    
+          return false;
+        }
+        
+        // Only add achievement if there's actual progress (not 0)
+        if (progress > 0) {
+    
+          achievement = {
+            ...achievementDef,
+            completed: false,
+            progress: 0,
+            completions: 0,
+            awarded: false,
+            lastNotificationTime: 0
+          } as Achievement;
+          
+          data.achievements[achievementId] = achievement;
+        } else {
+          // No progress yet, don't add to player data
+          return false;
+        }
+      }
+
+      // Early exit if already completed and not repeatable
+      if (achievement.completed && !achievement.repeatable) {
         return false;
       }
 
@@ -491,165 +541,286 @@ export default class AchievementSystem {
         if (achievement.completions && achievement.completions >= maxCompletions) {
           return false;
         }
-      } else if (achievement.completed) {
+        // Reset awarded flag for next completion
+        if (achievement.awarded) {
+          achievement.awarded = false;
+        }
+      }
+
+      // Early exit if already completed and awarded (non-repeatable)
+      if (achievement.completed && achievement.awarded && !achievement.repeatable) {
         return false;
       }
 
       const newProgress = Math.min(progress, achievement.requirement);
       const wasCompleted = achievement.completed;
       
+      // Update progress
       achievement.progress = newProgress;
       
+      // Check if achievement should be completed
       if (newProgress >= achievement.requirement && !wasCompleted) {
-        achievement.completed = true;
-        achievement.completedAt = Date.now();
-        achievement.completions = (achievement.completions || 0) + 1;
-        
-        data.totalCompleted++;
-        data.totalXP += achievement.xpReward;
-        if (achievement.secret) data.totalSecretFound++;
-        if (achievement.rarity === 'legendary') data.totalLegendary++;
-        
-        // Award XP to player
-        this._awardXP(player, achievement.xpReward);
-        
-        // Notify player
-        this._notifyCompletion(player, achievement);
-        
-        this.set(player, data);
-        return true;
-      } else {
-        this.set(player, data);
-        return false;
+        return this.completeAchievement(player, achievement, data);
       }
-    } catch {
+      
+      // Save progress changes
+      this.setPersistedData(player, data);
+      return false;
+    } catch (error) {
       return false;
     }
   }
 
-  public static checkCombatAchievements(player: Player, kills: number, deaths: number, accuracy: number): void {
-    this.updateProgress(player, 'first_blood', kills);
-    this.updateProgress(player, 'combat_initiate', kills);
-    this.updateProgress(player, 'combat_veteran', kills);
-    this.updateProgress(player, 'combat_master', kills);
-    this.updateProgress(player, 'combat_legend', kills);
-    this.updateProgress(player, 'sharpshooter', accuracy);
-    this.updateProgress(player, 'dead_eye', accuracy);
+  /**
+   * Complete an achievement with proper flag management
+   */
+  private static completeAchievement(player: Player, achievement: Achievement, data: AchievementData): boolean {
+    // Double-check completion status
+    if (achievement.completed) {
+      return false;
+    }
+    
+    // Mark as completed
+    achievement.completed = true;
+    achievement.completedAt = Date.now();
+    achievement.completions = (achievement.completions || 0) + 1;
+    
+    // Update totals
+    data.totalCompleted++;
+    data.totalXP += achievement.xpReward;
+    if (achievement.secret) data.totalSecretFound++;
+    if (achievement.rarity === 'legendary') data.totalLegendary++;
+    
+    // Award XP only if not already awarded
+    if (!achievement.awarded) {
+      
+      this._awardXP(player, achievement.xpReward);
+      achievement.awarded = true; // Critical: Mark as awarded
+    } else {
+      
+    }
+    
+    // Send notification
+    this._notifyCompletion(player, achievement);
+    
+    // Persist immediately
+    this.setPersistedData(player, data);
+    return true;
   }
 
-  public static checkExtractionAchievements(player: Player, extractions: number): void {
-    this.updateProgress(player, 'first_extraction', extractions);
-    this.updateProgress(player, 'survivor', extractions);
-    this.updateProgress(player, 'extraction_master', extractions);
-    this.updateProgress(player, 'extraction_legend', extractions);
-  }
-
-  public static checkProgressionAchievements(player: Player, level: number, currency: number): void {
-    this.updateProgress(player, 'rising_star', level);
-    this.updateProgress(player, 'veteran', level);
-    this.updateProgress(player, 'legend', level);
-    this.updateProgress(player, 'mythic', level);
-    this.updateProgress(player, 'wealth_builder', currency);
-    this.updateProgress(player, 'millionaire', currency);
-    this.updateProgress(player, 'billionaire', currency);
-  }
-
-  public static checkExplorationAchievements(player: Player, raids: number, playtime: number): void {
-    this.updateProgress(player, 'first_mission', raids);
-    this.updateProgress(player, 'mission_veteran', raids);
-    this.updateProgress(player, 'mission_master', raids);
-    this.updateProgress(player, 'mission_legend', raids);
-  }
-
-  public static checkAccuracyAchievements(player: Player, accuracy: number): void {
-    // Accuracy achievements are now handled in checkCombatAchievements
-  }
-
-  public static checkWeaponMasteryAchievements(player: Player, weaponKills: Record<string, number>): void {
-    // Check for highest weapon category kills
-    const maxKills = Math.max(...Object.values(weaponKills));
-    this.updateProgress(player, 'weapon_master', maxKills);
-    this.updateProgress(player, 'weapon_grandmaster', maxKills);
-  }
-
-  public static checkHeadshotAchievements(player: Player, headshotKills: number): void {
-    this.updateProgress(player, 'headshot_master', headshotKills);
-    this.updateProgress(player, 'precision_legend', headshotKills);
-  }
-
-  public static checkKillStreakAchievements(player: Player, currentStreak: number): void {
-    this.updateProgress(player, 'kill_streak_5', currentStreak);
-    this.updateProgress(player, 'kill_frenzy', currentStreak);
-    this.updateProgress(player, 'kill_storm', currentStreak);
-  }
-
-  public static checkSpeedRunAchievements(player: Player, raidTime: number): void {
-    if (raidTime <= 180) { // 3 minutes
-      this.updateProgress(player, 'speed_runner', 1);
+  /**
+   * Comprehensive achievement check with debouncing
+   */
+  public static checkAllAchievements(player: Player, stats: {
+    kills?: number;
+    deaths?: number;
+    accuracy?: number;
+    level?: number;
+    currency?: number;
+    extractions?: number;
+    raids?: number;
+    playtime?: number;
+    headshots?: number;
+    currentKillStreak?: number;
+    weaponKills?: Record<string, number>;
+    raidTime?: number;
+    partyRaids?: number;
+    revives?: number;
+  }): void {
+    try {
+      // Debounce checks
+      if (!this._shouldCheckAchievements(player)) {
+        return;
+      }
+      
+      // Combat achievements
+      if (stats.kills !== undefined) {
+        this.updateProgress(player, 'first_blood', stats.kills);
+        this.updateProgress(player, 'combat_initiate', stats.kills);
+        this.updateProgress(player, 'combat_veteran', stats.kills);
+        this.updateProgress(player, 'combat_master', stats.kills);
+        this.updateProgress(player, 'combat_legend', stats.kills);
+      }
+      
+      if (stats.accuracy !== undefined) {
+        this.updateProgress(player, 'sharpshooter', stats.accuracy);
+        this.updateProgress(player, 'dead_eye', stats.accuracy);
+      }
+      
+      // Extraction achievements
+      if (stats.extractions !== undefined) {
+        this.updateProgress(player, 'first_extraction', stats.extractions);
+        this.updateProgress(player, 'survivor', stats.extractions);
+        this.updateProgress(player, 'extraction_master', stats.extractions);
+        this.updateProgress(player, 'extraction_legend', stats.extractions);
+      }
+      
+      // Progression achievements
+      if (stats.level !== undefined) {
+        this.updateProgress(player, 'rising_star', stats.level);
+        this.updateProgress(player, 'veteran', stats.level);
+        this.updateProgress(player, 'legend', stats.level);
+        this.updateProgress(player, 'mythic', stats.level);
+      }
+      
+      if (stats.currency !== undefined) {
+        this.updateProgress(player, 'wealth_builder', stats.currency);
+        this.updateProgress(player, 'millionaire', stats.currency);
+        this.updateProgress(player, 'billionaire', stats.currency);
+      }
+      
+      // Exploration achievements
+      if (stats.raids !== undefined) {
+        this.updateProgress(player, 'first_mission', stats.raids);
+        this.updateProgress(player, 'mission_veteran', stats.raids);
+        this.updateProgress(player, 'mission_master', stats.raids);
+        this.updateProgress(player, 'mission_legend', stats.raids);
+      }
+      
+      // Weapon mastery
+      if (stats.weaponKills) {
+        const maxKills = Math.max(...Object.values(stats.weaponKills));
+        this.updateProgress(player, 'weapon_master', maxKills);
+        this.updateProgress(player, 'weapon_grandmaster', maxKills);
+      }
+      
+      // Headshots
+      if (stats.headshots !== undefined) {
+        this.updateProgress(player, 'headshot_master', stats.headshots);
+        this.updateProgress(player, 'precision_legend', stats.headshots);
+      }
+      
+      // Kill streaks
+      if (stats.currentKillStreak !== undefined) {
+        this.updateProgress(player, 'kill_streak_5', stats.currentKillStreak);
+        this.updateProgress(player, 'kill_frenzy', stats.currentKillStreak);
+        this.updateProgress(player, 'kill_storm', stats.currentKillStreak);
+      }
+      
+      // Speed run
+      if (stats.raidTime !== undefined && stats.raidTime <= 180) {
+        this.updateProgress(player, 'speed_runner', 1);
+      }
+      
+      // Social
+      if (stats.partyRaids !== undefined) {
+        this.updateProgress(player, 'team_player', stats.partyRaids);
+        this.updateProgress(player, 'party_leader', stats.partyRaids);
+      }
+    } catch (error) {
+      // CheckAllAchievements error
     }
   }
 
+  // Legacy method compatibility
+  public static checkCombatAchievements(player: Player, kills: number, deaths: number, accuracy: number): void {
+    this.checkAllAchievements(player, { kills, deaths, accuracy });
+  }
+
+  public static checkExtractionAchievements(player: Player, extractions: number): void {
+    this.checkAllAchievements(player, { extractions });
+  }
+
+  public static checkProgressionAchievements(player: Player, level: number, currency: number): void {
+    this.checkAllAchievements(player, { level, currency });
+  }
+
+  public static checkExplorationAchievements(player: Player, raids: number, playtime: number): void {
+    this.checkAllAchievements(player, { raids, playtime });
+  }
+
+  public static checkWeaponMasteryAchievements(player: Player, weaponKills: Record<string, number>): void {
+    this.checkAllAchievements(player, { weaponKills });
+  }
+
+  public static checkHeadshotAchievements(player: Player, headshotKills: number): void {
+    this.checkAllAchievements(player, { headshots: headshotKills });
+  }
+
+  public static checkKillStreakAchievements(player: Player, currentStreak: number): void {
+    this.checkAllAchievements(player, { currentKillStreak: currentStreak });
+  }
+
+  public static checkSpeedRunAchievements(player: Player, raidTime: number): void {
+    this.checkAllAchievements(player, { raidTime });
+  }
+
   public static checkSocialAchievements(player: Player, partyRaids: number, revives: number): void {
-    this.updateProgress(player, 'team_player', partyRaids);
-    this.updateProgress(player, 'party_leader', partyRaids);
+    this.checkAllAchievements(player, { partyRaids, revives });
   }
 
   public static checkSeasonalAchievements(player: Player): void {
     // Seasonal achievements removed for streamlined progression
   }
 
-  public static getAllAchievements(): Record<string, Omit<Achievement, 'completed' | 'progress' | 'completedAt' | 'completions'>> {
-    return this.ACHIEVEMENTS;
-  }
-
-  public static getAchievementsByCategory(category: string): Record<string, Omit<Achievement, 'completed' | 'progress' | 'completedAt' | 'completions'>> {
-    const filtered: Record<string, Omit<Achievement, 'completed' | 'progress' | 'completedAt' | 'completions'>> = {};
-    
-    for (const [id, achievement] of Object.entries(this.ACHIEVEMENTS)) {
-      if (achievement.category === category) {
-        filtered[id] = achievement;
-      }
+  /**
+   * Check if achievement has been awarded
+   */
+  public static isAwarded(player: Player, achievementId: string): boolean {
+    try {
+      const data = this.get(player);
+      const achievement = data.achievements[achievementId];
+      return achievement?.awarded || false;
+    } catch {
+      return false;
     }
-    
-    return filtered;
   }
 
-  public static getAchievementsByRarity(rarity: string): Record<string, Omit<Achievement, 'completed' | 'progress' | 'completedAt' | 'completions'>> {
-    const filtered: Record<string, Omit<Achievement, 'completed' | 'progress' | 'completedAt' | 'completions'>> = {};
-    
-    for (const [id, achievement] of Object.entries(this.ACHIEVEMENTS)) {
-      if (achievement.rarity === rarity) {
-        filtered[id] = achievement;
-      }
+  /**
+   * Check if achievement was recently notified
+   */
+  public static hasBeenNotifiedRecently(player: Player, achievementId: string, completions?: number): boolean {
+    try {
+      const data = this.get(player);
+      const achievement = data.achievements[achievementId];
+      if (!achievement) return false;
+      
+      const now = Date.now();
+      const lastNotification = achievement.lastNotificationTime || 0;
+      const notificationKey = `${player.id}-${achievementId}-${completions || achievement.completions || 0}`;
+      
+      const globalLastNotification = this.RECENT_NOTIFICATIONS.get(notificationKey) || 0;
+      
+      return (now - lastNotification) < this.NOTIFICATION_COOLDOWN || 
+             (now - globalLastNotification) < this.NOTIFICATION_COOLDOWN;
+    } catch {
+      return false;
     }
-    
-    return filtered;
   }
 
-  public static getSecretAchievements(): Record<string, Omit<Achievement, 'completed' | 'progress' | 'completedAt' | 'completions'>> {
-    const filtered: Record<string, Omit<Achievement, 'completed' | 'progress' | 'completedAt' | 'completions'>> = {};
-    
-    for (const [id, achievement] of Object.entries(this.ACHIEVEMENTS)) {
-      if (achievement.secret) {
-        filtered[id] = achievement;
+  /**
+   * Get achievement status
+   */
+  public static getAchievementStatus(player: Player, achievementId: string): {
+    completed: boolean;
+    awarded: boolean;
+    progress: number;
+    requirement: number;
+    completions?: number;
+  } | null {
+    try {
+      const data = this.get(player);
+      const achievement = data.achievements[achievementId];
+      
+      if (!achievement) {
+        return null;
       }
+      
+      return {
+        completed: achievement.completed,
+        awarded: achievement.awarded,
+        progress: achievement.progress,
+        requirement: achievement.requirement,
+        completions: achievement.completions
+      };
+    } catch {
+      return null;
     }
-    
-    return filtered;
   }
 
-  public static getRepeatableAchievements(): Record<string, Omit<Achievement, 'completed' | 'progress' | 'completedAt' | 'completions'>> {
-    const filtered: Record<string, Omit<Achievement, 'completed' | 'progress' | 'completedAt' | 'completions'>> = {};
-    
-    for (const [id, achievement] of Object.entries(this.ACHIEVEMENTS)) {
-      if (achievement.repeatable) {
-        filtered[id] = achievement;
-      }
-    }
-    
-    return filtered;
-  }
-
+  /**
+   * Get achievement statistics
+   */
   public static getAchievementStats(player: Player): {
     total: number;
     completed: number;
@@ -674,52 +845,321 @@ export default class AchievementSystem {
       byRarity: {} as Record<string, { total: number; completed: number; }>
     };
 
-         // Calculate by category
-     for (const achievement of Object.values(allAchievements)) {
-       if (!stats.byCategory[achievement.category]) {
-         stats.byCategory[achievement.category] = { total: 0, completed: 0 };
-       }
-       stats.byCategory[achievement.category]!.total++;
-       
-       if (data.achievements[achievement.id]?.completed) {
-         stats.byCategory[achievement.category]!.completed++;
-       }
-     }
+    // Calculate by category
+    for (const achievement of Object.values(allAchievements)) {
+      if (!stats.byCategory[achievement.category]) {
+        stats.byCategory[achievement.category] = { total: 0, completed: 0 };
+      }
+      stats.byCategory[achievement.category]!.total++;
+      
+      if (data.achievements[achievement.id]?.completed) {
+        stats.byCategory[achievement.category]!.completed++;
+      }
+    }
 
-     // Calculate by rarity
-     for (const achievement of Object.values(allAchievements)) {
-       if (achievement.rarity) {
-         if (!stats.byRarity[achievement.rarity]) {
-           stats.byRarity[achievement.rarity] = { total: 0, completed: 0 };
-         }
-         stats.byRarity[achievement.rarity]!.total++;
-         
-         if (data.achievements[achievement.id]?.completed) {
-           stats.byRarity[achievement.rarity]!.completed++;
-         }
-       }
-     }
+    // Calculate by rarity
+    for (const achievement of Object.values(allAchievements)) {
+      if (achievement.rarity) {
+        if (!stats.byRarity[achievement.rarity]) {
+          stats.byRarity[achievement.rarity] = { total: 0, completed: 0 };
+        }
+        stats.byRarity[achievement.rarity]!.total++;
+        
+        if (data.achievements[achievement.id]?.completed) {
+          stats.byRarity[achievement.rarity]!.completed++;
+        }
+      }
+    }
 
     return stats;
   }
 
-  private static _awardXP(player: Player, amount: number): void {
-    try {
-      // Import here to avoid circular dependency
-      const ProgressionSystem = require('./ProgressionSystem').default;
-      ProgressionSystem.addXP(player, amount, false);
-    } catch {}
+  /**
+   * Get all achievement definitions
+   */
+  public static getAllAchievements(): Record<string, Omit<Achievement, 'completed' | 'progress' | 'completedAt' | 'completions' | 'awarded' | 'lastNotificationTime'>> {
+    return this.ACHIEVEMENTS;
   }
 
+  /**
+   * Get achievements by category
+   */
+  public static getAchievementsByCategory(category: string): Record<string, Omit<Achievement, 'completed' | 'progress' | 'completedAt' | 'completions' | 'awarded' | 'lastNotificationTime'>> {
+    const filtered: Record<string, Omit<Achievement, 'completed' | 'progress' | 'completedAt' | 'completions' | 'awarded' | 'lastNotificationTime'>> = {};
+    
+    for (const [id, achievement] of Object.entries(this.ACHIEVEMENTS)) {
+      if (achievement.category === category) {
+        filtered[id] = achievement;
+      }
+    }
+    
+    return filtered;
+  }
+
+  /**
+   * Get achievements by rarity
+   */
+  public static getAchievementsByRarity(rarity: string): Record<string, Omit<Achievement, 'completed' | 'progress' | 'completedAt' | 'completions' | 'awarded' | 'lastNotificationTime'>> {
+    const filtered: Record<string, Omit<Achievement, 'completed' | 'progress' | 'completedAt' | 'completions' | 'awarded' | 'lastNotificationTime'>> = {};
+    
+    for (const [id, achievement] of Object.entries(this.ACHIEVEMENTS)) {
+      if (achievement.rarity === rarity) {
+        filtered[id] = achievement;
+      }
+    }
+    
+    return filtered;
+  }
+
+  /**
+   * Get secret achievements
+   */
+  public static getSecretAchievements(): Record<string, Omit<Achievement, 'completed' | 'progress' | 'completedAt' | 'completions' | 'awarded' | 'lastNotificationTime'>> {
+    const filtered: Record<string, Omit<Achievement, 'completed' | 'progress' | 'completedAt' | 'completions' | 'awarded' | 'lastNotificationTime'>> = {};
+    
+    for (const [id, achievement] of Object.entries(this.ACHIEVEMENTS)) {
+      if (achievement.secret) {
+        filtered[id] = achievement;
+      }
+    }
+    
+    return filtered;
+  }
+
+  /**
+   * Get repeatable achievements
+   */
+  public static getRepeatableAchievements(): Record<string, Omit<Achievement, 'completed' | 'progress' | 'completedAt' | 'completions' | 'awarded' | 'lastNotificationTime'>> {
+    const filtered: Record<string, Omit<Achievement, 'completed' | 'progress' | 'completedAt' | 'completions' | 'awarded' | 'lastNotificationTime'>> = {};
+    
+    for (const [id, achievement] of Object.entries(this.ACHIEVEMENTS)) {
+      if (achievement.repeatable) {
+        filtered[id] = achievement;
+      }
+    }
+    
+    return filtered;
+  }
+
+  /**
+   * Fix awarded flags for legacy achievements
+   */
+  public static fixAwardedFlags(player: Player): void {
+    try {
+      const data = this.get(player);
+      let needsUpdate = false;
+      
+      for (const achievement of Object.values(data.achievements)) {
+        // If achievement is completed but not marked as awarded, mark it as awarded
+        if (achievement.completed && !achievement.awarded) {
+          achievement.awarded = true;
+          needsUpdate = true;
+        }
+      }
+      
+      if (needsUpdate) {
+        this.setPersistedData(player, data);
+      }
+    } catch (error) {
+      // FixAwardedFlags error
+    }
+  }
+
+  /**
+   * Reset awarded flag for testing
+   */
+  public static resetAwardedFlag(player: Player, achievementId: string): void {
+    try {
+      const data = this.get(player);
+      const achievement = data.achievements[achievementId];
+      
+      if (achievement) {
+        achievement.awarded = false;
+        this.setPersistedData(player, data);
+      }
+    } catch (error) {
+      // ResetAwardedFlag error
+    }
+  }
+
+  /**
+   * Ensure all flags are correct
+   */
+  private static ensureFlagsCorrect(player: Player): void {
+    try {
+      const data = this.get(player);
+      let needsUpdate = false;
+      
+      for (const achievement of Object.values(data.achievements)) {
+        // Ensure completed achievements are marked as awarded
+        if (achievement.completed && !achievement.awarded) {
+          achievement.awarded = true;
+          needsUpdate = true;
+        }
+        
+        // Ensure awarded achievements are marked as completed
+        if (achievement.awarded && !achievement.completed) {
+          achievement.completed = true;
+          achievement.completedAt = achievement.completedAt || Date.now();
+          needsUpdate = true;
+        }
+      }
+      
+      if (needsUpdate) {
+        this.setPersistedData(player, data);
+      }
+    } catch (error) {
+      // EnsureFlagsCorrect error
+    }
+  }
+
+  /**
+   * Ensure all achievements are properly initialized and displayed
+   * Only tracks achievements that are actually being progressed or completed
+   */
+  public static ensureAllAchievementsDisplayed(player: Player): void {
+    try {
+      const data = this.get(player);
+      
+      // Don't pre-populate all achievements - only track existing ones
+
+      
+      // Ensure all flags are correct for existing achievements
+      this.ensureFlagsCorrect(player);
+      
+      // Recalculate totals based on existing achievements
+      let totalCompleted = 0;
+      let totalXP = 0;
+      let totalSecretFound = 0;
+      let totalLegendary = 0;
+      
+      for (const achievement of Object.values(data.achievements)) {
+        if (achievement.completed) {
+          totalCompleted++;
+          totalXP += achievement.xpReward;
+          if (achievement.secret) totalSecretFound++;
+          if (achievement.rarity === 'legendary') totalLegendary++;
+        }
+      }
+      
+      // Update totals
+      data.totalCompleted = totalCompleted;
+      data.totalXP = totalXP;
+      data.totalSecretFound = totalSecretFound;
+      data.totalLegendary = totalLegendary;
+      
+      // Persist the corrected data
+      this.setPersistedData(player, data);
+      
+
+    } catch (error) {
+      // EnsureAllAchievementsDisplayed error
+    }
+  }
+
+  /**
+   * Get achievement data with guaranteed initialization
+   */
+  public static getWithInitialization(player: Player): AchievementData {
+    try {
+      // Ensure all achievements are properly initialized
+      this.ensureAllAchievementsDisplayed(player);
+      
+      // Return the properly initialized data
+      return this.get(player);
+    } catch (error) {
+      return this.getDefaultData();
+    }
+  }
+
+  /**
+   * Fix any corrupted or incomplete achievement data
+   */
+  public static fixAchievementData(player: Player): void {
+    try {
+
+      
+      // Ensure all achievements are properly initialized
+      this.ensureAllAchievementsDisplayed(player);
+      
+      // Fix any awarded flags that might be incorrect
+      this.fixAwardedFlags(player);
+      
+      // Ensure all flags are correct
+      this.ensureFlagsCorrect(player);
+      
+
+    } catch (error) {
+      // FixAchievementData error
+    }
+  }
+
+  /**
+   * Check if achievements should be checked (debouncing)
+   */
+  private static _shouldCheckAchievements(player: Player): boolean {
+    try {
+      const data = this.get(player);
+      const now = Date.now();
+      const lastCheck = data.lastAchievementCheck || 0;
+      
+      if (now - lastCheck < this.ACHIEVEMENT_CHECK_COOLDOWN) {
+        return false;
+      }
+      
+      // Update last check time
+      data.lastAchievementCheck = now;
+      this.setPersistedData(player, data);
+      return true;
+    } catch {
+      return true; // If there's an error, allow the check
+    }
+  }
+
+  /**
+   * Award XP to player
+   */
+  private static _awardXP(player: Player, amount: number): void {
+    try {
+      const ProgressionSystem = require('./ProgressionSystem').default;
+      ProgressionSystem.addXP(player, amount, false);
+    } catch (error) {
+      // AwardXP error
+    }
+  }
+
+  /**
+   * Send achievement completion notification
+   */
   private static _notifyCompletion(player: Player, achievement: Achievement): void {
     try {
+      const now = Date.now();
+      const notificationKey = `${player.id}-${achievement.id}-${achievement.completions || 0}`;
+      
+      // Check for recent notifications
+      const lastNotification = this.RECENT_NOTIFICATIONS.get(notificationKey);
+      if (lastNotification && (now - lastNotification) < this.NOTIFICATION_COOLDOWN) {
+
+        return;
+      }
+      
+      // Check achievement's last notification time
+      if (achievement.lastNotificationTime && (now - achievement.lastNotificationTime) < this.NOTIFICATION_COOLDOWN) {
+
+        return;
+      }
+      
+      // Track this notification
+      this.RECENT_NOTIFICATIONS.set(notificationKey, now);
+      achievement.lastNotificationTime = now;
+      
       // Track recent achievement for activity feed
-      const data = (player.getPersistedData?.() as any) || {};
-      const recentAchievements = (data as any)?.recentAchievements || [];
+      const data = this.getPersistedData(player);
+      const recentAchievements = data.recentAchievements || [];
       
       recentAchievements.unshift({
         title: achievement.title,
-        unlockedAt: Date.now()
+        unlockedAt: now
       });
       
       // Keep only last 10 achievements
@@ -727,11 +1167,14 @@ export default class AchievementSystem {
         recentAchievements.splice(10);
       }
       
-      player.setPersistedData({
+      // Update persistence
+      this.setPersistedData(player, {
         ...data,
         recentAchievements
       });
       
+      // Send UI notification
+
       player.ui?.sendData({
         type: 'achievement-unlocked',
         title: achievement.title,
@@ -743,6 +1186,58 @@ export default class AchievementSystem {
         repeatable: achievement.repeatable,
         completions: achievement.completions
       });
-    } catch {}
+      
+      // Clean up old notification tracking (older than 1 hour)
+      const oneHourAgo = now - (60 * 60 * 1000);
+      for (const [key, timestamp] of this.RECENT_NOTIFICATIONS.entries()) {
+        if (timestamp < oneHourAgo) {
+          this.RECENT_NOTIFICATIONS.delete(key);
+        }
+      }
+    } catch (error) {
+      // NotifyCompletion error
+    }
+  }
+
+  /**
+   * Get persisted data from player
+   */
+  private static getPersistedData(player: Player): AchievementData {
+    try {
+      const data = (player.getPersistedData?.() as any) || {};
+      return (data as any)?.achievements || this.getDefaultData();
+    } catch {
+      return this.getDefaultData();
+    }
+  }
+
+  /**
+   * Set persisted data to player
+   */
+  private static setPersistedData(player: Player, achievementData: AchievementData): void {
+    try {
+      const existingData = (player.getPersistedData?.() as any) || {};
+      player.setPersistedData({ 
+        ...existingData,
+        achievements: achievementData 
+      });
+    } catch (error) {
+      // SetPersistedData error
+    }
+  }
+
+  /**
+   * Get default achievement data
+   */
+  private static getDefaultData(): AchievementData {
+    return {
+      achievements: {},
+      totalCompleted: 0,
+      totalXP: 0,
+      totalSecretFound: 0,
+      totalLegendary: 0,
+      lastAchievementCheck: 0,
+      recentAchievements: []
+    };
   }
 }

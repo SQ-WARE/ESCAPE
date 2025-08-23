@@ -7,31 +7,90 @@ const STASH_GRID_WIDTH = 9;
 
 export default class Stash extends ItemInventory {
   private _owner: Player;
+  private _gamePlayer: any; // Reference to GamePlayer instance
 
-  public constructor(owner: Player) {
+  public constructor(owner: Player, gamePlayer?: any) {
     super(STASH_SIZE, STASH_GRID_WIDTH, 'stash');
     this._owner = owner;
+    this._gamePlayer = gamePlayer;
   }
 
-  protected override onSlotChanged(position: number, item: BaseItem | null): void {
-    this.syncUIUpdate(this._owner, position, item);
-    // Note: We don't auto-save stash changes to persistence immediately
-    // Stash is persistent storage that doesn't get cleared on death
+  protected override async onSlotChanged(position: number, item: BaseItem | null): Promise<void> {
+    await this.syncUIUpdate(this._owner, position, item);
+    // Stash changes should trigger a save to persistence
+    this._triggerSave();
   }
 
   /**
-   * Save stash data to persistence
+   * Trigger a save to persistence when stash changes
    */
-  public saveToPersistence(): void {
-    // This will be called when the player explicitly saves or when they deploy
-    // Stash data should persist between deaths
+  private _triggerSave(): void {
+    // This will be called when items are added/removed from stash
+    // The actual save is handled by GamePlayer.save()
+    try {
+      if (this._gamePlayer) {
+        this._gamePlayer.save();
+      } else {
+        // Fallback to getting GamePlayer instance
+        const { default: GamePlayer } = require('../GamePlayer');
+        const gamePlayer = GamePlayer.getOrCreate(this._owner);
+        gamePlayer.save();
+      }
+    } catch (error) {
+      // Failed to trigger save
+    }
+  }
+
+  /**
+   * Get stash data for persistence
+   */
+  public getStashData(): Record<string, number> {
+    const stashData: Record<string, number> = {};
+    
+    for (let i = 0; i < this.size; i++) {
+      const item = this.getItemAt(i);
+      if (item) {
+        const itemId = item.id;
+        stashData[itemId] = (stashData[itemId] || 0) + item.quantity;
+      }
+    }
+    
+    return stashData;
   }
 
   /**
    * Load stash data from persistence
    */
-  public loadFromPersistence(): void {
-    // Load stash data when player joins
-    // This should be called from GamePlayer.load()
+  public loadFromStashData(stashData: Record<string, number>): void {
+    // Clear current stash
+    this.clearAllItems();
+    
+    // Load items from stash data
+    for (const [itemId, quantity] of Object.entries(stashData)) {
+      if (quantity > 0) {
+        // Create item and add to stash
+        // This will be handled by the item factory
+        this._loadItemToStash(itemId, quantity);
+      }
+    }
+  }
+
+  /**
+   * Load a specific item to stash
+   */
+  private _loadItemToStash(itemId: string, quantity: number): void {
+    try {
+      // Use synchronous import since ItemFactory should already be loaded
+      const { ItemFactory } = require('../items/ItemFactory');
+      const item = ItemFactory.getInstance().createItem(itemId, { quantity });
+      if (item) {
+        const success = this.addItem(item);
+        if (!success) {
+          // Failed to add item to stash - possibly full or invalid
+        }
+      }
+    } catch (error) {
+      // Failed to load item to stash - invalid item or factory issue
+    }
   }
 } 

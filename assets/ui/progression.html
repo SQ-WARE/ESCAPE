@@ -1,6 +1,13 @@
 <link rel="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/app.css">
 <link rel="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/progression.css">
 <link rel="preload" as="image" href="{{CDN_ASSETS_URL}}/ui/background2.png">
+<!-- Preload other page assets -->
+<link rel="preload" as="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/stash.css">
+<link rel="preload" as="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/market.css">
+<!-- Page Loading System -->
+<div class="page-loading-spinner" id="page-loading-spinner"></div>
+<div class="page-transition-overlay" id="page-transition-overlay"></div>
+
 <div class="menu-background" style="background: url('{{CDN_ASSETS_URL}}/ui/background2.png') center center / cover no-repeat;">
   <div class="background-overlay"></div>
   <div class="smoke-effect">
@@ -10,34 +17,213 @@
   </div>
 </div>
 
-<div class="progression-overlay" style="display: flex;">
-  <button class="close-btn" id="progression-close">↩</button>
-  <div class="progression-panel glass-elevated ui-panel">
-    <div class="progression-header">
+<div class="progression-overlay page-loading" id="progression-overlay-content" style="display: flex; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); background: rgba(0,0,0,0.25);">
+  <div class="progression-interface">
+    <!-- Header Panel -->
+    <div class="progression-header-panel">
       <div class="progression-title-section">
-        <span class="progression-title">COMBAT RECORD</span>
-        <span class="progression-subtitle">ESCAPE</span>
+        <h1 class="progression-title">COMBAT RECORD</h1>
+        <div class="progression-subtitle">ESCAPE</div>
       </div>
+      <div class="progression-controls">
+        <button class="close-btn-progression" id="progression-close-btn">CLOSE</button>
+      </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="progression-content-panel">
       <div class="progression-tabs">
         <button class="tab-btn active" data-tab="stats">STATISTICS</button>
         <button class="tab-btn" data-tab="weapons">WEAPONS</button>
         <button class="tab-btn" data-tab="achievements">ACHIEVEMENTS</button>
       </div>
+      <div class="progression-content" id="progression-content"></div>
     </div>
-    <div class="progression-content" id="progression-content"></div>
   </div>
 </div>
 
 <script>
   const CDN_ASSETS_URL = '{{CDN_ASSETS_URL}}';
-  const progressionClose = document.getElementById('progression-close');
   const progressionTabs = document.querySelectorAll('.tab-btn');
   let activeTab = 'stats';
   let cachedData = {};
 
-  progressionClose.addEventListener('click', () => {
-    hytopia.sendData({ type: 'backToMenu' });
+  // Page Loading & Transition System - Optimized
+  const pageLoadingSpinner = document.getElementById('page-loading-spinner');
+  const pageTransitionOverlay = document.getElementById('page-transition-overlay');
+  const progressionOverlayContent = document.getElementById('progression-overlay-content');
+  
+  let isTransitioning = false;
+  let transitionTimeout = null;
+  let isInitialized = false;
+
+  // Initialize loading spinner
+  function initializeLoadingSpinner() {
+    if (pageLoadingSpinner) {
+      pageLoadingSpinner.classList.add('active');
+    }
+  }
+
+  // Page loading system with error handling
+  function showPageLoading() {
+    if (pageLoadingSpinner && !pageLoadingSpinner.classList.contains('active')) {
+      pageLoadingSpinner.classList.add('active');
+    }
+  }
+
+  function hidePageLoading() {
+    if (pageLoadingSpinner && pageLoadingSpinner.classList.contains('active')) {
+      pageLoadingSpinner.classList.remove('active');
+    }
+  }
+
+  function showPageTransition() {
+    if (pageTransitionOverlay && !pageTransitionOverlay.classList.contains('active')) {
+      pageTransitionOverlay.classList.add('active');
+    }
+  }
+
+  function hidePageTransition() {
+    if (pageTransitionOverlay && pageTransitionOverlay.classList.contains('active')) {
+      pageTransitionOverlay.classList.remove('active');
+    }
+  }
+
+  function navigateBackToMenu() {
+    // Prevent multiple simultaneous transitions
+    if (isTransitioning) {
+      console.warn('Page transition already in progress, ignoring navigation request');
+      return;
+    }
+
+    isTransitioning = true;
+
+    try {
+      // Show transition overlay
+      showPageTransition();
+      
+      // Add fade out animation to current content
+      if (progressionOverlayContent) {
+        progressionOverlayContent.classList.add('overlay-scale-out');
+      }
+      
+      // Clear any existing timeout
+      if (transitionTimeout) {
+        clearTimeout(transitionTimeout);
+      }
+      
+      // After fade out, navigate
+      transitionTimeout = setTimeout(() => {
+        try {
+          hytopia.sendData({ type: 'backToMenu' });
+        } catch (error) {
+          console.error('Failed to send navigation data:', error);
+          // Revert transition on error
+          revertTransition();
+        }
+      }, 300);
+    } catch (error) {
+      console.error('Navigation error:', error);
+      revertTransition();
+    }
+  }
+
+  function revertTransition() {
+    isTransitioning = false;
+    hidePageTransition();
+    
+    if (progressionOverlayContent) {
+      progressionOverlayContent.classList.remove('overlay-scale-out');
+    }
+    
+    if (transitionTimeout) {
+      clearTimeout(transitionTimeout);
+      transitionTimeout = null;
+    }
+  }
+
+  // Initialize page when everything is loaded
+  function initializePage() {
+    if (isInitialized) {
+      console.warn('Page already initialized, skipping');
+      return;
+    }
+
+    try {
+      // Hide loading spinner
+      hidePageLoading();
+      
+      // Show main content with scale in
+      if (progressionOverlayContent) {
+        progressionOverlayContent.classList.remove('page-loading');
+        progressionOverlayContent.classList.add('page-loaded', 'overlay-scale-in');
+      }
+      
+      isInitialized = true;
+      
+      // Initialize the default tab after page loads
+      setTimeout(() => {
+        try {
+          setActiveTab('stats');
+        } catch (error) {
+          console.error('Failed to set active tab:', error);
+        }
+      }, 100);
+    } catch (error) {
+      console.error('Page initialization error:', error);
+      // Fallback: show content without animation
+      if (progressionOverlayContent) {
+        progressionOverlayContent.classList.remove('page-loading');
+        progressionOverlayContent.classList.add('page-loaded');
+      }
+      isInitialized = true;
+    }
+  }
+
+  // Wait for DOM and critical resources to load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(initializePage, 100);
+    });
+  } else {
+    // DOM is already loaded
+    setTimeout(initializePage, 100);
+  }
+
+  // Initialize loading spinner immediately
+  initializeLoadingSpinner();
+
+  // Handle page visibility changes (tab switching)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && isTransitioning) {
+      // Page hidden during transition, revert
+      revertTransition();
+    }
   });
+
+  // Handle window focus/blur
+  window.addEventListener('blur', () => {
+    if (isTransitioning) {
+      // Window lost focus during transition, revert
+      revertTransition();
+    }
+  });
+
+  // Handle beforeunload to clean up
+  window.addEventListener('beforeunload', () => {
+    if (isTransitioning) {
+      revertTransition();
+    }
+  });
+
+  // Handle progression close
+  const progressionCloseBtn = document.getElementById('progression-close-btn');
+  if (progressionCloseBtn) {
+    progressionCloseBtn.addEventListener('click', () => {
+      // Use new navigation system
+      navigateBackToMenu();
+    });
+  }
 
   progressionTabs.forEach(btn => {
     btn.addEventListener('click', () => setActiveTab(btn.getAttribute('data-tab')));
@@ -47,6 +233,14 @@
   setTimeout(() => {
     setActiveTab('stats');
   }, 50);
+
+  // Add fade-in effect on page load
+  document.addEventListener('DOMContentLoaded', () => {
+    const progressionOverlay = document.querySelector('.progression-overlay');
+    if (progressionOverlay) {
+      progressionOverlay.classList.add('fade-in-scale');
+    }
+  });
 
   function setActiveTab(tab) {
     activeTab = tab;
@@ -67,7 +261,9 @@
     switch (data.type) {
       case 'progress-overview':
         cachedData.overview = data;
-        if (activeTab === 'stats') renderStatsTab();
+        if (activeTab === 'stats') {
+          renderStatsTab();
+        }
         break;
       case 'weapon-progress':
         cachedData.weapons = data.rows || [];
@@ -205,7 +401,6 @@
           <div class="stats-overview ui-panel">
             <h3>DETAILED STATISTICS</h3>
             <div style="text-align: center; padding: 40px; color: #ccc;">
-              <div style="font-size: 24px; margin-bottom: 10px;">📊</div>
               <div>Loading statistics...</div>
             </div>
           </div>
@@ -220,7 +415,6 @@
           <h3>DETAILED STATISTICS</h3>
           <div class="stats-grid-detailed">
             <div class="stat-detail-card">
-              <div class="stat-detail-icon">🎯</div>
               <div class="stat-detail-content">
                 <div class="stat-detail-value">${data.kills || 0}</div>
                 <div class="stat-detail-label">TOTAL KILLS</div>
@@ -228,7 +422,6 @@
               </div>
             </div>
             <div class="stat-detail-card">
-              <div class="stat-detail-icon">💀</div>
               <div class="stat-detail-content">
                 <div class="stat-detail-value">${data.deaths || 0}</div>
                 <div class="stat-detail-label">TOTAL DEATHS</div>
@@ -236,7 +429,6 @@
               </div>
             </div>
             <div class="stat-detail-card">
-              <div class="stat-detail-icon">⚖️</div>
               <div class="stat-detail-content">
                 <div class="stat-detail-value">${((data.kills || 0) / Math.max(1, (data.deaths || 0))).toFixed(2)}</div>
                 <div class="stat-detail-label">K/D RATIO</div>
@@ -244,7 +436,6 @@
               </div>
             </div>
             <div class="stat-detail-card">
-              <div class="stat-detail-icon">💰</div>
               <div class="stat-detail-content">
                 <div class="stat-detail-value">${data.currency || 0}</div>
                 <div class="stat-detail-label">CREDITS EARNED</div>
@@ -257,7 +448,6 @@
         <div class="performance-chart ui-panel">
           <h3>PERFORMANCE TRENDS</h3>
           <div class="chart-placeholder">
-            <div class="chart-icon">📈</div>
             <div class="chart-text">Performance tracking coming soon</div>
           </div>
         </div>
@@ -272,6 +462,8 @@
     const totalXP = cachedData.overview?.achievements?.totalXP || 0;
     const totalSecretFound = cachedData.overview?.achievements?.totalSecretFound || 0;
     const totalLegendary = cachedData.overview?.achievements?.totalLegendary || 0;
+    
+
     
     // Group achievements by category
     const categories = {
@@ -301,7 +493,7 @@
       achievementsHTML += `
         <div class="achievement-category">
           <h3 class="category-title">${categoryTitle}</h3>
-          <div class="achievements-grid">
+          <div class="achievements-list">
       `;
       
       for (const achievement of categoryAchievements) {
@@ -315,13 +507,8 @@
           statusText = `${achievement.completions}/${maxCompletions} COMPLETED`;
         }
         
-        // Add rarity class
-        const rarityClass = achievement.rarity ? `rarity-${achievement.rarity}` : '';
-        const secretClass = achievement.secret ? 'secret-achievement' : '';
-        
         achievementsHTML += `
-          <div class="achievement-card ui-panel ${achievement.completed ? 'completed' : ''} ${rarityClass} ${secretClass}">
-            <div class="achievement-icon">${achievement.icon}</div>
+          <div class="achievement-item ui-panel ${achievement.completed ? 'completed' : ''}">
             <div class="achievement-content">
               <div class="achievement-title">${achievement.title}</div>
               <div class="achievement-desc">${achievement.description}</div>
@@ -332,7 +519,6 @@
                 <span class="achievement-status ${statusClass}">${statusText}</span>
               </div>
               ${achievement.completed ? `<div class="achievement-reward">+${achievement.xpReward} XP</div>` : ''}
-              ${achievement.rarity ? `<div class="achievement-rarity rarity-${achievement.rarity}">${achievement.rarity.toUpperCase()}</div>` : ''}
             </div>
           </div>
         `;
@@ -408,7 +594,7 @@
   }
 
   // initial
-  setActiveTab('overview');
+  setActiveTab('stats');
 </script>
 
 

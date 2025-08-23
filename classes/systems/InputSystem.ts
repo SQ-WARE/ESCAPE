@@ -2,17 +2,27 @@ import type GamePlayerEntity from '../GamePlayerEntity';
 import type { EventPayloads } from 'hytopia';
 import { BaseEntityControllerEvent } from 'hytopia';
 
+import InputHandler from './InputHandler';
+
 export default class InputSystem {
   private _player: GamePlayerEntity;
 
+  private _inputHandler: InputHandler;
+  private _previousInput: Partial<Record<string | number | symbol, boolean>> = {};
+
   constructor(player: GamePlayerEntity) {
     this._player = player;
+
+    this._inputHandler = InputHandler.getInstance();
   }
 
   public handleInput(input: Partial<Record<string | number | symbol, boolean>>): void {
     if (this._player.isDead) {
       return;
     }
+
+    // Handle right mouse button press and release
+    this._handleRightMouseButton(input);
 
     const gun = this._player.gamePlayer.getCurrentWeapon();
     if (gun && gun.isReloading) {
@@ -48,11 +58,9 @@ export default class InputSystem {
       input.r = false;
     }
 
-    if (input.z || input.mr) {
-      this._handleZoomScope();
-      input.z = false;
-      input.mr = false;
-    }
+
+
+    // Note: Right mouse button handling moved to _handleRightMouseButton method
 
     if (input.q) {
       this._handleDropItem();
@@ -60,6 +68,9 @@ export default class InputSystem {
     }
 
     this._handleHotbarSelection(input);
+    
+    // Store current input state for next frame
+    this._previousInput = { ...input };
   }
 
   private _handleInteraction(): void {
@@ -119,11 +130,10 @@ export default class InputSystem {
     }
   }
 
-  private _handleZoomScope(): void {
-    const gun = this._player.gamePlayer.getCurrentWeapon();
-    if (gun) {
-      gun.zoomScope();
-    }
+
+
+  private _handleMouseRightClick(): void {
+    // No-op: aiming is disabled
   }
 
   private _handleDropItem(): void {
@@ -141,6 +151,34 @@ export default class InputSystem {
         input[i.toString()] = false;
       }
     }
+  }
+
+  private _handleRightMouseButton(input: Partial<Record<string | number | symbol, boolean>>): void {
+    const currentRightMouse = input.mr || false;
+    const previousRightMouse = this._previousInput.mr || false;
+
+    // Check if player has a medkit selected - medkit takes priority
+    const selectedItem = this._player.gamePlayer.hotbar.selectedItem;
+    const isMedkitSelected = selectedItem && selectedItem.constructor.name === 'MedkitItem';
+    
+    if (isMedkitSelected) {
+      // Let MedkitSystem handle right-click for medkit usage
+      return;
+    }
+
+    // Detect right mouse button press (transition from false to true)
+    if (currentRightMouse && !previousRightMouse) {
+      this._handleMouseRightClick();
+    }
+    
+    // Detect right mouse button release (transition from true to false)
+    if (!currentRightMouse && previousRightMouse) {
+      this._handleMouseRightRelease();
+    }
+  }
+
+  private _handleMouseRightRelease(): void {
+    // No-op: aiming is disabled
   }
 
   public shouldProcessMovement(): boolean {

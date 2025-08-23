@@ -1,19 +1,16 @@
 import { Entity, World, Collider, ColliderShape, RigidBodyType, PlayerEvent, PlayerUIEvent, type Vector3Like, type EventPayloads } from 'hytopia';
-import { WeaponFactory } from '../weapons/WeaponFactory';
-import AmmoItemFactory from '../items/AmmoItemFactory';
-import MedkitItem from '../items/MedkitItem';
-import { WEAPON_DEFINITIONS } from '../weapons/data/WeaponDefinitions';
+import { ItemFactory } from '../items/ItemFactory';
 import type GamePlayerEntity from '../GamePlayerEntity';
 import ItemInventory from './ItemInventory';
 import type BaseItem from '../items/BaseItem';
+import { WEAPON_DEFINITIONS } from '../weapons/data/WeaponDefinitions';
 import BaseAmmoItem from '../items/BaseAmmoItem';
-import { ItemUIDataHelper } from '../items/ItemUIDataHelper';
 
 type Rarity = 'common' | 'unusual' | 'rare' | 'epic' | 'legendary';
 
 interface LootItem {
-  type: 'weapon' | 'ammo' | 'medkit';
-  id: string; // weapon id, ammo type, or medkit
+  type: 'weapon' | 'ammo' | 'medkit' | 'valuable';
+  id: string; // weapon id, ammo type, medkit, or valuable item id
   quantity?: number;
   weight: number; // selection weight within pool
 }
@@ -66,7 +63,7 @@ export class LootCrateEntity extends Entity {
     this._uiHandler = handler;
     interactor.player.ui.on(PlayerUIEvent.DATA, handler);
     // Send initial contents shortly after UI loads
-    setTimeout(() => this._lootSystem.sendCrateContents(interactor, this._crateId, this._rarity), 80);
+    setTimeout(async () => await this._lootSystem.sendCrateContents(interactor, this._crateId, this._rarity), 80);
     try { (this as any).startModelOneshotAnimations?.(['Open Lid']); } catch {}
   }
 
@@ -78,7 +75,7 @@ export class LootCrateEntity extends Entity {
     super.despawn();
   }
 
-  private _onCrateUIEvent(evt: EventPayloads[PlayerUIEvent.DATA], playerEntity: GamePlayerEntity): void {
+  private async _onCrateUIEvent(evt: EventPayloads[PlayerUIEvent.DATA], playerEntity: GamePlayerEntity): Promise<void> {
     const { data } = evt;
     if (!data) return;
     // Allow crate-requestSync without strict crateId (initial UI may not know it yet)
@@ -87,22 +84,22 @@ export class LootCrateEntity extends Entity {
       const taken = this._lootSystem.takeFromCrate(this._crateId, data.index);
       if (taken) {
         this._lootSystem.grantLoot(playerEntity, taken);
-        this._lootSystem.sendCrateSync(playerEntity, this._crateId, this._rarity);
+        await this._lootSystem.sendCrateSync(playerEntity, this._crateId, this._rarity);
       }
     }
     if (data.type === 'crate-move') {
-      this._lootSystem.enqueueOp(playerEntity, () => {
+      this._lootSystem.enqueueOp(playerEntity, async () => {
         this._lootSystem.moveItemBetween(this._crateId, String(data.fromType), Number(data.fromIndex), String(data.toType), Number(data.toIndex), playerEntity);
-        this._lootSystem.sendCrateSync(playerEntity, this._crateId, this._rarity);
+        await this._lootSystem.sendCrateSync(playerEntity, this._crateId, this._rarity);
       });
     }
     if (data.type === 'crate-requestSync') {
-      this._lootSystem.sendCrateSync(playerEntity, this._crateId, this._rarity);
+      await this._lootSystem.sendCrateSync(playerEntity, this._crateId, this._rarity);
     }
     if (data.type === 'crate-quickMove') {
-      this._lootSystem.enqueueOp(playerEntity, () => {
+      this._lootSystem.enqueueOp(playerEntity, async () => {
         this._lootSystem.quickMoveBetween(this._crateId, String(data.fromType), Number(data.fromIndex), playerEntity);
-        this._lootSystem.sendCrateSync(playerEntity, this._crateId, this._rarity);
+        await this._lootSystem.sendCrateSync(playerEntity, this._crateId, this._rarity);
       });
     }
     if (data.type === 'crate-close') {
@@ -221,34 +218,34 @@ export default class LootSystem {
     return this.crateContents.get(crateId) ?? [];
   }
 
-  public getCrateClientContents(crateId: string, rarity: Rarity): Array<Record<string, unknown>> {
+  public async getCrateClientContents(crateId: string, rarity: Rarity): Promise<Array<Record<string, unknown>>> {
     // Ensure crate exists/seeded, then serialize actual inventory slots
     this.getOrSeedCrateContents(crateId, rarity);
     const rec = this.getOrCreateCrateInventory(crateId);
-    return this._serializeInventory(rec.inv);
+    return await this._serializeInventory(rec.inv);
   }
 
-  public sendCrateContents(player: GamePlayerEntity, crateId: string, rarity: Rarity): void {
+  public async sendCrateContents(player: GamePlayerEntity, crateId: string, rarity: Rarity): Promise<void> {
     try {
       player.player.ui.sendData({
         type: 'crate-contents',
         crateId,
-        items: this.getCrateClientContents(crateId, rarity),
+        items: await this.getCrateClientContents(crateId, rarity),
         gridWidth: this.getCrateGridWidth(),
         size: this.getCrateSize(),
-        inventory: this._serializeInventory(player.gamePlayer.backpack),
-        hotbar: this._serializeInventory(player.gamePlayer.hotbar),
+        inventory: await this._serializeInventory(player.gamePlayer.backpack),
+        hotbar: await this._serializeInventory(player.gamePlayer.hotbar),
       });
     } catch {}
   }
 
-  public sendCrateSync(player: GamePlayerEntity, crateId: string, rarity: Rarity): void {
+  public async sendCrateSync(player: GamePlayerEntity, crateId: string, rarity: Rarity): Promise<void> {
     try {
       player.player.ui.sendData({
         type: 'crate-sync',
-        crate: this.getCrateClientContents(crateId, rarity),
-        inventory: this._serializeInventory(player.gamePlayer.backpack),
-        hotbar: this._serializeInventory(player.gamePlayer.hotbar),
+        crate: await this.getCrateClientContents(crateId, rarity),
+        inventory: await this._serializeInventory(player.gamePlayer.backpack),
+        hotbar: await this._serializeInventory(player.gamePlayer.hotbar),
       });
     } catch {}
   }
@@ -272,6 +269,7 @@ export default class LootSystem {
     if (it.type === 'weapon') return this._weaponName(it.id) || it.id;
     if (it.type === 'ammo') return `${it.id.toUpperCase()} AMMO`;
     if (it.type === 'medkit') return 'MEDKIT';
+    if (it.type === 'valuable') return this._valuableName(it.id) || it.id;
     return it.id;
   }
 
@@ -279,6 +277,7 @@ export default class LootSystem {
     if (it.type === 'weapon') return this._weaponIcon(it.id);
     if (it.type === 'ammo') return `icons/${it.id}.png`;
     if (it.type === 'medkit') return 'icons/medkit.png';
+    if (it.type === 'valuable') return this._valuableIcon(it.id);
     return undefined;
   }
 
@@ -296,33 +295,30 @@ export default class LootSystem {
     } catch { return undefined; }
   }
 
+  private _valuableName(id: string): string | undefined {
+    try {
+      const itemData = ItemFactory.getInstance().getItemData(id);
+      return itemData?.name;
+    } catch { return undefined; }
+  }
+
+  private _valuableIcon(id: string): string | undefined {
+    try {
+      const itemData = ItemFactory.getInstance().getItemData(id);
+      return itemData?.iconImageUri;
+    } catch { return undefined; }
+  }
+
   // Expose a UI serializer matching stash/inventory payload (includes description, rarity, stats, ammoType, etc.)
-  public _serializeInventory(inv: ItemInventory): Array<Record<string, unknown>> {
-    const out: Array<Record<string, unknown>> = [];
-    for (let i = 0; i < inv.size; i++) {
-      const item = inv.getItemAt(i) as BaseItem | null;
-      if (!item) continue;
-      out.push(ItemUIDataHelper.getUIData(item, { position: i, quantity: item.quantity }));
-    }
-    return out;
+  public async _serializeInventory(inv: ItemInventory): Promise<Array<Record<string, unknown>>> {
+    return await inv.serializeForUI();
   }
 
   public grantLoot(player: GamePlayerEntity, loot: LootItem): void {
-    switch (loot.type) {
-      case 'weapon': {
-        const item = WeaponFactory.create(loot.id);
-        if (!player.gamePlayer.hotbar.addItem(item)) player.gamePlayer.backpack.addItem(item);
-        break;
-      }
-      case 'ammo': {
-        const item = AmmoItemFactory.create(loot.id, loot.quantity ?? 30);
-        if (!player.gamePlayer.hotbar.addItem(item)) player.gamePlayer.backpack.addItem(item);
-        break;
-      }
-      case 'medkit': {
-        const item = new MedkitItem();
-        if (!player.gamePlayer.hotbar.addItem(item)) player.gamePlayer.backpack.addItem(item);
-        break;
+    const item = ItemFactory.getInstance().createItem(loot.id, { quantity: loot.quantity ?? 1 });
+    if (item) {
+      if (!player.gamePlayer.hotbar.addItem(item)) {
+        player.gamePlayer.backpack.addItem(item);
       }
     }
   }
@@ -378,6 +374,7 @@ export default class LootSystem {
       items: [
         { type: 'weapon', id: 'akm', weight: 2 },
         { type: 'ammo', id: 'rifle', quantity: 90, weight: 2 },
+        { type: 'valuable', id: 'gold_bar', quantity: 1, weight: 1 },
       ],
     });
     this.pools.set('epic', {
@@ -385,12 +382,14 @@ export default class LootSystem {
       items: [
         { type: 'weapon', id: 'desert_eagle', weight: 1 },
         { type: 'weapon', id: 'spetsnaz_akm_nsb', weight: 1 },
+        { type: 'valuable', id: 'gold_bar', quantity: 2, weight: 2 },
       ],
     });
     this.pools.set('legendary', {
       rarity: 'legendary',
       items: [
         { type: 'weapon', id: 'sword_mk18_mjolnir', weight: 1 },
+        { type: 'valuable', id: 'diamonds', quantity: 1, weight: 1 },
       ],
     });
   }
@@ -418,10 +417,7 @@ export default class LootSystem {
 
   private _toItem(it: LootItem): BaseItem | null {
     try {
-      if (it.type === 'weapon') return WeaponFactory.create(it.id);
-      if (it.type === 'ammo') return AmmoItemFactory.create(it.id, it.quantity ?? 30);
-      if (it.type === 'medkit') return new MedkitItem();
-      return null;
+      return ItemFactory.getInstance().createItem(it.id, { quantity: it.quantity ?? 1 });
     } catch { return null; }
   }
 

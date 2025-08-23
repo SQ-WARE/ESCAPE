@@ -169,7 +169,6 @@ export class PartySystem {
       };
       targetPlayer.ui.sendData(inviteData);
     } catch (error) {
-      console.error('Failed to send invite UI:', error);
       this._pendingInvites.delete(invite.id);
       return false;
     }
@@ -618,7 +617,6 @@ export class PartySystem {
       const level = Math.max(1, Math.floor(prog.level ?? 1));
       return level;
     } catch (error) {
-      console.error(`Failed to get level for player ${player.username}:`, error);
       return 1;
     }
   }
@@ -671,7 +669,7 @@ export class PartySystem {
           partyData: partyData
         });
       } catch (error) {
-        console.error(`🎯 Failed to send party update to ${player.username}:`, error);
+        // Failed to send party update
       }
     }
   }
@@ -685,7 +683,7 @@ export class PartySystem {
         type: 'party-disbanded'
       });
     } catch (error) {
-      console.error(`🎯 Failed to send party disbanded notification to ${player.username}:`, error);
+      // Failed to send party disbanded notification
     }
   }
 
@@ -699,7 +697,7 @@ export class PartySystem {
         reason: reason || 'Kicked from party'
       });
     } catch (error) {
-      console.error(`🎯 Failed to send party kicked notification to ${player.username}:`, error);
+      // Failed to send party kicked notification
     }
   }
 

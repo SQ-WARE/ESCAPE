@@ -58,15 +58,18 @@ export default class MedkitEntity extends Entity {
   }
 
   public get useTimeMs(): number {
-    return this._medkitItem.useTimeMs;
+    return (this._medkitItem.constructor as any).consumeTimeMs;
   }
 
   public get isUsing(): boolean {
-    return this._medkitItem.isUsing;
+    return this._isUsing;
   }
 
   public get useProgress(): number {
-    return this._medkitItem.useProgress;
+    if (!this._isUsing) return 0;
+    const elapsed = performance.now() - this._useStartTime;
+    const useTime = this.useTimeMs;
+    return Math.min(1, elapsed / useTime);
   }
 
   public equip(): void {
@@ -92,29 +95,17 @@ export default class MedkitEntity extends Entity {
   }
 
   public use(player: GamePlayerEntity): boolean {
-    if (this._medkitItem.use(player)) {
-      this._startHealingAnimation(player);
-      return true;
-    }
-    return false;
+    this._medkitItem.consume();
+    this._startHealingAnimation(player);
+    return true;
   }
 
   public cancelUse(player: GamePlayerEntity): void {
-    this._medkitItem.cancelUse(player);
     this._stopHealingAnimation(player);
   }
 
   public update(player: GamePlayerEntity): void {
-    this._medkitItem.update(player);
-    
     // Update healing animation if using
-    if (this._medkitItem.isUsing && !this._isUsing) {
-      this._startHealingAnimation(player);
-    } else if (!this._medkitItem.isUsing && this._isUsing) {
-      this._stopHealingAnimation(player);
-    }
-    
-    // Update animation progress
     if (this._isUsing) {
       this._updateHealingAnimation(player);
     }

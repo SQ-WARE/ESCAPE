@@ -190,7 +190,7 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
 				hitEntity.applyImpulse(impulse);
 			}
 		} catch (error) {
-      console.error(`🥊 Failed to apply knockback:`, error);
+      // Failed to apply knockback
     }
     
     // Play hitmarker sound for the attacker (this entity)
@@ -222,6 +222,10 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     return this._healthSystem;
   }
 
+  public get cameraSystem(): CameraSystem {
+    return this._cameraSystem;
+  }
+
   public constructor(gamePlayer: GamePlayer) {
     super({
       player: gamePlayer.player,
@@ -239,16 +243,12 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     this._recoilSystem = new RecoilSystem(gamePlayer.player);
     this._medkitSystem = new MedkitSystem(this);
     this._fovSystem = new FOVSystem(this);
-    // world-level audio singleton
+    // world-level audio singleton (SFX only)
     const world = (gamePlayer.player.world as any);
-    const playlist = [
-      'audio/music/Battlefield Shadows.mp3',
-      'audio/music/Chaos Unleashed.mp3',
-    ];
     if (world) {
-      (world as any).audioSystem = (world as any).audioSystem || new AudioSystem(world, playlist);
+      (world as any).audioSystem = (world as any).audioSystem || new AudioSystem(world);
     }
-    this._soundSystem = (world as any).audioSystem || new AudioSystem(world, playlist);
+    this._soundSystem = (world as any).audioSystem || new AudioSystem(world);
     this._healthSystem = new HealthSystem(this);
     this._inputSystem = new InputSystem(this);
     this._weaponSystem = new WeaponSystem(this, this._movementSystem);
@@ -347,6 +347,7 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
     
     this._recoilSystem.updateRecovery();
     this._cameraSystem.updateRecoil();
+    this._cameraSystem.update(); // Update FOV transitions
     this._medkitSystem.update();
     
     this._healthSystem.validateAndCorrectHealth();
@@ -401,7 +402,7 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
           try {
             const AchievementSystem = require('./systems/AchievementSystem').default;
             const raids = Math.floor((data as any)?.raids ?? 0);
-            AchievementSystem.checkExplorationAchievements(this.player, raids, currentPlaytime + minutesToAdd);
+            AchievementSystem.checkAllAchievements(this.player, { raids, playtime: currentPlaytime + minutesToAdd });
           } catch {}
         }
       } catch {}
@@ -454,7 +455,7 @@ export default class GamePlayerEntity extends DefaultPlayerEntity {
         }
       }
     } catch (error) {
-      console.error('Failed to load persisted data:', error);
+      // Failed to load persisted data
     }
   }
 

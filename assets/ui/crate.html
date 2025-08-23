@@ -1,22 +1,31 @@
 <link rel="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/app.css">
+<link rel="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/stash.css">
 
-<div class="stash-overlay" style="display:flex; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); background: rgba(0,0,0,0.35);">
-  <div class="stash-container">
-    <button class="close-btn" id="crate-close">↩</button>
-    <div class="stash-content glass-surface glass-border-strong">
+<div class="stash-overlay" style="display:flex; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); background: rgba(0,0,0,0.25);">
+  <div class="stash-interface">
+    <div class="stash-header-panel">
+      <div class="stash-title-section">
+        <h2 class="stash-title">LOOT CRATE</h2>
+        <div class="stash-subtitle">INVENTORY MANAGEMENT</div>
+      </div>
+      <div class="stash-controls">
+        <button class="close-btn-stash" id="crate-close">CLOSE</button>
+      </div>
+    </div>
+    <div class="stash-content-panel">
       <div class="inventory-side">
-        <div class="inventory-section glass-surface">
+        <div class="inventory-section">
           <h3 class="section-title">BACKPACK</h3>
           <div class="backpack-grid" id="inv-grid" data-container="backpack"></div>
         </div>
-        <div class="inventory-section glass-surface">
+        <div class="inventory-section">
           <h3 class="section-title">HOTBAR</h3>
           <div class="hotbar-grid" id="hotbar-grid" data-container="hotbar"></div>
         </div>
       </div>
       <div class="stash-side">
-        <div class="inventory-section glass-surface">
-          <h3 class="section-title">CRATE</h3>
+        <div class="inventory-section">
+          <h3 class="section-title">CRATE CONTENTS</h3>
           <div class="stash-grid" id="crate-grid" data-container="crate"></div>
         </div>
       </div>
@@ -27,7 +36,7 @@
 
 <template id="crate-slot">
   <div class="stash-slot"></div>
-  </template>
+</template>
 
 <script>
   const CDN_ASSETS_URL = '{{CDN_ASSETS_URL}}';
@@ -74,21 +83,45 @@
   function updateSlot(container, position, itemData) {
     const slot = container.children[position];
     if (!slot) return;
-    if (!itemData || itemData.removed) {
-      slot.innerHTML = '';
-      slot._itemData = null;
-      slot._tooltipEnabled = false;
-      if (slot._tooltip) { slot._tooltip.remove(); slot._tooltip = null; }
+    
+    // Clear any existing content and data
+    slot.innerHTML = '';
+    slot._itemData = null;
+    slot._tooltipEnabled = false;
+    if (slot._tooltip) { 
+      slot._tooltip.remove(); 
+      slot._tooltip = null; 
+    }
+    
+    // Handle empty slots or removed items
+    if (!itemData || itemData.removed || !itemData.name || itemData.name === 'No Weapon') {
       return;
     }
+    
+    // Handle invalid or missing icon
+    const iconUri = itemData.iconImageUri;
+    if (!iconUri || iconUri === 'icons/chest.png' || iconUri.includes('invalid')) {
+      return;
+    }
+    
+    // Determine if item is ammo
     const isAmmo = itemData.name && (
-      itemData.name.includes('9×19mm') || itemData.name.includes('7.62×39mm') || itemData.name.includes('12.7×108mm') || itemData.name.includes('12 Gauge')
+      itemData.name.includes('9×19mm') || 
+      itemData.name.includes('7.62×39mm') || 
+      itemData.name.includes('12.7×108mm') || 
+      itemData.name.includes('12 Gauge') ||
+      itemData.name.toLowerCase().includes('ammo') ||
+      itemData.name.toLowerCase().includes('bullet')
     );
+    
+    // Only show quantity for items with quantity > 1
     let quantityDisplay = '';
     if (itemData.quantity && itemData.quantity > 1) {
       quantityDisplay = `<span class="${isAmmo ? 'ammo-label' : 'item-quantity'}">${itemData.quantity}</span>`;
     }
-    slot.innerHTML = `<img src="${CDN_ASSETS_URL}/${itemData.iconImageUri || 'icons/chest.png'}" alt="${itemData.name || ''}">${quantityDisplay}`;
+    
+    // Create the slot content
+    slot.innerHTML = `<img src="${CDN_ASSETS_URL}/${iconUri}" alt="${itemData.name || ''}">${quantityDisplay}`;
     slot._itemData = itemData;
     slot._tooltipEnabled = true;
 
@@ -117,16 +150,17 @@
     };
   }
 
-  // Tooltip helpers (mirror stash behavior)
-  // Tooltip helpers identical to stash
+  // Tooltip helpers - using stash tooltip styles
   function createWeaponStatsHTML(stats, description, ammoType) {
     const ammoMap = { pistol: '9×19mm Parabellum', rifle: '7.62×39mm', sniper: '12.7×108mm', shotgun: '12 Gauge' };
     const bulletType = ammoMap[ammoType] || ammoType || '';
     const statsHTML = `
-      <div class="key-stats">
-        <div class="stat-group"><span class="stat-label">DMG</span><span class="stat-value">${stats.damage}</span></div>
-        <div class="stat-group"><span class="stat-label">RPM</span><span class="stat-value">${stats.fireRate}</span></div>
-        <div class="stat-group"><span class="stat-label">MAG</span><span class="stat-value">${stats.magazineSize}</span></div>
+      <div class="weapon-stats">
+        <div class="key-stats">
+          <div class="stat-group"><span class="stat-label">DMG</span><span class="stat-value">${stats.damage}</span></div>
+          <div class="stat-group"><span class="stat-label">RPM</span><span class="stat-value">${stats.fireRate}</span></div>
+          <div class="stat-group"><span class="stat-label">MAG</span><span class="stat-value">${stats.magazineSize}</span></div>
+        </div>
       </div>`;
     return { bulletType, statsHTML, description };
   }
@@ -311,5 +345,3 @@
     }
   });
 </script>
-
-

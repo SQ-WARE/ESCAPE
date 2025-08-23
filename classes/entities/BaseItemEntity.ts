@@ -73,8 +73,7 @@ export default class BaseItemEntity extends Entity {
     this._interactSceneUI.load(this.world);
   }
 
-  private getRarityColor(rarity: string): { r: number; g: number; b: number } {
-    const key = (rarity || 'common').toLowerCase() as ItemRarity;
-    return RARITY_RGB_COLORS[key] ?? RARITY_RGB_COLORS.common;
+  private getRarityColor(rarity: ItemRarity): { r: number; g: number; b: number } {
+    return RARITY_RGB_COLORS[rarity] ?? RARITY_RGB_COLORS.common;
   }
 } 

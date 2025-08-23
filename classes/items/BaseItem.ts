@@ -85,7 +85,6 @@ export default abstract class BaseItem {
 
   public adjustQuantity(quantity: number): void {
     if (!this.stackable) {
-      console.warn(`BaseItem.adjustQuantity(): Item ${this.name} is not stackable.`);
       return;
     }
     this._quantity += quantity;
@@ -101,7 +100,6 @@ export default abstract class BaseItem {
 
   public setQuantity(quantity: number): void {
     if (!this.stackable && quantity > 1) {
-      console.warn(`BaseItem.setQuantity(): Item ${this.name} is not stackable.`);
       return;
     }
     this._quantity = quantity;
@@ -158,11 +156,9 @@ export default abstract class BaseItem {
 
   public spawnEntityAsHeld(parent: Entity, parentNodeName?: string, relativePosition?: Vector3Like, relativeRotation?: QuaternionLike): void {
     if (this._entity) {
-      console.warn('BaseItem: Item is already spawned.');
       return;
     }
     if (!parent.world) {
-      console.warn('BaseItem: Parent entity must be spawned in a world.');
       return;
     }
     this._entity = new BaseItemEntity({

@@ -1,5 +1,5 @@
 import type { WeaponData } from '../data/WeaponData';
-import type { BaseWeaponItemAttack } from '../../items/BaseWeaponItem';
+import type { BaseWeaponItemAttack, WeaponOverrides } from '../../items/BaseWeaponItem';
 import BaseWeaponItem from '../../items/BaseWeaponItem';
 import { WeaponRegistry } from '../data/WeaponRegistry';
 import type { ItemRarity } from '../../items/BaseItem';
@@ -24,7 +24,13 @@ export default class WeaponItem extends BaseWeaponItem {
   }
 
   // Static factory method
-  static create(weaponId: string, overrides?: WeaponItemOverrides): WeaponItem {
+  static override create(overrides?: WeaponOverrides): WeaponItem {
+    // For WeaponItem, we need a weaponId in the overrides
+    const weaponId = (overrides as any)?.weaponId;
+    if (!weaponId) {
+      throw new Error('WeaponItem.create() requires weaponId in overrides');
+    }
+    
     const weaponData = WeaponRegistry.get(weaponId);
     
     if (!weaponData) {
@@ -35,85 +41,72 @@ export default class WeaponItem extends BaseWeaponItem {
   }
 
   // Required static properties (delegated to weapon data)
-  static readonly id: string = 'weapon_item';
-  static readonly name: string = 'Weapon';
-  static readonly iconImageUri: string = 'icons/pistol.png';
-  static readonly description: string = 'A weapon item';
-  static readonly dropModelScale: number = 0.5;
-  static readonly dropModelTintColor: { r: number; g: number; b: number } | undefined = undefined;
-  static readonly heldModelScale: number = 0.5;
-  static readonly heldModelTintColor: { r: number; g: number; b: number } | undefined = undefined;
-  static readonly defaultRelativePositionAsChild: any = { x: -0.025, y: 0, z: -0.15 };
-  static readonly defaultRelativeRotationAsChild: any = undefined;
+  static override readonly id: string = 'weapon_item';
+  static override readonly name: string = 'Weapon';
+  static override readonly iconImageUri: string = 'icons/pistol.png';
+  static override readonly description: string = 'A weapon item';
+  static override readonly dropModelScale: number = 0.5;
+  static override readonly dropModelTintColor: { r: number; g: number; b: number } | undefined = undefined;
+  static override readonly heldModelScale: number = 0.5;
+  static override readonly heldModelTintColor: { r: number; g: number; b: number } | undefined = undefined;
+  static override readonly defaultRelativePositionAsChild: any = { x: -0.025, y: 0, z: -0.15 };
+  static override readonly defaultRelativeRotationAsChild: any = undefined;
 
-  static readonly stackable: boolean = false;
+  static override readonly stackable: boolean = false;
 
   // Instance properties (from weapon data)
-  public get id(): string {
+  public override get id(): string {
     return this._weaponData.id;
   }
 
-  public get name(): string {
+  public override get name(): string {
     return this._weaponData.name;
   }
 
-  public get iconImageUri(): string {
+  public override get iconImageUri(): string {
     return this._weaponData.assets.ui.icon;
   }
 
-  public get description(): string {
+  public override get description(): string {
     return this._weaponData.description;
   }
 
-  public get rarity(): ItemRarity {
-    // Convert weapon rarity to item rarity format
-    const rarityMap: Record<string, ItemRarity> = {
-      'common': 'common',
-      'unusual': 'unusual',
-      'rare': 'rare',
-      'epic': 'epic',
-      'legendary': 'legendary'
-    };
-    return rarityMap[this._weaponData.rarity] || 'common';
+  public override get rarity(): ItemRarity {
+    // WeaponRarity is now compatible with ItemRarity
+    return this._weaponData.rarity as ItemRarity;
   }
 
-  public get stackable(): boolean {
+  public override get stackable(): boolean {
     return false; // Weapons are not stackable
   }
 
-  public get buyPrice(): number {
-    return this._weaponData.price;
-  }
 
-  public get sellPrice(): number {
-    return Math.floor(this._weaponData.price * 0.1); // 10% of buy price
-  }
 
-  public get heldModelUri(): string {
+  public override get heldModelUri(): string {
     return this._weaponData.assets.models.held;
   }
 
-  public get heldModelScale(): number {
+  public override get heldModelScale(): number {
     return this._weaponData?.assets?.models?.scale ?? 0.5;
   }
 
-  public get dropModelUri(): string {
+  public override get dropModelUri(): string {
     return this._weaponData?.assets?.models?.dropped ?? this._weaponData?.assets?.models?.held ?? 'models/items/pistol_m9.glb';
   }
 
-  public get dropModelScale(): number {
+  public override get dropModelScale(): number {
     return this._weaponData?.assets?.models?.dropScale ?? this._weaponData?.assets?.models?.scale ?? 0.5;
   }
 
-  public get dropModelTintColor(): { r: number; g: number; b: number } | undefined {
+  public override get dropModelTintColor(): { r: number; g: number; b: number } | undefined {
     return RARITY_RGB_COLORS[this.rarity];
   }
 
-  public get defaultRelativeRotationAsChild(): any {
+  public override get defaultRelativeRotationAsChild(): any {
     return this._weaponData.assets.models.rotation;
   }
 
-  public get defaultRelativePositionAsChild(): any {
+  public override get defaultRelativePositionAsChild(): any {
     return this._weaponData.assets.models.position;
   }
 
@@ -149,8 +142,9 @@ export default class WeaponItem extends BaseWeaponItem {
   }
 
   // Attack configuration (converted from weapon data)
-  public get attack(): BaseWeaponItemAttack {
+  public override get attack(): BaseWeaponItemAttack {
     return {
+      animations: ['shoot_gun_right'], // Default shooting animation
       cooldownMs: Math.floor(60000 / this._weaponData.stats.fireRate), // Convert RPM to cooldown
       damage: this._weaponData.stats.damage,
       damageDelayMs: 50,

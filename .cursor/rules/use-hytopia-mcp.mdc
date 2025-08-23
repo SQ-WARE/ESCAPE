@@ -1,9 +1,7 @@
 ---
 description: Agent, you should use the Hytopia MCP Server for Hytopia SDK help and examples
-globs: 
-alwaysApply: true
+alwaysApply: false
 ---
-
 # Hytopia MCP Server
 
 - You have access to the Hytopia MCP Server.

@@ -56,6 +56,20 @@ export default class PlayerStatsSystem {
     
     this.set(player, s);
     
+    // Update persistent data with current stats
+    try {
+      const data = (player.getPersistedData?.() as any) || {};
+      player.setPersistedData({
+        ...data,
+        kills: s.kills,
+        deaths: s.deaths,
+        headshots: s.headshots,
+        currentKillStreak: s.currentKillStreak,
+        bestKillStreak: s.bestKillStreak,
+        weaponKills: s.weaponKills
+      });
+    } catch {}
+    
     // Track weapon kill if category provided
     if (weaponCategory) {
       this.addWeaponKill(player, weaponCategory);
@@ -84,8 +98,10 @@ export default class PlayerStatsSystem {
     try {
       const AchievementSystem = require('./AchievementSystem').default;
       const data = (player.getPersistedData?.() as any) || {};
+      const kills = Math.floor((data as any)?.kills ?? 0);
+      const deaths = Math.floor((data as any)?.deaths ?? 0);
       const accuracy = Math.floor((data as any)?.accuracy ?? 0);
-      AchievementSystem.checkCombatAchievements(player, s.kills, s.deaths, accuracy);
+      AchievementSystem.checkAllAchievements(player, { kills, deaths, accuracy });
     } catch {}
   }
 
@@ -95,6 +111,20 @@ export default class PlayerStatsSystem {
     // Reset kill streak on death
     s.currentKillStreak = 0;
     this.set(player, s);
+    
+    // Update persistent data with current stats
+    try {
+      const data = (player.getPersistedData?.() as any) || {};
+      player.setPersistedData({
+        ...data,
+        kills: s.kills,
+        deaths: s.deaths,
+        headshots: s.headshots,
+        currentKillStreak: s.currentKillStreak,
+        bestKillStreak: s.bestKillStreak,
+        weaponKills: s.weaponKills
+      });
+    } catch {}
   }
 
   public static addHeadshot(player: Player): void {
@@ -102,10 +132,26 @@ export default class PlayerStatsSystem {
     s.headshots += 1;
     this.set(player, s);
     
+    // Update persistent data with current stats
+    try {
+      const data = (player.getPersistedData?.() as any) || {};
+      player.setPersistedData({
+        ...data,
+        kills: s.kills,
+        deaths: s.deaths,
+        headshots: s.headshots,
+        currentKillStreak: s.currentKillStreak,
+        bestKillStreak: s.bestKillStreak,
+        weaponKills: s.weaponKills
+      });
+    } catch {}
+    
     // Check headshot achievements
     try {
       const AchievementSystem = require('./AchievementSystem').default;
-      AchievementSystem.checkHeadshotAchievements(player, s.headshots);
+      const data = (player.getPersistedData?.() as any) || {};
+      const headshots = Math.floor((data as any)?.headshots ?? 0);
+      AchievementSystem.checkHeadshotAchievements(player, headshots);
     } catch {}
   }
 
@@ -117,10 +163,26 @@ export default class PlayerStatsSystem {
     s.weaponKills[weaponCategory] += 1;
     this.set(player, s);
     
+    // Update persistent data with current stats
+    try {
+      const data = (player.getPersistedData?.() as any) || {};
+      player.setPersistedData({
+        ...data,
+        kills: s.kills,
+        deaths: s.deaths,
+        headshots: s.headshots,
+        currentKillStreak: s.currentKillStreak,
+        bestKillStreak: s.bestKillStreak,
+        weaponKills: s.weaponKills
+      });
+    } catch {}
+    
     // Check weapon mastery achievements
     try {
       const AchievementSystem = require('./AchievementSystem').default;
-      AchievementSystem.checkWeaponMasteryAchievements(player, s.weaponKills);
+      const data = (player.getPersistedData?.() as any) || {};
+      const weaponKills = (data as any)?.weaponKills || {};
+      AchievementSystem.checkWeaponMasteryAchievements(player, weaponKills);
     } catch {}
   }
 
@@ -132,10 +194,26 @@ export default class PlayerStatsSystem {
     }
     this.set(player, s);
     
+    // Update persistent data with current stats
+    try {
+      const data = (player.getPersistedData?.() as any) || {};
+      player.setPersistedData({
+        ...data,
+        kills: s.kills,
+        deaths: s.deaths,
+        headshots: s.headshots,
+        currentKillStreak: s.currentKillStreak,
+        bestKillStreak: s.bestKillStreak,
+        weaponKills: s.weaponKills
+      });
+    } catch {}
+    
     // Check kill streak achievements
     try {
       const AchievementSystem = require('./AchievementSystem').default;
-      AchievementSystem.checkKillStreakAchievements(player, newStreak);
+      const data = (player.getPersistedData?.() as any) || {};
+      const currentKillStreak = Math.floor((data as any)?.currentKillStreak ?? 0);
+      AchievementSystem.checkKillStreakAchievements(player, currentKillStreak);
     } catch {}
   }
 

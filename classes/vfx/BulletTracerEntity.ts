@@ -36,7 +36,7 @@ export default class BulletTracerEntity extends Entity {
       modelUri: opts.modelUri ?? 'models/projectiles/bullet.glb',
       modelScale: opts.modelScale ?? 0.4,
     });
-		// stash ctor options for optional light overrides upon spawn
+		    // Store constructor options for optional light overrides upon spawn
 		(this as any)._ctorOptions = opts;
 		// Normalize direction
 		const len = Math.hypot(direction.x, direction.y, direction.z) || 1;

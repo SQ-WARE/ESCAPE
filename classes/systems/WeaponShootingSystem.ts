@@ -148,7 +148,13 @@ export default class WeaponShootingSystem {
       const maxRecoil = parent.recoilSystem.getMaxRecoil();
       const spreadRatio = currentRecoil / maxRecoil;
       const maxSpreadAngle = this._getMaxSpreadAngle();
-      const currentSpreadAngle = maxSpreadAngle * spreadRatio;
+      
+      // Apply movement-based accuracy modifiers
+      const accuracyModifier = parent.weaponSystem?.getWeaponAccuracyModifier(parent.gamePlayer.getCurrentWeapon()) || 1.0;
+      const spreadModifier = 1.0 / accuracyModifier; // Inverse of accuracy
+      
+      // Calculate final spread angle with modifiers
+      const currentSpreadAngle = maxSpreadAngle * spreadRatio * spreadModifier;
       
       const spreadRadians = (currentSpreadAngle * Math.PI) / 180;
       const randomAngle = Math.random() * 2 * Math.PI;

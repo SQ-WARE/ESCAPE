@@ -67,7 +67,6 @@ export default class WeaponReloadSystem {
     const gamePlayer = (player as any).gamePlayer || GamePlayer.getOrCreate(player);
     
     if (!gamePlayer) {
-      console.warn('No game player found for reload');
       return false;
     }
 
@@ -301,7 +300,6 @@ export default class WeaponReloadSystem {
     if (typeof ammoItem.removeFromStack === 'function') {
       return ammoItem.removeFromStack(amount);
     } else {
-      console.error('Ammo item does not have removeFromStack method:', ammoItem);
       return 0;
     }
   }

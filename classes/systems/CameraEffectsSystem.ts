@@ -5,7 +5,6 @@ import { Player, PlayerCameraMode } from 'hytopia';
  * 
  * Handles post-processing and camera effects to enhance the atmospheric experience:
  * - Auto exposure adjustments
- * - Depth of field during aiming
  * - Vignette effects
  * - Chromatic aberration
  * - Lens dirt effects
@@ -23,9 +22,7 @@ export class CameraEffectsSystem {
    */
   public setupPlayerCamera(player: Player): void {
     const state: CameraEffectsState = {
-      isAiming: false,
       baseFov: 75,
-      aimFov: 60,
       vignetteIntensity: 0.3,
       chromaticAberration: 0.1,
       grainIntensity: 0.3,
@@ -56,47 +53,10 @@ export class CameraEffectsSystem {
   }
 
   /**
-   * Handle aiming state changes
+   * Handle aiming state changes (no-op: aiming is disabled)
    */
   public setAimingState(player: Player, isAiming: boolean): void {
-    const state = this.players.get(player);
-    if (!state) return;
-
-    state.isAiming = isAiming;
-    
-    if (isAiming) {
-      this.enterAimMode(player, state);
-    } else {
-      this.exitAimMode(player, state);
-    }
-  }
-
-  /**
-   * Enter aim mode with depth of field and zoom effects
-   */
-  private enterAimMode(player: Player, state: CameraEffectsState): void {
-    // Reduce FOV for zoom effect
-    player.camera.setFov(state.aimFov);
-    
-    // Increase vignette for focus effect
-    this.applyVignetteEffect(player, state.vignetteIntensity * 1.5);
-    
-    // Reduce chromatic aberration for cleaner aim
-    this.applyChromaticAberration(player, state.chromaticAberration * 0.5);
-  }
-
-  /**
-   * Exit aim mode and restore normal effects
-   */
-  private exitAimMode(player: Player, state: CameraEffectsState): void {
-    // Restore base FOV
-    player.camera.setFov(state.baseFov);
-    
-    // Restore normal vignette
-    this.applyVignetteEffect(player, state.vignetteIntensity);
-    
-    // Restore normal chromatic aberration
-    this.applyChromaticAberration(player, state.chromaticAberration);
+    // No-op: aiming is disabled
   }
 
   /**
@@ -144,28 +104,13 @@ export class CameraEffectsSystem {
     }
   }
 
+
+
   /**
    * Start the grain effect simulation
    */
   private startGrainEffect(player: Player, intensity: number): void {
-    // Create a subtle camera shake effect to simulate grain
-    const shakeInterval = setInterval(() => {
-      const state = this.players.get(player);
-      if (!state || !state.isAiming) {
-        clearInterval(shakeInterval);
-        return;
-      }
-
-      const shakeAmount = intensity * 0.001;
-      const currentOffset = player.camera.offset;
-      const newOffset = {
-        x: currentOffset.x + (Math.random() - 0.5) * shakeAmount,
-        y: currentOffset.y + (Math.random() - 0.5) * shakeAmount,
-        z: currentOffset.z + (Math.random() - 0.5) * shakeAmount,
-      };
-
-      player.camera.setOffset(newOffset);
-    }, 50); // Update every 50ms for subtle effect
+    // Grain effect disabled - no aiming functionality
   }
 
   /**
@@ -225,7 +170,7 @@ export class CameraEffectsSystem {
   }
 
   /**
-   * Get camera effects state for debugging
+   * Get camera effects state
    */
   public getPlayerState(player: Player): CameraEffectsState | undefined {
     return this.players.get(player);
@@ -236,9 +181,7 @@ export class CameraEffectsSystem {
  * Camera effects state for each player
  */
 interface CameraEffectsState {
-  isAiming: boolean;
   baseFov: number;
-  aimFov: number;
   vignetteIntensity: number;
   chromaticAberration: number;
   grainIntensity: number;

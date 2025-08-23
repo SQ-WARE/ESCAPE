@@ -1,6 +1,6 @@
 import { Quaternion } from 'hytopia';
 import type { WeaponData } from './WeaponData';
-import { WeaponCategory, WeaponRarity, FireMode } from './WeaponData';
+import { WeaponCategory, type WeaponRarity, FireMode } from './WeaponData';
 
 // Pistols
 export const M9_BERETTA: WeaponData = {
@@ -8,7 +8,7 @@ export const M9_BERETTA: WeaponData = {
   name: 'Beretta M9',
   description: '9×19mm service pistol known for reliability, mild recoil, and consistent accuracy.',
   category: WeaponCategory.PISTOL,
-  rarity: WeaponRarity.COMMON,
+  rarity: 'common',
   stats: {
     damage: 18,
     fireRate: 200,  // Realistic semi-auto rate
@@ -42,7 +42,7 @@ export const M9_BERETTA: WeaponData = {
         position: { x: 0.03, y: 0.1, z: -3.4 },
         rotation: Quaternion.fromEuler(0, 0, 0),
       },
-    },
+    }
   },
   behavior: {
     ammoType: 'pistol',
@@ -53,7 +53,6 @@ export const M9_BERETTA: WeaponData = {
     },
     // sway removed
   },
-  price: 150,
 };
 
 export const FN_502_TACTICAL_FDE: WeaponData = {
@@ -61,7 +60,7 @@ export const FN_502_TACTICAL_FDE: WeaponData = {
   name: 'FN 502 Tactical FDE',
   description: 'Optics-ready polymer pistol with threaded barrel and duty-grade ergonomics for dependable control.',
   category: WeaponCategory.PISTOL,
-  rarity: WeaponRarity.UNUSUAL,
+  rarity: 'unusual',
   stats: {
     damage: 17,
     fireRate: 220,
@@ -94,14 +93,13 @@ export const FN_502_TACTICAL_FDE: WeaponData = {
         position: { x: 0.03, y: 0.1, z: -5.6 },
         rotation: Quaternion.fromEuler(0, 0, 0),
       },
-    },
+    }
   },
   behavior: {
     ammoType: 'pistol',
     fireModes: [FireMode.SINGLE],
     // sway removed
   },
-  price: 350,
 };
 
 export const DESERT_EAGLE: WeaponData = {
@@ -109,7 +107,7 @@ export const DESERT_EAGLE: WeaponData = {
   name: 'Desert Eagle',
   description: 'Gas‑operated magnum pistol delivering extreme muzzle energy; heavy recoil and limited capacity.',
   category: WeaponCategory.PISTOL,
-  rarity: WeaponRarity.RARE,
+  rarity: 'rare',
   stats: {
     damage: 35,
     fireRate: 150,  // Slower due to heavy recoil
@@ -154,7 +152,6 @@ export const DESERT_EAGLE: WeaponData = {
     },
     // sway removed
   },
-  price: 500,
 };
 
 export const GLOCK_17: WeaponData = {
@@ -162,7 +159,7 @@ export const GLOCK_17: WeaponData = {
   name: 'Glock 17',
   description: 'Polymer‑framed 9×19mm sidearm favored by law enforcement for capacity, simplicity, and durability.',
   category: WeaponCategory.PISTOL,
-  rarity: WeaponRarity.COMMON,
+  rarity: 'common',
       stats: {
       damage: 16,
       fireRate: 200,  // Realistic semi-auto rate
@@ -203,7 +200,6 @@ export const GLOCK_17: WeaponData = {
     fireModes: [FireMode.SINGLE],
     // sway removed
   },
-  price: 200,
 };
 
 // Rifles
@@ -212,7 +208,7 @@ export const AKM: WeaponData = {
   name: 'AKM',
   description: 'Stamped‑receiver 7.62×39mm rifle renowned for rugged reliability, strong recoil, and field durability.',
   category: WeaponCategory.RIFLE,
-  rarity: WeaponRarity.COMMON,
+  rarity: 'common',
   stats: {
     damage: 25,
     fireRate: 600,  // Realistic AK fire rate
@@ -247,14 +243,14 @@ export const AKM: WeaponData = {
         position: { x: 0.03, y: 0.1, z: -5.6 },
         rotation: Quaternion.fromEuler(0, 0, 0),
       },
-    },
+    }
   },
   behavior: {
     ammoType: 'rifle',
     fireModes: [FireMode.SINGLE, FireMode.AUTO],
     // sway removed
   },
-  price: 400,
+
 };
 
 export const SPETSNAZ_AKM_NSB: WeaponData = {
@@ -262,7 +258,7 @@ export const SPETSNAZ_AKM_NSB: WeaponData = {
   name: 'AKM NSB (Spetsnaz)',
   description: 'Modernized AKM variant with upgraded furniture and optics mounting for improved handling.',
   category: WeaponCategory.RIFLE,
-  rarity: WeaponRarity.UNUSUAL,
+  rarity: 'unusual',
   stats: {
     damage: 26,
     fireRate: 620,
@@ -296,7 +292,7 @@ export const SPETSNAZ_AKM_NSB: WeaponData = {
     fireModes: [FireMode.SINGLE, FireMode.AUTO],
     // sway removed
   },
-  price: 500,
+
 };
 
 // SMGs
@@ -305,7 +301,7 @@ export const MP5A2: WeaponData = {
   name: 'HK MP5A2',
   description: '9×19mm roller‑delayed SMG with low recoil and controllable bursts, ideal for close quarters.',
   category: WeaponCategory.SMG,
-  rarity: WeaponRarity.UNUSUAL,
+  rarity: 'unusual',
   stats: {
     damage: 15,
     fireRate: 800,  // Realistic MP5 fire rate
@@ -347,7 +343,7 @@ export const MP5A2: WeaponData = {
     fireModes: [FireMode.SINGLE, FireMode.BURST, FireMode.AUTO],
     // sway removed
   },
-  price: 450,
+
 };
 
 export const INGRAM_M6: WeaponData = {
@@ -355,7 +351,7 @@ export const INGRAM_M6: WeaponData = {
   name: 'Ingram Model 6',
   description: 'Post‑war blowback SMG with very high cyclic rate; compact, controllable at short range.',
   category: WeaponCategory.SMG,
-  rarity: WeaponRarity.COMMON,
+  rarity: 'common',
       stats: {
       damage: 14,
       fireRate: 1200,  // High rate of fire for SMG
@@ -397,7 +393,7 @@ export const INGRAM_M6: WeaponData = {
     fireModes: [FireMode.SINGLE, FireMode.AUTO],
     // sway removed
   },
-  price: 350,
+
 };
 
 export const HK_MP5K: WeaponData = {
@@ -405,7 +401,7 @@ export const HK_MP5K: WeaponData = {
   name: 'HK MP5K',
   description: 'Ultra‑compact MP5 variant optimized for concealment and rapid handling at very short ranges.',
   category: WeaponCategory.SMG,
-  rarity: WeaponRarity.UNUSUAL,
+  rarity: 'unusual',
   stats: {
     damage: 14,
     fireRate: 850,
@@ -439,7 +435,7 @@ export const HK_MP5K: WeaponData = {
     fireModes: [FireMode.SINGLE, FireMode.AUTO],
     // sway removed
   },
-  price: 500,
+
 };
 
 export const HK_MP5SD: WeaponData = {
@@ -447,7 +443,7 @@ export const HK_MP5SD: WeaponData = {
   name: 'HK MP5SD',
   description: 'Integrally suppressed MP5 variant with subsonic performance and minimal muzzle flash for stealth.',
   category: WeaponCategory.SMG,
-  rarity: WeaponRarity.RARE,
+  rarity: 'rare',
   stats: {
     damage: 13,
     fireRate: 800,
@@ -481,7 +477,7 @@ export const HK_MP5SD: WeaponData = {
     fireModes: [FireMode.SINGLE, FireMode.AUTO],
     // sway removed
   },
-  price: 550,
+
 };
 
 // Snipers
@@ -490,7 +486,7 @@ export const ASVKM: WeaponData = {
   name: 'ASVK-M',
   description: '12.7×108mm anti‑materiel rifle delivering long‑range penetration and heavy recoil; bolt‑action precision.',
   category: WeaponCategory.SNIPER,
-  rarity: WeaponRarity.RARE,
+  rarity: 'rare',
   stats: {
     damage: 85,
     fireRate: 60,  // Realistic bolt-action rate (1 shot per second)
@@ -525,7 +521,7 @@ export const ASVKM: WeaponData = {
         position: { x: 0.03, y: 0.1, z: -5.6 },
         rotation: Quaternion.fromEuler(0, 0, 0),
       },
-    },
+    }
   },
   behavior: {
     ammoType: 'sniper',
@@ -533,7 +529,7 @@ export const ASVKM: WeaponData = {
     fireModes: [FireMode.SINGLE],
     // sway removed
   },
-  price: 1500,
+
 };
 
 export const VICTRIX_CORVO_V: WeaponData = {
@@ -541,7 +537,7 @@ export const VICTRIX_CORVO_V: WeaponData = {
   name: 'Victrix Corvo V',
   description: 'Precision bolt‑action chassis rifle engineered for competition‑grade accuracy at long range.',
   category: WeaponCategory.SNIPER,
-  rarity: WeaponRarity.RARE,
+  rarity: 'rare',
   stats: {
     damage: 80,
     fireRate: 55,
@@ -576,7 +572,7 @@ export const VICTRIX_CORVO_V: WeaponData = {
     fireModes: [FireMode.SINGLE],
     // sway removed
   },
-  price: 1700,
+
 };
 
 export const SWORD_MK18_MJOLNIR: WeaponData = {
@@ -584,7 +580,7 @@ export const SWORD_MK18_MJOLNIR: WeaponData = {
   name: 'SWORD MK-18 SA-ASR Mjolnir',
   description: 'Semi‑auto anti‑materiel platform optimized for long‑range interdiction with substantial recoil.',
   category: WeaponCategory.SNIPER,
-  rarity: WeaponRarity.EPIC,
+  rarity: 'epic',
   stats: {
     damage: 95,
     fireRate: 50,
@@ -619,7 +615,7 @@ export const SWORD_MK18_MJOLNIR: WeaponData = {
     fireModes: [FireMode.SINGLE],
     // sway removed
   },
-  price: 2200,
+
 };
 
 // Shotguns
@@ -628,7 +624,7 @@ export const KBP_PP90_SHOTGUN: WeaponData = {
   name: 'KBP PP-90',
   description: 'Compact 12‑gauge pump shotgun built for close‑quarters dominance; wide spread and strong recoil.',
   category: WeaponCategory.SHOTGUN,
-  rarity: WeaponRarity.UNUSUAL,
+  rarity: 'unusual',
   stats: {
     damage: 12,         // per pellet (example)
     fireRate: 80,       // pumps per minute
@@ -668,7 +664,7 @@ export const KBP_PP90_SHOTGUN: WeaponData = {
     fireModes: [FireMode.SINGLE],
     // sway removed
   },
-  price: 600,
+
 };
 
 // All weapon definitions

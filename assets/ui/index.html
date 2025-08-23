@@ -21,6 +21,7 @@
   <div class="scope-overlay">
     <div class="scope-reticle"></div>
   </div>
+
   <div class="reload-prompt" hidden>
     <span class="reload-text">Press R to reload</span>
   </div>
@@ -72,13 +73,13 @@
   <div class="tactical-hotbar">
     <div class="hotbar-grid"></div>
   </div>
-  <div class="inventory-overlay" hidden>
+  <div class="inventory-overlay" hidden style="backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); background: rgba(0,0,0,0.25);">
     <div class="tactical-inventory glass-elevated animate-fade-in-scale">
       <div class="inventory-header">
         <span class="inventory-title">TACTICAL BACKPACK</span>
         <button class="close-btn">×</button>
       </div>
-      <div class="inventory-grid-container glass-surface glass-border-strong">
+      <div class="inventory-grid-container ui-panel">
         <div class="backpack-grid" data-container="backpack"></div>
       </div>
       <div class="hotbar-section">
@@ -143,6 +144,7 @@
   const crosshairEl = document.querySelector('.crosshair');
   const crosshairLinesEls = document.querySelectorAll('.crosshair-line');
   const scopeOverlayEl = document.querySelector('.scope-overlay');
+
   const healingEffectEl = document.getElementById('healing-effect');
   const medkitTextEl = document.querySelector('.medkit-text');
   const movementSpeedIndicatorEl = document.getElementById('movement-speed-indicator');
@@ -493,6 +495,7 @@
   const updateCrosshairState = data => {
     crosshairEl.classList.toggle('can-fire', data.canFire);
     crosshairEl.classList.toggle('cannot-fire', !data.canFire);
+    crosshairEl.classList.toggle('enemy-hover', data.enemyHover || false);
   };
 
   const updateScopeZoom = data => {
@@ -666,8 +669,12 @@
     // Remove all rarity classes first
     slot.classList.remove('rarity-common', 'rarity-unusual', 'rarity-rare', 'rarity-epic', 'rarity-legendary', 'rarity-utopian');
     
+    // Remove existing tooltip
+    removeTooltip(slot);
+    
     if (itemData.removed) {
       slot.innerHTML = `<span class="slot-number">${position + 1}</span>`;
+      slot._itemData = null;
     } else {
       const isAmmo = itemData.name && (
         itemData.name.includes('9×19mm') || 
@@ -684,15 +691,25 @@
         ${quantityDisplay}
       `;
       
+      // Store item data for tooltips
+      slot._itemData = itemData;
+      slot._tooltipEnabled = true;
+      
       // Add rarity class for stained glass effect
       const rarity = itemData.rarity || 'common';
       slot.classList.add(`rarity-${rarity}`);
+      
+      // Add tooltip event listeners
+      slot.removeEventListener('mouseenter', createLazyTooltip);
+      slot.addEventListener('mouseenter', createLazyTooltip);
     }
   };
 
   const updateInventorySlot = (grid, position, itemData) => {
     const slot = grid.children[position];
     if (!slot) return;
+    
+
     
     // Remove all rarity classes first
     slot.classList.remove('rarity-common', 'rarity-unusual', 'rarity-rare', 'rarity-epic', 'rarity-legendary', 'rarity-utopian');
@@ -756,6 +773,9 @@
       slot.addEventListener('click', () => {
         hytopia.sendData({ type: 'setSelectedHotbarIndex', index: i });
       });
+      // Initialize tooltip functionality for hotbar slots
+      slot._itemData = null;
+      slot._tooltipEnabled = true;
       hotbarGrid.appendChild(slot);
     }
   };
@@ -934,7 +954,7 @@
     
     let tooltipHTML = `
       <div class="tooltip-header">
-        <span class="tooltip-name rarity-${itemData.rarity || 'common'}">${itemData.name}</span>
+        <span class="tooltip-name rarity-${itemData.rarity || 'common'}"${itemData.rarityColor ? ` style="color: rgb(${itemData.rarityColor.r}, ${itemData.rarityColor.g}, ${itemData.rarityColor.b})"` : ''}>${itemData.name}</span>
       </div>
     `;
     
@@ -1142,9 +1162,33 @@
   };
 
   // Achievement Notification System
+  const recentAchievementNotifications = new Map(); // Track recent notifications to prevent duplicates
+  const ACHIEVEMENT_NOTIFICATION_COOLDOWN = 3000; // 3 seconds cooldown
+
   const showAchievementNotification = (data) => {
     const notificationsContainer = document.querySelector('.achievement-notifications');
     if (!notificationsContainer) return;
+    
+    // Create a unique key for this achievement notification
+    const notificationKey = `${data.title}-${data.completions || 0}`;
+    const now = Date.now();
+    
+    // Check if we've recently shown this notification
+    const lastNotification = recentAchievementNotifications.get(notificationKey);
+    if (lastNotification && (now - lastNotification) < ACHIEVEMENT_NOTIFICATION_COOLDOWN) {
+      return;
+    }
+    
+    // Track this notification
+    recentAchievementNotifications.set(notificationKey, now);
+    
+    // Clean up old notification tracking (older than 1 hour)
+    const oneHourAgo = now - (60 * 60 * 1000);
+    for (const [key, timestamp] of recentAchievementNotifications.entries()) {
+      if (timestamp < oneHourAgo) {
+        recentAchievementNotifications.delete(key);
+      }
+    }
     
     // Add rarity class
     const rarityClass = data.rarity ? `rarity-${data.rarity}` : '';

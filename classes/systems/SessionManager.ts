@@ -226,6 +226,9 @@ export default class SessionManager {
         this._notifyMenuPlayersOfSessionUpdate();
       }
 
+      // Update menu players with fresh session data (including world time) every second
+      this._notifyMenuPlayersOfSessionUpdate();
+
       // Per-player HUD updates and MIA enforcement
       // Iterate over a copy of entries to avoid mutation issues during MIA clears
       const entries = Array.from(this._playerAssignments.entries());
@@ -294,7 +297,7 @@ export default class SessionManager {
           
               }
             } catch (error) {
-              console.error('Error handling MIA:', error);
+              // Error handling MIA
             }
             // Remove player assignment after MIA handling
             this._playerAssignments.delete(playerId);

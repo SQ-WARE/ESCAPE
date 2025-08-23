@@ -129,12 +129,8 @@ export class DeathSystem {
     if (itemsDropped === 0) {
       // Create some visual debris to represent lost gear
       this._createLostGearDebris(dropPosition, player.world);
-    } else if (itemsDropped > 0) {
-      player.world.chatManager.sendBroadcastMessage(
-        `${itemsDropped} items dropped from ${player.player.username}'s inventory!`, 
-        'FFAA00'
-      );
     }
+    // Chat message removed - items are dropped silently when player is eliminated
   }
 
   private _createLostGearDebris(position: Vector3Like, world: World): void {
@@ -235,15 +231,15 @@ export class DeathSystem {
                   victimName: player.player.username
                 });
               } catch (error) {
-                console.error('Failed to send kill feed to player:', error);
+                // Failed to send kill feed to player
               }
             }
           });
         } catch (error) {
-          console.error('Failed to send kill feed to world players:', error);
+          // Failed to send kill feed to world players
         }
       } catch (error) {
-        console.error('Failed to send kill feed:', error);
+        // Failed to send kill feed
       }
     } else {
       message = `${player.player.username} has been eliminated!`;
@@ -318,7 +314,6 @@ export class DeathSystem {
       const gamePlayer = GamePlayer.getOrCreate(player.player);
       gamePlayer.loadMenu();
     } catch (error) {
-      console.error('Error creating GamePlayer for menu return:', error);
       if (player.player.ui) {
         player.player.ui.load('ui/menu.html');
         player.player.ui.lockPointer(false);

@@ -1,6 +1,14 @@
 <link rel="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/app.css">
-<link rel="preload" as="image" href="{{CDN_ASSETS_URL}}/ui/background2.png">
-<div class="menu-background" style="background: url('{{CDN_ASSETS_URL}}/ui/background2.png') center center / cover no-repeat;">
+<link rel="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/stash.css">
+<link rel="preload" as="image" href="{{CDN_ASSETS_URL}}/ui/background3.png">
+<!-- Preload other page assets -->
+<link rel="preload" as="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/market.css">
+<link rel="preload" as="stylesheet" href="{{CDN_ASSETS_URL}}/ui/css/progression.css">
+<!-- Page Loading System -->
+<div class="page-loading-spinner" id="page-loading-spinner"></div>
+<div class="page-transition-overlay" id="page-transition-overlay"></div>
+
+<div class="menu-background" style="background: url('{{CDN_ASSETS_URL}}/ui/background3.png') center center / cover no-repeat;">
   <div class="background-overlay"></div>
   <div class="smoke-effect">
     <div class="smoke-layer smoke-layer-1"></div>
@@ -9,22 +17,33 @@
   </div>
 </div>
 
-<div class="stash-overlay" style="display: flex;">
-  <div class="stash-container">
-    <button class="close-btn" id="stash-close">↩</button>
-    <div class="stash-content glass-surface glass-border-strong">
+<div class="stash-overlay page-loading" id="stash-overlay-content" style="display: flex; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); background: rgba(0,0,0,0.25);">
+  <div class="stash-interface">
+    <!-- Header Panel -->
+    <div class="stash-header-panel">
+      <div class="stash-title-section">
+        <h1 class="stash-title">INVENTORY</h1>
+        <div class="stash-subtitle">MANAGE ITEMS</div>
+      </div>
+      <div class="stash-controls">
+        <button class="close-btn-stash" id="stash-close-btn">CLOSE</button>
+      </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="stash-content-panel">
       <div class="inventory-side">
-        <div class="inventory-section glass-surface">
+        <div class="inventory-section ui-panel">
           <h3 class="section-title">BACKPACK</h3>
           <div class="backpack-grid" data-container="backpack"></div>
         </div>
-        <div class="inventory-section glass-surface">
+        <div class="inventory-section ui-panel">
           <h3 class="section-title">HOTBAR</h3>
           <div class="hotbar-grid" data-container="hotbar"></div>
         </div>
       </div>
       <div class="stash-side">
-        <div class="inventory-section glass-surface">
+        <div class="inventory-section ui-panel">
           <h3 class="section-title">STASH</h3>
           <div class="stash-grid" data-container="stash"></div>
         </div>
@@ -40,7 +59,177 @@
   const HOTBAR_SLOTS = 9;
   const STASH_SLOTS = 90;
 
-  const stashClose = document.getElementById('stash-close');
+  // Page Loading & Transition System - Optimized
+  const pageLoadingSpinner = document.getElementById('page-loading-spinner');
+  const pageTransitionOverlay = document.getElementById('page-transition-overlay');
+  const stashOverlayContent = document.getElementById('stash-overlay-content');
+  
+  let isTransitioning = false;
+  let transitionTimeout = null;
+  let isInitialized = false;
+
+  // Initialize loading spinner
+  function initializeLoadingSpinner() {
+    if (pageLoadingSpinner) {
+      pageLoadingSpinner.classList.add('active');
+    }
+  }
+
+  // Page loading system with error handling
+  function showPageLoading() {
+    if (pageLoadingSpinner && !pageLoadingSpinner.classList.contains('active')) {
+      pageLoadingSpinner.classList.add('active');
+    }
+  }
+
+  function hidePageLoading() {
+    if (pageLoadingSpinner && pageLoadingSpinner.classList.contains('active')) {
+      pageLoadingSpinner.classList.remove('active');
+    }
+  }
+
+  function showPageTransition() {
+    if (pageTransitionOverlay && !pageTransitionOverlay.classList.contains('active')) {
+      pageTransitionOverlay.classList.add('active');
+    }
+  }
+
+  function hidePageTransition() {
+    if (pageTransitionOverlay && pageTransitionOverlay.classList.contains('active')) {
+      pageTransitionOverlay.classList.remove('active');
+    }
+  }
+
+  function navigateBackToMenu() {
+    // Prevent multiple simultaneous transitions
+    if (isTransitioning) {
+      console.warn('Page transition already in progress, ignoring navigation request');
+      return;
+    }
+
+    isTransitioning = true;
+
+    try {
+      // Clean up any active interactions
+      cleanupStashHoverEffects();
+      
+      // Show transition overlay
+      showPageTransition();
+      
+      // Add fade out animation to current content
+      if (stashOverlayContent) {
+        stashOverlayContent.classList.add('overlay-scale-out');
+      }
+      
+      // Clear any existing timeout
+      if (transitionTimeout) {
+        clearTimeout(transitionTimeout);
+      }
+      
+      // After fade out, navigate
+      transitionTimeout = setTimeout(() => {
+        try {
+          hytopia.sendData({ type: 'backToMenu' });
+        } catch (error) {
+          console.error('Failed to send navigation data:', error);
+          // Revert transition on error
+          revertTransition();
+        }
+      }, 300);
+    } catch (error) {
+      console.error('Navigation error:', error);
+      revertTransition();
+    }
+  }
+
+  function revertTransition() {
+    isTransitioning = false;
+    hidePageTransition();
+    
+    if (stashOverlayContent) {
+      stashOverlayContent.classList.remove('overlay-scale-out');
+    }
+    
+    if (transitionTimeout) {
+      clearTimeout(transitionTimeout);
+      transitionTimeout = null;
+    }
+  }
+
+  // Initialize page when everything is loaded
+  function initializePage() {
+    if (isInitialized) {
+      console.warn('Page already initialized, skipping');
+      return;
+    }
+
+    try {
+      // Hide loading spinner
+      hidePageLoading();
+      
+      // Show main content with scale in
+      if (stashOverlayContent) {
+        stashOverlayContent.classList.remove('page-loading');
+        stashOverlayContent.classList.add('page-loaded', 'overlay-scale-in');
+      }
+      
+      isInitialized = true;
+      
+      // Request stash data after initialization
+      setTimeout(() => {
+        try {
+          hytopia.sendData({ type: 'requestStashSync' });
+        } catch (error) {
+          console.error('Failed to request stash sync:', error);
+        }
+      }, 100);
+    } catch (error) {
+      console.error('Page initialization error:', error);
+      // Fallback: show content without animation
+      if (stashOverlayContent) {
+        stashOverlayContent.classList.remove('page-loading');
+        stashOverlayContent.classList.add('page-loaded');
+      }
+      isInitialized = true;
+    }
+  }
+
+  // Wait for DOM and critical resources to load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(initializePage, 100);
+    });
+  } else {
+    // DOM is already loaded
+    setTimeout(initializePage, 100);
+  }
+
+  // Initialize loading spinner immediately
+  initializeLoadingSpinner();
+
+  // Handle page visibility changes (tab switching)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && isTransitioning) {
+      // Page hidden during transition, revert
+      revertTransition();
+    }
+  });
+
+  // Handle window focus/blur
+  window.addEventListener('blur', () => {
+    if (isTransitioning) {
+      // Window lost focus during transition, revert
+      revertTransition();
+    }
+  });
+
+  // Handle beforeunload to clean up
+  window.addEventListener('beforeunload', () => {
+    if (isTransitioning) {
+      revertTransition();
+    }
+  });
+
   const stashGrid = document.querySelector('[data-container="stash"]');
   const stashBackpackGrid = document.querySelector('[data-container="backpack"]');
   const stashHotbarGrid = document.querySelector('[data-container="hotbar"]');
@@ -66,9 +255,49 @@
     setupGrid(stashBackpackGrid, BACKPACK_SLOTS, 'backpack-slot');
     setupGrid(stashHotbarGrid, HOTBAR_SLOTS, 'hotbar-slot');
     hytopia.sendData({ type: 'requestStashSync' });
+    
+    // Add fade-in effect
+    const stashOverlay = document.querySelector('.stash-overlay');
+    if (stashOverlay) {
+      stashOverlay.classList.add('fade-in-scale');
+    }
   };
 
-  stashClose.addEventListener('click', () => hytopia.sendData({ type: 'backToMenu' }));
+  // Handle stash close
+  const stashCloseBtn = document.getElementById('stash-close-btn');
+  if (stashCloseBtn) {
+    stashCloseBtn.addEventListener('click', () => {
+      // Clean up hover effects and tooltips
+      cleanupStashHoverEffects();
+      
+      // Use new navigation system
+      navigateBackToMenu();
+    });
+  }
+
+  // Clean up hover effects and tooltips
+  function cleanupStashHoverEffects() {
+    // Remove all hover states from slots
+    document.querySelectorAll('.stash-slot, .backpack-slot, .hotbar-slot').forEach(slot => {
+      slot.classList.remove('drop-target', 'drop-hover');
+    });
+    
+    // Remove any active tooltips
+    const tooltips = document.querySelectorAll('.item-tooltip');
+    tooltips.forEach(tooltip => {
+      tooltip.remove();
+    });
+    
+    // Clear drag ghost
+    const dragGhost = document.querySelector('.drag-ghost');
+    if (dragGhost) {
+      dragGhost.style.display = 'none';
+      dragGhost.innerHTML = '';
+    }
+    
+    // Reset hover state
+    hoveredSlot = null;
+  }
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -206,6 +435,8 @@
     const slot = grid.children[position];
     if (!slot) return;
     
+
+    
     // Remove all rarity classes first
     slot.classList.remove('rarity-common', 'rarity-unusual', 'rarity-rare', 'rarity-epic', 'rarity-legendary', 'rarity-utopian');
     
@@ -261,7 +492,7 @@
     const tooltip = document.createElement('div');
     tooltip.className = 'item-tooltip';
     const isWeapon = itemData.stats && itemData.ammoType;
-    let tooltipHTML = `<div class="tooltip-header"><span class="tooltip-name rarity-${itemData.rarity || 'common'}">${itemData.name}</span></div>`;
+    let tooltipHTML = `<div class="tooltip-header"><span class="tooltip-name rarity-${itemData.rarity || 'common'}"${itemData.rarityColor ? ` style="color: rgb(${itemData.rarityColor.r}, ${itemData.rarityColor.g}, ${itemData.rarityColor.b})"` : ''}>${itemData.name}</span></div>`;
     if (isWeapon) {
       const { bulletType, statsHTML, description: weaponDesc } = createWeaponStatsHTML(itemData.stats, itemData.description || '', itemData.ammoType || 'pistol');
       if (weaponDesc) tooltipHTML += `<div class="tooltip-description">${weaponDesc}</div>`;
@@ -332,6 +563,17 @@
   };
 
   initialize();
+
+  // Add fade-in effect on page load
+  document.addEventListener('DOMContentLoaded', () => {
+    const stashOverlay = document.querySelector('.stash-overlay');
+    if (stashOverlay) {
+      stashOverlay.style.opacity = '0';
+      setTimeout(() => {
+        stashOverlay.style.opacity = '1';
+      }, 10);
+    }
+  });
 </script>
 
 

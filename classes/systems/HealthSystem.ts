@@ -151,7 +151,6 @@ export default class HealthSystem {
     try {
       DeathSystem.instance.handlePlayerDeath(this._player, this._player.lastDamageSource);
     } catch (error) {
-      console.error('Failed to handle player death:', error);
       // Fallback: just return to menu if DeathSystem fails
       this._player.gamePlayer.loadMenu();
     }
